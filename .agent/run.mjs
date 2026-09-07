@@ -137,8 +137,6 @@ function fileSection(paths) {
 
 const userPrompt = `${body}
 
-${secaoLicoes()}
-
 ${secaoLicoes(ROOT)}
 
 ## ARQUIVOS AUTORIZADOS (somente estes podem ser escritos)
@@ -314,6 +312,7 @@ function verify() {
 
 // ---------- loop ----------
 backup(allow);
+rmSync(join(ROOT, '.agent', 'attempts'), { recursive: true, force: true }); // sem resto da rodada anterior
 
 const messages = [
   { role: 'system', content: SYSTEM },
@@ -386,7 +385,6 @@ ${trunc(result.output, 1200)}`);
 
   step.erro = trunc(result.output, 800);
   registrarLicoes(ROOT, result.output); // errar uma vez ensina; errar de novo e desperdicio
-  registrarLicoes(result.output);
   messages.splice(2); // mantem apenas system + spec: o historico nao cresce
   messages.push({ role: 'assistant', content: answer.text });
   messages.push({

@@ -9,10 +9,13 @@ function createWindow() {
     height: 720,
     minWidth: 760,
     minHeight: 480,
-    backgroundColor: '#F7F4ED',
+    // acrilico do Windows 11: o mesmo material do Windows Terminal.
+    // exige fundo totalmente transparente para o material aparecer.
+    backgroundColor: '#00000000',
+    backgroundMaterial: 'acrylic',
     show: false,
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: '#F1EDE3', symbolColor: '#6B645C', height: 38 },
+    titleBarOverlay: { color: '#00000000', symbolColor: '#C8C2B8', height: 38 },
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

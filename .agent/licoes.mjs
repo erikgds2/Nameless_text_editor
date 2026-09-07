@@ -37,6 +37,8 @@ const RELEVANTE =
   /proibid|fora da escala|nao pertence|não pertence|maximo e|máximo é|error TS|Expected|AssertionError|nao foi declarada|não foi declarada|fora dos tokens/i;
 
 export function registrarLicoes(root, saidaDaValidacao) {
+  if (typeof saidaDaValidacao !== 'string' || saidaDaValidacao.length === 0) return;
+
   const novas = saidaDaValidacao
     .split(/\r?\n/)
     .map((l) => l.trim())

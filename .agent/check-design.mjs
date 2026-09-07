@@ -14,6 +14,7 @@ const PALETA = new Set(
     '#F7F4ED', '#F1EDE3', '#1A1714', '#6B645C', '#DDD6C7', '#A4551A', '#F0E2C0', '#8C2F1D',
     '#14120F', '#191612', '#E8E2D6', '#948C80', '#2C2822', '#D08A3E', '#3A2F1A', '#C25B44',
     '#F0E5D6', '#F0DFD9', '#2A2118', '#2A1A16',
+    '#171512', '#EDEAE4', '#A39C92', '#E08672',
   ].map((c) => c.toLowerCase()),
 );
 
@@ -67,6 +68,12 @@ linhas.forEach((linha, i) => {
 });
 
 if (!/--serif|Literata/.test(css)) erros.push('styles.css  a familia serifada do DESIGN.md nao foi declarada');
+for (const tema of ['acrilico', 'papel', 'tinta']) {
+  if (!new RegExp(`data-theme="${tema}"`).test(css)) {
+    erros.push(`styles.css  o tema "${tema}" do DESIGN.md nao foi definido`);
+  }
+}
+if (!/--paper-solid/.test(css)) erros.push('styles.css  falta --paper-solid: o navegador nao tem acrilico');
 if (!/--mono|Plex Mono/.test(css)) erros.push('styles.css  a familia monoespacada do DESIGN.md nao foi declarada');
 
 if (erros.length > 0) {

@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
 import { createNote, loadNotes, saveNotes, type Note } from './notes';
 import { matchesQuery } from './search';
+import { carregarTema, salvarTema, type TemaId } from './theme';
 
 export default function App() {
   const [notes, setNotes] = useState<Note[]>(loadNotes);
@@ -10,23 +11,36 @@ export default function App() {
     () => [...notes].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ?? null,
   );
   const [query, setQuery] = useState('');
-  const searchRef = useRef<HTMLInputElement>(null);
+  const [tema, setTema] = useState<TemaId>(carregarTema());
+  const searchRef = useRef<HTMLInputElement | null>(null);
 
-  // autosave with debounce: writing to localStorage on every key press is wasteful
+  useEffect(() => {
+    document.documentElement.dataset.theme = tema;
+    salvarTema(tema);
+  }, [tema]);
+
+  useEffect(() => {
+    if (navigator.userAgent.includes('Electron')) {
+      document.documentElement.dataset.native = 'true';
+    }
+  }, []);
+
   useEffect(() => {
     const timer = setTimeout(() => saveNotes(notes), 250);
     return () => clearTimeout(timer);
   }, [notes]);
 
-  const visibleNotes = useMemo(() => {
-    const sorted = [...notes].sort((a, b) => {
-      if (a.pinned && !b.pinned) return -1;
-      if (!a.pinned && b.pinned) return 1;
-      return b.updatedAt - a.updatedAt;
-    });
-    if (!query.trim()) return sorted;
-    return sorted.filter((note) => matchesQuery(note.body, query));
-  }, [notes, query]);
+  // [...notes] e obrigatorio: sort() muta o array, e este e o estado do React
+  const visibleNotes = useMemo(
+    () =>
+      [...notes]
+        .sort((a, b) => {
+          if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+          return b.updatedAt - a.updatedAt;
+        })
+        .filter((note) => matchesQuery(note.body, query)),
+    [notes, query],
+  );
 
   const activeNote = notes.find((note) => note.id === activeId) ?? null;
 
@@ -55,6 +69,10 @@ export default function App() {
     setNotes((prev) =>
       prev.map((note) => (note.id === id ? { ...note, pinned: !note.pinned } : note)),
     );
+  }
+
+  function onTrocarTema(novoTema: TemaId) {
+    setTema(novoTema);
   }
 
   useEffect(() => {
@@ -90,6 +108,8 @@ export default function App() {
           onQueryChange={setQuery}
           onNewNote={handleNewNote}
           onTogglePin={handleTogglePin}
+          tema={tema}
+          onTrocarTema={onTrocarTema}
         />
         <Editor note={activeNote} onChange={handleChangeBody} onDelete={handleDelete} />
       </div>

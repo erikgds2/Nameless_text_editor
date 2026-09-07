@@ -1,5 +1,6 @@
 import type { RefObject } from 'react';
 import { deriveTitle, type Note } from '../notes';
+import { TEMAS, type TemaId } from '../theme';
 
 type Props = {
   notes: Note[];
@@ -10,6 +11,8 @@ type Props = {
   onQueryChange: (query: string) => void;
   onNewNote: () => void;
   onTogglePin: (id: string) => void;
+  tema: TemaId;
+  onTrocarTema: (tema: TemaId) => void;
 };
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' });
@@ -28,6 +31,8 @@ export default function Sidebar({
   onQueryChange,
   onNewNote,
   onTogglePin,
+  tema,
+  onTrocarTema,
 }: Props) {
   return (
     <aside className="sidebar">
@@ -78,6 +83,17 @@ export default function Sidebar({
 
       <footer className="sidebar__footer">
         {notes.length} {notes.length === 1 ? 'nota' : 'notas'}
+        <div className="temas">
+          {TEMAS.map((t) => (
+            <button
+              key={t.id}
+              className={`tema${t.id === tema ? ' tema--on' : ''}`}
+              onClick={() => onTrocarTema(t.id)}
+            >
+              {t.rotulo}
+            </button>
+          ))}
+        </div>
       </footer>
     </aside>
   );

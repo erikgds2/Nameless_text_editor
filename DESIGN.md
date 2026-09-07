@@ -80,7 +80,72 @@ não improvise cores, não "melhore" a paleta.
 - Só `color`, `background-color`, `opacity` e `border-color`.
 - Duração **120ms**, `ease`. Nada além disso.
 
-## Tema
+## Temas
 
-Claro é o padrão. O escuro existe e respeita `prefers-color-scheme`, mas o app
-não é "dark-first" — isso é justamente a marca registrada do visual genérico.
+Três temas fechados. O usuário escolhe; a escolha persiste em `localStorage`.
+
+### `acrilico` — padrão
+
+Translucidez do **material acrílico do Windows 11**, o mesmo do Windows Terminal.
+O fundo da janela é transparente e quem pinta é o sistema operacional.
+
+```css
+:root,
+[data-theme="acrilico"] {
+  --paper:        transparent;
+  --paper-solid:  #171512;   /* usado quando não há acrílico (navegador) */
+  --paper-sunk:   rgba(0, 0, 0, 0.20);
+  --ink:          #EDEAE4;
+  --ink-soft:     #A39C92;
+  --rule:         rgba(255, 255, 255, 0.10);
+  --accent:       #D08A3E;
+  --marker:       rgba(208, 138, 62, 0.18);
+  --alert:        #E08672;
+  --accent-wash:  rgba(208, 138, 62, 0.14);
+  --alert-wash:   rgba(224, 134, 114, 0.14);
+}
+```
+
+O `body` recebe `background: var(--paper)` **apenas** quando o documento tem
+`data-native="true"` (dentro do Electron). Fora dele o fundo é `--paper-solid`,
+porque navegador não tem acrílico e um fundo transparente ficaria branco.
+
+### `papel` — editorial claro
+
+```css
+[data-theme="papel"] {
+  --paper: #F7F4ED;  --paper-solid: #F7F4ED;  --paper-sunk: #F1EDE3;
+  --ink: #1A1714;    --ink-soft: #6B645C;     --rule: #DDD6C7;
+  --accent: #A4551A; --marker: #F0E2C0;       --alert: #8C2F1D;
+  --accent-wash: #F0E5D6; --alert-wash: #F0DFD9;
+}
+```
+
+### `tinta` — editorial escuro, opaco
+
+```css
+[data-theme="tinta"] {
+  --paper: #14120F;  --paper-solid: #14120F;  --paper-sunk: #191612;
+  --ink: #E8E2D6;    --ink-soft: #948C80;     --rule: #2C2822;
+  --accent: #D08A3E; --marker: #3A2F1A;       --alert: #C25B44;
+  --accent-wash: #2A2118; --alert-wash: #2A1A16;
+}
+```
+
+## Translucidez: o que vale e o que não vale
+
+A janela ser translúcida é o **sistema operacional** pintando atrás do app —
+como no Windows Terminal. Isso é permitido e é a identidade do tema padrão.
+
+Continua proibido, sem exceção:
+
+- `backdrop-filter` / `filter: blur()` em qualquer elemento da página
+- Cards, painéis ou modais "de vidro" flutuando sobre o conteúdo
+- Sombra ou brilho para simular elevação sobre o fundo translúcido
+
+A diferença: o acrílico está **atrás de tudo**, uma vez só, e vem do SO.
+Glassmorphism é vidro empilhado **dentro** da interface — isso é slop.
+
+Sobre o translúcido, a hierarquia continua vindo de régua de 1px e espaço. As
+superfícies internas (`--paper-sunk`) escurecem levemente para separar áreas,
+nunca desfocam.
