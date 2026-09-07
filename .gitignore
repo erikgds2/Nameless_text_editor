@@ -9,3 +9,4 @@ tsconfig.tsbuildinfo
 .agent/vite.log
 .agent/ultimo-resumo.txt
 .agent/electron.log
+release

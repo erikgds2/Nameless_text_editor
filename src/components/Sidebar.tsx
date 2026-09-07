@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { deriveTitle, type Note } from '../notes';
+import { deriveTitle, textoDaNota, type Note } from '../notes';
 import { TEMAS, type TemaId } from '../theme';
 
 type Props = {
@@ -17,8 +17,8 @@ type Props = {
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' });
 
-function preview(body: string): string {
-  const rest = body.split('\n').slice(1).join(' ').trim();
+function preview(texto: string): string {
+  const rest = texto.split('\n').slice(1).join(' ').trim();
   return rest.length > 0 ? rest.slice(0, 90) : 'Vazia';
 }
 
@@ -51,14 +51,16 @@ export default function Sidebar({
       </div>
 
       <ul className="notelist">
-        {notes.map((note) => (
+        {notes.map((note) => {
+          const texto = textoDaNota(note.blocos);
+          return (
           <li key={note.id} className="noterow">
             <button
               className={`noteitem${note.id === activeId ? ' noteitem--active' : ''}`}
               onClick={() => onSelect(note.id)}
             >
-              <span className="noteitem__title">{deriveTitle(note.body)}</span>
-              <span className="noteitem__preview">{preview(note.body)}</span>
+              <span className="noteitem__title">{deriveTitle(texto)}</span>
+              <span className="noteitem__preview">{preview(texto)}</span>
               <span className="noteitem__date">{dateFormat.format(note.updatedAt)}</span>
             </button>
             <button
@@ -72,7 +74,8 @@ export default function Sidebar({
               </svg>
             </button>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       {notes.length === 0 && (

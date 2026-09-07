@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { deriveTitle, type Note } from '../notes';
+import { deriveTitle, textoDaNota, type Note } from '../notes';
+import type { Bloco } from '../canvas';
+import Canvas from './Canvas';
 
 type Props = {
   note: Note | null;
-  onChange: (body: string) => void;
+  onChange: (blocos: Bloco[]) => void;
   onDelete: (id: string) => void;
 };
 
@@ -14,8 +16,8 @@ const timeFormat = new Intl.DateTimeFormat('pt-BR', {
   minute: '2-digit',
 });
 
-function countWords(body: string): number {
-  const words = body.trim().match(/\S+/g);
+function countWords(texto: string): number {
+  const words = texto.trim().match(/\S+/g);
   return words ? words.length : 0;
 }
 
@@ -41,11 +43,13 @@ export default function Editor({ note, onChange, onDelete }: Props) {
     );
   }
 
+  const texto = textoDaNota(note.blocos);
+
   return (
     <main className="editor">
       <header className="editor__header">
         <div className="editor__meta">
-          <h1 className="editor__title">{deriveTitle(note.body)}</h1>
+          <h1 className="editor__title">{deriveTitle(texto)}</h1>
           <span className="editor__time">Editado em {timeFormat.format(note.updatedAt)}</span>
         </div>
         <button
@@ -56,20 +60,12 @@ export default function Editor({ note, onChange, onDelete }: Props) {
         </button>
       </header>
 
-      <textarea
-        key={note.id}
-        className="editor__area"
-        value={note.body}
-        placeholder="Escreva..."
-        spellCheck={false}
-        autoFocus
-        onChange={(event) => onChange(event.target.value)}
-      />
+      <Canvas key={note.id} blocos={note.blocos} onChange={onChange} />
 
       <footer className="editor__footer">
-        <span>{countWords(note.body)} palavras</span>
-        <span>{note.body.length} caracteres</span>
-        <span>{note.body.split('\n').length} linhas</span>
+        <span>{countWords(texto)} palavras</span>
+        <span>{texto.length} caracteres</span>
+        <span>{texto.split('\n').length} linhas</span>
       </footer>
     </main>
   );

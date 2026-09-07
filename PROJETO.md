@@ -1,4 +1,4 @@
-# Editor Sem Nome
+# Ardósia
 
 Caderno de estudo local-first. Ferramenta interna, feita para uma pessoa só.
 
@@ -65,6 +65,9 @@ e ver a edição.
 
 ### Fase 3 — Escrita
 
+- **Escrita livre em blocos** ✅ — duplo clique em qualquer ponto da nota cria um
+  bloco de texto ali; cada bloco se move e se redimensiona, como no OneNote.
+  Os blocos são transparentes: o material da janela aparece através deles.
 - Markdown renderizado enquanto se digita (títulos, listas, negrito, citação, código).
 - Paleta de comandos em `Ctrl+K`: tudo alcançável sem mouse.
 - **Captura rápida global**: um atalho do sistema abre uma janelinha, você escreve,
@@ -105,6 +108,17 @@ tridimensional bonito e inútil.
 
 ## Como este projeto é construído
 
-Ver `.agent/README.md`. Regra curta: decisões de arquitetura e design são escritas
-à mão; implementação mecânica com contrato claro vai para o modelo local.
-Ver também `DESIGN.md`, que é lei para qualquer coisa visual.
+Trabalho dividido entre modelos, por tipo de ação, com o mais caro reservado
+para o que erra caro. A política está em `.agent/ROTEAMENTO.md` e o desempenho
+real de cada atribuição é medido em `.agent/registro.jsonl`.
+
+Três documentos mandam em tudo:
+
+- `DESIGN.md` — lei para qualquer coisa visual, com verificação executável
+  em `.agent/check-design.mjs`
+- `.agent/ROTEAMENTO.md` — qual modelo faz o quê, e quando trocar
+- `.agent/licoes.md` — erros já cometidos aqui, reinjetados em toda tarefa
+
+O princípio por trás dos três: **regra que pode virar código de verificação vira
+código**; o que só pode ser dito em prosa vira instrução escrita; e só o que
+sobra chega à revisão humana.

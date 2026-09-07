@@ -1,9 +1,33 @@
-# Agente local
+# Como este projeto e construido
 
-O Claude decide o que fazer e revisa; o modelo do Ollama escreve o código.
-O objetivo é gastar token remoto só onde ele rende — decisão e julgamento.
+Duas vias de delegacao convivem aqui:
 
-## Uso
+1. **Modelos proprios do Claude**, roteados por tipo de acao — e a via principal.
+   A politica esta em `ROTEAMENTO.md`, o desempenho em `registro.jsonl`.
+2. **Modelo local via Ollama** (`run.mjs`), mantido para trabalho em lote
+   assincrono e para quando o codigo nao puder sair da maquina.
+
+A regra comum as duas: **nada e delegado sem verificacao automatica**, e o
+Opus revisa o diff antes de qualquer commit.
+
+## Via 1 — modelos proprios
+
+    Agent(subagent_type: general-purpose, model: "haiku" | "sonnet")
+
+Consulte `ROTEAMENTO.md` para saber qual modelo recebe qual acao. Depois de cada
+delegacao, registre o resultado:
+
+    node .agent/registro.mjs add '{"tarefa":"...","tipo":"...","modelo":"sonnet","resultado":"acerto"}'
+    node .agent/registro.mjs relatorio
+
+`resultado` e um de: `acerto`, `acerto-com-correcao`, `erro`. O relatorio diz
+quando a amostra ja justifica trocar de modelo.
+
+## Via 2 — agente local (Ollama)
+
+O Claude decide o que fazer e revisa; o modelo do Ollama escreve o codigo.
+
+### Uso
 
     node .agent/run.mjs .agent/tasks/<spec>.md
     AGENT_MODEL=qwen2.5-coder:14b node .agent/run.mjs .agent/tasks/<spec>.md

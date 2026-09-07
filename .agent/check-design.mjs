@@ -3,7 +3,7 @@
 // e so uma sugestao no prompt; com isto, e uma condicao de aceite que o modelo
 // local precisa satisfazer sozinho.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -74,7 +74,72 @@ for (const tema of ['acrilico', 'papel', 'tinta']) {
   }
 }
 if (!/--paper-solid/.test(css)) erros.push('styles.css  falta --paper-solid: o navegador nao tem acrilico');
+
+// o body precisa de fundo solido: --paper e transparente no tema acrilico, e sem
+// acrilico (navegador) isso deixa texto claro sobre o branco do navegador
+const regraBody = css.match(/(^|\n)body\s*\{[\s\S]*?\}/);
+if (regraBody && /background:\s*var\(--paper\)\s*;/.test(regraBody[0])) {
+  erros.push('styles.css  body usa var(--paper), que e transparente: use var(--paper-solid)');
+}
 if (!/--mono|Plex Mono/.test(css)) erros.push('styles.css  a familia monoespacada do DESIGN.md nao foi declarada');
+
+// Verificacao de classes CSS obrigatorias
+const classesUsadas = new Set();
+const EXCECOES = new Set(['activeId', 'confirmingDelete', 'note', 'tema']);
+
+function lerArquivosTsx(dir) {
+  const arquivos = [];
+  try {
+    const items = readdirSync(dir, { withFileTypes: true });
+    for (const item of items) {
+      const fullPath = resolve(dir, item.name);
+      if (item.isDirectory()) {
+        arquivos.push(...lerArquivosTsx(fullPath));
+      } else if (item.isFile() && item.name.endsWith('.tsx')) {
+        arquivos.push(fullPath);
+      }
+    }
+  } catch {
+    // diretorio nao existe
+  }
+  return arquivos;
+}
+
+const arquivosTsx = lerArquivosTsx(resolve(ROOT, 'src'));
+
+for (const arquivo of arquivosTsx) {
+  const conteudo = readFileSync(arquivo, 'utf8');
+
+  // Extrai conteudo de className="..." e className={`...`}
+  const classNameMatches = conteudo.matchAll(/className=(?:"([^"]*)"|{`([^`]*)`}|{`([^`]*)\$\{[^`]*\}([^`]*)`})/g);
+
+  for (const match of classNameMatches) {
+    let valor = match[1] || match[2] || (match[3] + match[4]);
+    if (!valor) continue;
+
+    // Quebra por espacos e caracteres especiais de template
+    const tokens = valor.split(/[\s${}'"]+/).filter(t => t && /^[a-z][a-zA-Z0-9_-]*$/.test(t));
+
+    for (const token of tokens) {
+      if (!EXCECOES.has(token)) {
+        classesUsadas.add(token);
+      }
+    }
+  }
+}
+
+// Extrai classes definidas no CSS
+const classesCss = new Set();
+for (const match of css.matchAll(/\.([a-z][a-zA-Z0-9_-]*)/g)) {
+  classesCss.add(match[1]);
+}
+
+// Verifica classes usadas que nao tem regra no CSS
+for (const classe of classesUsadas) {
+  if (!classesCss.has(classe)) {
+    erros.push(`styles.css  a classe "${classe}" e usada nos componentes mas nao tem regra no CSS`);
+  }
+}
 
 if (erros.length > 0) {
   console.error(`DESIGN.md violado (${erros.length}):`);

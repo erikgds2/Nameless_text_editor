@@ -9,6 +9,8 @@ function createWindow() {
     height: 720,
     minWidth: 760,
     minHeight: 480,
+    title: 'Ardósia',
+    icon: path.join(__dirname, '..', 'build', 'icone.ico'),
     // acrilico do Windows 11: o mesmo material do Windows Terminal.
     // exige fundo totalmente transparente para o material aparecer.
     backgroundColor: '#00000000',

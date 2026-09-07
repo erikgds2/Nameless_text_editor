@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
-import { createNote, loadNotes, saveNotes, type Note } from './notes';
+import { createNote, loadNotes, saveNotes, textoDaNota, type Note } from './notes';
+import type { Bloco } from './canvas';
 import { matchesQuery } from './search';
 import { carregarTema, salvarTema, type TemaId } from './theme';
 
@@ -38,7 +39,7 @@ export default function App() {
           if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
           return b.updatedAt - a.updatedAt;
         })
-        .filter((note) => matchesQuery(note.body, query)),
+        .filter((note) => matchesQuery(textoDaNota(note.blocos), query)),
     [notes, query],
   );
 
@@ -51,11 +52,11 @@ export default function App() {
     setQuery('');
   }
 
-  function handleChangeBody(body: string) {
+  function handleChangeBlocos(blocos: Bloco[]) {
     if (!activeId) return;
     setNotes((prev) =>
       prev.map((note) =>
-        note.id === activeId ? { ...note, body, updatedAt: Date.now() } : note,
+        note.id === activeId ? { ...note, blocos, updatedAt: Date.now() } : note,
       ),
     );
   }
@@ -95,7 +96,7 @@ export default function App() {
     <div className="app">
       <header className="titlebar">
         <span className="titlebar__mark" />
-        <span className="titlebar__name">Editor Sem Nome</span>
+        <span className="titlebar__name">Ardósia</span>
       </header>
 
       <div className="workspace">
@@ -111,7 +112,7 @@ export default function App() {
           tema={tema}
           onTrocarTema={onTrocarTema}
         />
-        <Editor note={activeNote} onChange={handleChangeBody} onDelete={handleDelete} />
+        <Editor note={activeNote} onChange={handleChangeBlocos} onDelete={handleDelete} />
       </div>
     </div>
   );

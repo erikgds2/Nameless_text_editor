@@ -1,4 +1,4 @@
-# DESIGN.md — Editor Sem Nome
+# DESIGN.md — Ardósia
 
 Direção: **editorial, papel e tinta**. A referência é um caderno de estudo bem
 impresso, não um dashboard. Tudo aqui é decisão fechada — não invente tokens,
