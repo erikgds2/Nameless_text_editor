@@ -8,3 +8,4 @@ tsconfig.tsbuildinfo
 .agent/attempts
 .agent/vite.log
 .agent/ultimo-resumo.txt
+.agent/electron.log
