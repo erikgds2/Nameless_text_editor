@@ -2,3 +2,5 @@ node_modules
 dist
 .DS_Store
 tsconfig.tsbuildinfo
+.agent/.backup
+.agent/report.json

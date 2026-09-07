@@ -169,6 +169,48 @@ body::before {
   padding: 0 8px 8px;
 }
 
+.noterow {
+  position: relative;
+}
+
+/* o alfinete ocupa o mesmo canto da data: um aparece, o outro sai */
+.pin {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+
+.noterow:hover .pin {
+  opacity: 1;
+}
+
+.pin:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.pin--on {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.noterow:hover .noteitem__date,
+.noterow:has(.pin--on) .noteitem__date {
+  opacity: 0;
+}
+
 .noteitem {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -219,6 +261,7 @@ body::before {
   font-size: 10px;
   color: var(--text-dim);
   white-space: nowrap;
+  transition: opacity 0.15s;
 }
 
 .sidebar__empty {

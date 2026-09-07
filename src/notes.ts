@@ -3,13 +3,14 @@ export type Note = {
   body: string;
   createdAt: number;
   updatedAt: number;
+  pinned: boolean;
 };
 
 const STORAGE_KEY = 'editor-sem-nome:notes:v1';
 
 export function createNote(): Note {
   const now = Date.now();
-  return { id: crypto.randomUUID(), body: '', createdAt: now, updatedAt: now };
+  return { id: crypto.randomUUID(), body: '', createdAt: now, updatedAt: now, pinned: false };
 }
 
 /** O título é sempre a primeira linha com conteúdo — não existe campo separado. */
@@ -24,7 +25,8 @@ export function loadNotes(): Note[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as Note[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((note) => ({ ...note, pinned: note.pinned ?? false }));
   } catch (err) {
     console.error('Não foi possível ler as notas salvas:', err);
     return [];

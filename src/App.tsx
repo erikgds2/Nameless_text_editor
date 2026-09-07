@@ -18,7 +18,11 @@ export default function App() {
   }, [notes]);
 
   const visibleNotes = useMemo(() => {
-    const sorted = [...notes].sort((a, b) => b.updatedAt - a.updatedAt);
+    const sorted = [...notes].sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return b.updatedAt - a.updatedAt;
+    });
     const term = query.trim().toLowerCase();
     if (!term) return sorted;
     return sorted.filter((note) => note.body.toLowerCase().includes(term));
@@ -45,6 +49,12 @@ export default function App() {
   function handleDelete(id: string) {
     setNotes((prev) => prev.filter((note) => note.id !== id));
     if (activeId === id) setActiveId(null);
+  }
+
+  function handleTogglePin(id: string) {
+    setNotes((prev) =>
+      prev.map((note) => (note.id === id ? { ...note, pinned: !note.pinned } : note)),
+    );
   }
 
   useEffect(() => {
@@ -79,6 +89,7 @@ export default function App() {
           onSelect={setActiveId}
           onQueryChange={setQuery}
           onNewNote={handleNewNote}
+          onTogglePin={handleTogglePin}
         />
         <Editor note={activeNote} onChange={handleChangeBody} onDelete={handleDelete} />
       </div>

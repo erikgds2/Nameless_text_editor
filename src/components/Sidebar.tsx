@@ -9,6 +9,7 @@ type Props = {
   onSelect: (id: string) => void;
   onQueryChange: (query: string) => void;
   onNewNote: () => void;
+  onTogglePin: (id: string) => void;
 };
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' });
@@ -26,6 +27,7 @@ export default function Sidebar({
   onSelect,
   onQueryChange,
   onNewNote,
+  onTogglePin,
 }: Props) {
   return (
     <aside className="sidebar">
@@ -45,7 +47,7 @@ export default function Sidebar({
 
       <ul className="notelist">
         {notes.map((note) => (
-          <li key={note.id}>
+          <li key={note.id} className="noterow">
             <button
               className={`noteitem${note.id === activeId ? ' noteitem--active' : ''}`}
               onClick={() => onSelect(note.id)}
@@ -53,6 +55,16 @@ export default function Sidebar({
               <span className="noteitem__title">{deriveTitle(note.body)}</span>
               <span className="noteitem__preview">{preview(note.body)}</span>
               <span className="noteitem__date">{dateFormat.format(note.updatedAt)}</span>
+            </button>
+            <button
+              className={`pin${note.pinned ? ' pin--on' : ''}`}
+              onClick={() => onTogglePin(note.id)}
+              title={note.pinned ? 'Desafixar' : 'Fixar'}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+                <path d="M4.5 1.5h3l-.5 3 2 2v1H3v-1l2-2-.5-3Z" fill="currentColor" />
+                <path d="M6 7.5V11" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+              </svg>
             </button>
           </li>
         ))}
