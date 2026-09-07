@@ -6,3 +6,5 @@ tsconfig.tsbuildinfo
 .agent/report.json
 .agent/live.log
 .agent/attempts
+.agent/vite.log
+.agent/ultimo-resumo.txt
