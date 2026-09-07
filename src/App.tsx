@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
 import { createNote, loadNotes, saveNotes, type Note } from './notes';
+import { matchesQuery } from './search';
 
 export default function App() {
   const [notes, setNotes] = useState<Note[]>(loadNotes);
@@ -11,7 +12,7 @@ export default function App() {
   const [query, setQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // autosave com debounce: escrever a cada tecla no localStorage é desperdício
+  // autosave with debounce: writing to localStorage on every key press is wasteful
   useEffect(() => {
     const timer = setTimeout(() => saveNotes(notes), 250);
     return () => clearTimeout(timer);
@@ -23,9 +24,8 @@ export default function App() {
       if (!a.pinned && b.pinned) return 1;
       return b.updatedAt - a.updatedAt;
     });
-    const term = query.trim().toLowerCase();
-    if (!term) return sorted;
-    return sorted.filter((note) => note.body.toLowerCase().includes(term));
+    if (!query.trim()) return sorted;
+    return sorted.filter((note) => matchesQuery(note.body, query));
   }, [notes, query]);
 
   const activeNote = notes.find((note) => note.id === activeId) ?? null;

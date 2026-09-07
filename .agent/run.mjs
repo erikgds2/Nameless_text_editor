@@ -3,8 +3,10 @@
 // devolve, roda a validacao e devolve o erro para ele tentar de novo.
 // Uso: node .agent/run.mjs .agent/tasks/<spec>.md
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, cpSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, rmSync, cpSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+import http from 'node:http';
+import { registrarLicoes, secaoLicoes } from './licoes.mjs';
 import { dirname, join, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -22,6 +24,62 @@ const specPath = process.argv[2];
 if (!specPath) {
   console.error('uso: node .agent/run.mjs <spec.md>');
   process.exit(2);
+}
+
+// ---------- guarda termica ----------
+// A GPU se protege sozinha com throttle, mas rodar no teto por horas encurta a
+// vida dos ventoiladores e da pasta termica. Estes limites mantem a placa longe
+// do teto sem depender disso.
+const THERMAL = {
+  pause: Number(process.env.GPU_PAUSE_TEMP ?? 78), // acima disso nao comeca
+  resume: Number(process.env.GPU_RESUME_TEMP ?? 68), // espera cair ate aqui
+  abort: Number(process.env.GPU_ABORT_TEMP ?? 86), // corta a geracao em curso
+  cooldownMs: Number(process.env.GPU_COOLDOWN_MS ?? 15000), // respiro entre tentativas
+  maxWaitMs: 10 * 60 * 1000,
+};
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Log ao vivo: acompanhe com "Get-Content .agent\live.log -Wait -Tail 30"
+const LIVE = join(ROOT, '.agent', 'live.log');
+const hora = () => new Date().toLocaleTimeString('pt-BR');
+const live = (texto) => appendFileSync(LIVE, texto, 'utf8');
+const evento = (texto) => {
+  live(`
+[${hora()}] ${texto}
+`);
+  process.stderr.write(`[${hora()}] ${texto}
+`);
+};
+
+function gpuTemp() {
+  try {
+    const out = execSync('nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits', {
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+    const value = Number(out.trim().split('\n')[0]);
+    return Number.isFinite(value) ? value : null;
+  } catch {
+    return null; // sem GPU NVIDIA: a guarda simplesmente nao se aplica
+  }
+}
+
+async function waitUntilCool() {
+  const temp = gpuTemp();
+  if (temp === null || temp < THERMAL.pause) return;
+
+  process.stderr.write(`  GPU a ${temp}C — aguardando cair para ${THERMAL.resume}C\n`);
+  const deadline = Date.now() + THERMAL.maxWaitMs;
+  while (Date.now() < deadline) {
+    await sleep(5000);
+    const now = gpuTemp();
+    if (now === null || now <= THERMAL.resume) {
+      process.stderr.write(`  GPU a ${now}C — retomando\n`);
+      return;
+    }
+  }
+  throw new Error(`GPU nao esfriou abaixo de ${THERMAL.resume}C em 10 minutos; execucao abortada`);
 }
 
 const SYSTEM = [
@@ -62,7 +120,7 @@ const context = list(meta.context);
 const allow = list(meta.allow);
 const verifyCmd = meta.verify ?? 'npm run build';
 const maxAttempts = Number(meta.attempts ?? 3);
-const numCtx = Number(meta.num_ctx ?? 32768);
+const numCtx = Number(meta.num_ctx ?? 16384);
 
 if (allow.length === 0) throw new Error('spec precisa declarar "allow" com os arquivos editaveis');
 
@@ -79,6 +137,10 @@ function fileSection(paths) {
 
 const userPrompt = `${body}
 
+${secaoLicoes()}
+
+${secaoLicoes(ROOT)}
+
 ## ARQUIVOS AUTORIZADOS (somente estes podem ser escritos)
 ${allow.map((p) => `- ${p}`).join('\n')}
 
@@ -86,45 +148,116 @@ ${allow.map((p) => `- ${p}`).join('\n')}
 ${fileSection([...new Set([...context, ...allow])])}`;
 
 // ---------- ollama ----------
-// Streaming e obrigatorio aqui: sem ele o fetch estoura o timeout de headers
-// enquanto o Ollama carrega o modelo na VRAM.
-async function ask(messages) {
-  const res = await fetch(`${OLLAMA}/api/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model,
-      messages,
-      stream: true,
-      options: { temperature: 0.1, num_ctx: numCtx },
-    }),
+// Usamos node:http em vez de fetch porque o fetch do Node tem um limite fixo de
+// 5 minutos ate os primeiros headers, e o Ollama so responde depois de processar
+// o prompt inteiro — o que passa disso com prompt grande e modelo grande.
+function postStream(payload, { onData, onAbortCheck }) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(`${OLLAMA}/api/chat`);
+    const req = http.request(
+      {
+        hostname: url.hostname,
+        port: url.port || 80,
+        path: '/api/chat',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      },
+      (res) => {
+        if (res.statusCode !== 200) {
+          let body = '';
+          res.on('data', (c) => (body += c));
+          res.on('end', () => reject(new Error(`ollama ${res.statusCode}: ${body.slice(0, 300)}`)));
+          return;
+        }
+        res.setEncoding('utf8');
+        let buffer = '';
+        res.on('data', (chunk) => {
+          buffer += chunk;
+          const linhas = buffer.split('\n');
+          buffer = linhas.pop() ?? '';
+          for (const linha of linhas) {
+            if (!linha.trim()) continue;
+            let dados;
+            try {
+              dados = JSON.parse(linha);
+            } catch {
+              continue;
+            }
+            if (dados.error) {
+              req.destroy();
+              reject(new Error(`ollama: ${dados.error}`));
+              return;
+            }
+            onData(dados);
+          }
+          if (onAbortCheck()) req.destroy(new Error('__abort__'));
+        });
+        res.on('end', resolve);
+        res.on('error', reject);
+      },
+    );
+
+    req.setTimeout(0); // a geracao pode demorar o quanto precisar
+    req.on('error', reject);
+    req.write(JSON.stringify(payload));
+    req.end();
   });
-  if (!res.ok) throw new Error(`ollama ${res.status}: ${await res.text()}`);
+}
+
+async function ask(messages) {
+  await waitUntilCool();
+
+  // nvidia-smi custa ~100ms; so o watchdog o consulta, o resto le daqui
+  const sensor = { last: gpuTemp() ?? 0, peak: 0 };
+  sensor.peak = sensor.last;
+  let overheated = false;
+
+  const watchdog = setInterval(() => {
+    const temp = gpuTemp();
+    if (temp === null) return;
+    sensor.last = temp;
+    if (temp > sensor.peak) sensor.peak = temp;
+    if (temp >= THERMAL.abort) overheated = true;
+  }, 5000);
 
   let text = '';
   let tokens = 0;
   let seconds = 0;
-  let buffer = '';
 
-  for await (const chunk of res.body) {
-    buffer += Buffer.from(chunk).toString('utf8');
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      const data = JSON.parse(line);
-      if (data.error) throw new Error(`ollama: ${data.error}`);
-      text += data.message?.content ?? '';
-      if (data.done) {
-        tokens = data.eval_count ?? 0;
-        seconds = Math.round((data.total_duration ?? 0) / 1e9);
-      }
+  try {
+    await postStream(
+      {
+        model,
+        messages,
+        stream: true,
+        keep_alive: '5m',
+        options: { temperature: 0.1, num_ctx: numCtx },
+      },
+      {
+        onData: (dados) => {
+          text += dados.message?.content ?? '';
+          if (dados.done) {
+            tokens = dados.eval_count ?? 0;
+            seconds = Math.round((dados.total_duration ?? 0) / 1e9);
+          }
+          live(dados.message?.content ?? '');
+          process.stderr.write(`\r  gerando... ${text.length} chars | GPU ${sensor.last}C`);
+        },
+        onAbortCheck: () => overheated,
+      },
+    );
+    process.stderr.write('\n');
+  } catch (err) {
+    process.stderr.write('\n');
+    if (overheated) {
+      throw new Error(`GPU atingiu ${THERMAL.abort}C durante a geracao; execucao interrompida por seguranca`);
     }
-    process.stderr.write(`\r  gerando... ${text.length} chars`);
+    throw err;
+  } finally {
+    clearInterval(watchdog);
   }
-  process.stderr.write('\n');
 
-  return { text, tokens, seconds };
+  return { text, tokens, seconds, peak: sensor.peak };
 }
 
 // ---------- parsing ----------
@@ -191,7 +324,8 @@ const report = { spec: specPath, model, status: 'falhou', attempts: [], written:
 let written = [];
 
 for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-  process.stderr.write(`[tentativa ${attempt}/${maxAttempts}] consultando ${model}...\n`);
+  if (attempt > 1) await sleep(THERMAL.cooldownMs); // respiro entre tentativas
+  evento(`TENTATIVA ${attempt}/${maxAttempts} - consultando ${model}`);
   const answer = await ask(messages);
   const files = parseFiles(answer.text);
 
@@ -209,6 +343,7 @@ for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     seconds: answer.seconds,
     arquivos: accepted.map((f) => f.path),
     recusados: rejected,
+    gpu_pico: answer.peak,
   };
 
   if (accepted.length === 0) {
@@ -230,9 +365,16 @@ for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     mkdirSync(dirname(abs), { recursive: true });
     writeFileSync(abs, f.content, 'utf8');
     written.push(f.path);
+
+    const guardado = join(ROOT, '.agent', 'attempts', String(attempt), f.path);
+    mkdirSync(dirname(guardado), { recursive: true });
+    writeFileSync(guardado, f.content, 'utf8');
   }
 
+  evento(`escreveu ${written.join(', ')} — rodando: ${verifyCmd}`);
   const result = verify();
+  evento(result.ok ? 'VALIDACAO PASSOU' : `VALIDACAO FALHOU:
+${trunc(result.output, 1200)}`);
   step.validacao = result.ok ? 'passou' : 'falhou';
   report.attempts.push(step);
 
@@ -243,6 +385,8 @@ for (let attempt = 1; attempt <= maxAttempts; attempt++) {
   }
 
   step.erro = trunc(result.output, 800);
+  registrarLicoes(ROOT, result.output); // errar uma vez ensina; errar de novo e desperdicio
+  registrarLicoes(result.output);
   messages.splice(2); // mantem apenas system + spec: o historico nao cresce
   messages.push({ role: 'assistant', content: answer.text });
   messages.push({
@@ -254,19 +398,24 @@ for (let attempt = 1; attempt <= maxAttempts; attempt++) {
 if (report.status !== 'ok') {
   restore(written);
   report.written = [];
-  report.observacao = 'todas as tentativas falharam; arquivos revertidos ao estado original';
+  report.observacao = 'todas as tentativas falharam; arquivos revertidos, mas cada tentativa esta em .agent/attempts/<n>/ para aproveitamento manual';
 }
 
 writeFileSync(join(ROOT, '.agent', 'report.json'), JSON.stringify(report, null, 2));
 
 // ---------- resumo curto: a unica coisa que o orquestrador remoto precisa ler ----------
 const totals = report.attempts.reduce(
-  (acc, s) => ({ tokens: acc.tokens + s.tokens, seconds: acc.seconds + s.seconds }),
-  { tokens: 0, seconds: 0 },
+  (acc, s) => ({
+    tokens: acc.tokens + s.tokens,
+    seconds: acc.seconds + s.seconds,
+    peak: Math.max(acc.peak, s.gpu_pico ?? 0),
+  }),
+  { tokens: 0, seconds: 0, peak: 0 },
 );
+report.gpu_pico = totals.peak;
 console.log(`STATUS: ${report.status}`);
 console.log(`modelo: ${model} | tentativas: ${report.attempts.length}`);
-console.log(`geracao local: ${totals.tokens} tokens em ${totals.seconds}s`);
+console.log(`geracao local: ${totals.tokens} tokens em ${totals.seconds}s | GPU pico ${totals.peak}C`);
 if (report.status === 'ok') {
   console.log(`arquivos: ${report.written.join(', ')}`);
 } else {

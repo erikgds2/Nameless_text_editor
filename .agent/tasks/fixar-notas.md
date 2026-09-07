@@ -3,6 +3,7 @@ model: qwen3-coder:30b
 context: src/notes.ts, src/App.tsx, src/components/Sidebar.tsx
 allow: src/notes.ts, src/App.tsx, src/components/Sidebar.tsx
 verify: npm run build
+num_ctx: 16384
 attempts: 3
 ---
 

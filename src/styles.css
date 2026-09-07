@@ -1,17 +1,32 @@
 :root {
-  --bg: #07090d;
-  --surface: rgba(255, 255, 255, 0.026);
-  --surface-hover: rgba(255, 255, 255, 0.05);
-  --line: rgba(255, 255, 255, 0.07);
-  --text: #e6ebf2;
-  --text-dim: #7d8899;
-  --accent: #5ef2d6;
-  --danger: #ff6b7a;
+  --paper: #F7F4ED;
+  --paper-sunk: #F1EDE3;
+  --ink: #1A1714;
+  --ink-soft: #6B645C;
+  --rule: #DDD6C7;
+  --accent: #A4551A;
+  --marker: #F0E2C0;
+  --alert: #8C2F1D;
+  --accent-wash: #F0E5D6;
+  --alert-wash: #F0DFD9;
 
-  --mono: ui-monospace, "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
-  --sans: "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --serif: 'Literata', 'Source Serif 4', Georgia, serif;
+  --mono: 'IBM Plex Mono', 'Cascadia Mono', Consolas, monospace;
 
-  color-scheme: dark;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  --paper: #14120F;
+  --paper-sunk: #191612;
+  --ink: #E8E2D6;
+  --ink-soft: #948C80;
+  --rule: #2C2822;
+  --accent: #D08A3E;
+  --marker: #3A2F1A;
+  --alert: #C25B44;
+  --accent-wash: #2A2118;
+  --alert-wash: #2A1A16;
 }
 
 * {
@@ -26,21 +41,12 @@ body,
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--sans);
-  font-size: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 16px;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
-}
-
-/* brilho frio no canto superior esquerdo, o único "efeito" da interface */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(70ch 50ch at 8% -10%, rgba(94, 242, 214, 0.06), transparent 70%);
 }
 
 .app {
@@ -50,13 +56,12 @@ body::before {
   height: 100%;
 }
 
-/* --- barra de título (área arrastável no Electron) --- */
 .titlebar {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 0 16px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--rule);
   -webkit-app-region: drag;
   user-select: none;
 }
@@ -64,17 +69,15 @@ body::before {
 .titlebar__mark {
   width: 7px;
   height: 7px;
-  border-radius: 2px;
   background: var(--accent);
-  box-shadow: 0 0 10px var(--accent);
 }
 
 .titlebar__name {
   font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.18em;
+  font-size: 10px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--ink-soft);
 }
 
 .workspace {
@@ -83,12 +86,11 @@ body::before {
   min-height: 0;
 }
 
-/* --- lista lateral --- */
 .sidebar {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border-right: 1px solid var(--line);
+  border-right: 1px solid var(--rule);
 }
 
 .sidebar__top {
@@ -102,51 +104,51 @@ body::before {
   min-width: 0;
   height: 32px;
   padding: 0 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--paper-sunk);
+  color: var(--ink);
   font-family: var(--mono);
   font-size: 12px;
   outline: none;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 120ms, background 120ms;
 }
 
 .search::placeholder {
-  color: var(--text-dim);
+  color: var(--ink-soft);
 }
 
 .search:focus {
-  border-color: rgba(94, 242, 214, 0.4);
-  background: rgba(94, 242, 214, 0.04);
+  border-color: var(--accent);
+  background: var(--accent-wash);
 }
 
 .btn {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text-dim);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--paper-sunk);
+  color: var(--ink-soft);
   font-family: var(--mono);
   font-size: 12px;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition: color 120ms, border-color 120ms, background 120ms;
 }
 
 .btn:hover {
-  color: var(--text);
-  background: var(--surface-hover);
+  color: var(--ink);
+  background: var(--paper-sunk);
 }
 
 .btn--new {
   width: 32px;
   height: 32px;
-  font-size: 18px;
+  font-size: 24px;
   line-height: 1;
 }
 
 .btn--new:hover {
   color: var(--accent);
-  border-color: rgba(94, 242, 214, 0.4);
+  border-color: var(--accent);
 }
 
 .btn--danger {
@@ -156,9 +158,9 @@ body::before {
 
 .btn--danger:hover,
 .btn--armed {
-  color: var(--danger);
-  border-color: rgba(255, 107, 122, 0.45);
-  background: rgba(255, 107, 122, 0.08);
+  color: var(--alert);
+  border-color: var(--alert);
+  background: var(--alert-wash);
 }
 
 .notelist {
@@ -173,7 +175,6 @@ body::before {
   position: relative;
 }
 
-/* o alfinete ocupa o mesmo canto da data: um aparece, o outro sai */
 .pin {
   position: absolute;
   top: 8px;
@@ -184,12 +185,12 @@ body::before {
   height: 20px;
   padding: 0;
   border: 0;
-  border-radius: 5px;
+  border-radius: 2px;
   background: none;
-  color: var(--text-dim);
+  color: var(--ink-soft);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  transition: opacity 120ms, color 120ms, background 120ms;
 }
 
 .noterow:hover .pin {
@@ -197,8 +198,8 @@ body::before {
 }
 
 .pin:hover {
-  color: var(--text);
-  background: var(--surface-hover);
+  color: var(--ink);
+  background: var(--paper-sunk);
 }
 
 .pin--on {
@@ -219,22 +220,20 @@ body::before {
   padding: 10px 12px;
   border: 0;
   border-left: 2px solid transparent;
-  border-radius: 8px;
   background: none;
   color: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 120ms, border-color 120ms;
 }
 
 .noteitem:hover {
-  background: var(--surface);
+  background: var(--paper-sunk);
 }
 
 .noteitem--active {
-  background: var(--surface);
+  background: var(--paper-sunk);
   border-left-color: var(--accent);
-  box-shadow: inset 12px 0 24px -20px var(--accent);
 }
 
 .noteitem__title,
@@ -245,7 +244,7 @@ body::before {
 }
 
 .noteitem__title {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 500;
   letter-spacing: -0.01em;
 }
@@ -253,35 +252,34 @@ body::before {
 .noteitem__preview {
   grid-column: 1 / -1;
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--ink-soft);
 }
 
 .noteitem__date {
   font-family: var(--mono);
   font-size: 10px;
-  color: var(--text-dim);
+  color: var(--ink-soft);
   white-space: nowrap;
-  transition: opacity 0.15s;
+  transition: opacity 120ms;
 }
 
 .sidebar__empty {
   padding: 24px 20px;
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--ink-soft);
   text-align: center;
 }
 
 .sidebar__footer {
   padding: 10px 16px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--rule);
   font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--ink-soft);
 }
 
-/* --- editor --- */
 .editor {
   display: flex;
   flex-direction: column;
@@ -301,7 +299,7 @@ body::before {
 }
 
 .editor__title {
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 600;
   letter-spacing: -0.02em;
   overflow: hidden;
@@ -316,7 +314,7 @@ body::before {
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--ink-soft);
 }
 
 .editor__area {
@@ -325,28 +323,31 @@ body::before {
   padding: 8px 32px 24px;
   border: 0;
   background: none;
-  color: var(--text);
-  font-family: var(--sans);
-  font-size: 15px;
-  line-height: 1.75;
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.7;
   resize: none;
   outline: none;
+  width: 100%;
+  max-width: 68ch;
+  margin: 0 auto;
 }
 
 .editor__area::placeholder {
-  color: rgba(125, 136, 153, 0.5);
+  color: var(--ink-soft);
 }
 
 .editor__footer {
   display: flex;
   gap: 20px;
   padding: 10px 32px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--rule);
   font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--ink-soft);
 }
 
 .editor--empty {
@@ -359,7 +360,7 @@ body::before {
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--ink-soft);
   text-align: center;
 }
 
@@ -370,22 +371,21 @@ body::before {
   opacity: 0.6;
 }
 
-/* --- scrollbars --- */
 ::-webkit-scrollbar {
   width: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
   border: 3px solid transparent;
-  border-radius: 999px;
+  border-radius: 2px;
   background-clip: content-box;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--rule);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: var(--accent);
 }
 
 ::selection {
-  background: rgba(94, 242, 214, 0.24);
+  background: var(--accent-wash);
 }
