@@ -20,8 +20,17 @@ código no navegador.
 | `npm run test`    | Só os testes                                       |
 | `npm run dist`    | Gera o instalador do Windows em `release/`         |
 
-Depois de `npm run dist`, instale o `.exe` de `release/` para o app aparecer no
-menu Iniciar como **Ardósia**.
+O instalador sai em `%TEMP%/ardosia-build` — fora do projeto de propósito: o
+antivírus segura os executáveis recém-copiados e o empacotamento falha com
+`EPERM` se a saída ficar aqui dentro.
+
+Instale o `.exe` e o app aparece no menu Iniciar como **Ardósia**. A partir daí
+ele pergunta ao GitHub, toda vez que abre, se há versão nova; baixa em segundo
+plano e espera você clicar em **Atualizar** na barra de título. Nunca reinicia
+sozinho no meio de uma nota.
+
+Para publicar uma versão: suba `version` no `package.json`, defina `GH_TOKEN` e
+rode `npm run publicar`.
 
 ## Atalhos
 

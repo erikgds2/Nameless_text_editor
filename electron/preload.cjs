@@ -14,6 +14,13 @@ contextBridge.exposeInMainWorld('ardosia', {
   fecharCaptura: (gravou) => ipcRenderer.invoke('ardosia:fechar-captura', gravou),
   salvarAnexo: (bytes, tipo) => ipcRenderer.invoke('ardosia:salvar-anexo', bytes, tipo),
   modoDeFundo: () => ipcRenderer.invoke('ardosia:modo-de-fundo'),
+  versao: () => ipcRenderer.invoke('ardosia:versao'),
+  instalarAtualizacao: () => ipcRenderer.invoke('ardosia:instalar-atualizacao'),
+  aoAtualizar: (callback) => {
+    const ouvinte = (_evento, dados) => callback(dados);
+    ipcRenderer.on('ardosia:atualizacao', ouvinte);
+    return () => ipcRenderer.off('ardosia:atualizacao', ouvinte);
+  },
   trocarModoDeFundo: (modo) => ipcRenderer.invoke('ardosia:trocar-modo-de-fundo', modo),
 
   // Só o aviso atravessa: o objeto de evento do IPC fica deste lado da ponte.

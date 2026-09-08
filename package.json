@@ -1,7 +1,7 @@
 {
   "name": "ardosia",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -11,10 +11,12 @@
     "preview": "vite preview",
     "test": "vitest run",
     "check": "node --check electron/main.cjs && node --check electron/preload.cjs && node --check electron/notas.cjs && tsc -b && vitest run && vite build",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder --publish never --config.directories.output=%TEMP%/ardosia-build",
+    "publicar": "npm run build && electron-builder --publish always --config.directories.output=%TEMP%/ardosia-build"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
+    "electron-updater": "^6.8.9",
     "mermaid": "^11.17.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
@@ -43,6 +45,10 @@
   },
   "productName": "Ardósia",
   "description": "Caderno de estudo local-first: escreva em qualquer ponto da tela.",
+  "author": {
+    "name": "Erik",
+    "email": "erikgds@gmail.com"
+  },
   "build": {
     "appId": "com.erikgds.ardosia",
     "productName": "Ardósia",
@@ -61,6 +67,13 @@
       ],
       "icon": "build/icone.ico"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "erikgds2",
+        "repo": "Nameless_text_editor"
+      }
+    ],
     "nsis": {
       "oneClick": false,
       "perMachine": false,

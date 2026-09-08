@@ -2,6 +2,7 @@ const { app, BrowserWindow, globalShortcut, ipcMain, net, protocol } = require('
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const notas = require('./notas.cjs');
+const { autoUpdater } = require('electron-updater');
 
 const isDev = !app.isPackaged;
 
@@ -117,6 +118,36 @@ function abrirCaptura() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Atualizacao. O app instalado pergunta ao GitHub se ha versao nova toda vez
+// que abre, baixa em segundo plano e so troca quando voce mandar — reiniciar
+// sozinho no meio de uma nota escrita seria pior que ficar desatualizado.
+
+function avisarJanela(estado, extra = {}) {
+  if (janelaPrincipal && !janelaPrincipal.isDestroyed()) {
+    janelaPrincipal.webContents.send('ardosia:atualizacao', { estado, ...extra });
+  }
+}
+
+function vigiarAtualizacoes() {
+  // em desenvolvimento nao ha versao publicada com que comparar
+  if (isDev) return;
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', (info) => avisarJanela('baixando', { versao: info.version }));
+  autoUpdater.on('update-not-available', () => avisarJanela('atual'));
+  autoUpdater.on('update-downloaded', (info) => avisarJanela('pronta', { versao: info.version }));
+  autoUpdater.on('error', (erro) => {
+    // ficar sem internet nao e motivo para incomodar ninguem
+    console.error('Não foi possível verificar atualizações:', erro?.message ?? erro);
+    avisarJanela('falhou');
+  });
+
+  autoUpdater.checkForUpdates().catch(() => avisarJanela('falhou'));
+}
+
 function registrarCanais() {
   ipcMain.handle('ardosia:pasta', () => notas.pasta());
   ipcMain.handle('ardosia:escolher-pasta', async (evento) => {
@@ -133,6 +164,8 @@ function registrarCanais() {
   ipcMain.handle('ardosia:apagar', (_evento, id) => notas.apagar(id));
   ipcMain.handle('ardosia:salvar-anexo', (_evento, bytes, tipo) => notas.salvarAnexo(bytes, tipo));
   ipcMain.handle('ardosia:modo-de-fundo', () => notas.modoDeFundo());
+  ipcMain.handle('ardosia:versao', () => app.getVersion());
+  ipcMain.handle('ardosia:instalar-atualizacao', () => autoUpdater.quitAndInstall());
 
   // Trocar o fundo exige uma janela nova: transparencia e material do sistema
   // sao decididos no nascimento dela. A posicao e o tamanho vao junto, para a
@@ -171,6 +204,8 @@ app.whenReady().then(async () => {
 
   registrarCanais();
   createWindow(await notas.modoDeFundo());
+
+  vigiarAtualizacoes();
 
   if (!globalShortcut.register(ATALHO_DE_CAPTURA, abrirCaptura)) {
     console.error(`Outro programa já usa ${ATALHO_DE_CAPTURA}; a captura rápida ficou sem atalho.`);

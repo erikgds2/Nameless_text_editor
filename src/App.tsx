@@ -10,7 +10,7 @@ import type { Bloco } from './canvas';
 import { matchesQuery } from './search';
 import { fixadasEmOrdem, proximaOrdem, reordenarFixadas } from './ordenacao';
 import { construirIndice } from './links';
-import { trocarModoDeFundo } from './janela';
+import { aoAtualizar, instalarAtualizacao, trocarModoDeFundo, type Atualizacao } from './janela';
 import { TAMANHOS, TEMAS, carregarAjustes, salvarAjustes, type Ajustes as AjustesTipo } from './ajustes';
 import type { Comando } from './comandos';
 
@@ -29,6 +29,10 @@ export default function App() {
   const [mostrandoPaleta, setMostrandoPaleta] = useState(false);
   const [salvamento, setSalvamento] = useState<'salvo' | 'salvando' | 'erro'>('salvo');
   const [recado, setRecado] = useState<string | null>(null);
+  const [atualizacao, setAtualizacao] = useState<Atualizacao | null>(null);
+
+  // Só interessa avisar quando há o que fazer: estar em dia não é notícia.
+  useEffect(() => aoAtualizar(setAtualizacao), []);
 
   // Um aviso que some sozinho: serve para o que falhou sem barulho, como colar
   // imagem onde não há disco para guardá-la.
@@ -443,6 +447,16 @@ export default function App() {
       <header className="titlebar">
         <span className="titlebar__mark" />
         <span className="titlebar__name">Ardósia</span>
+        {atualizacao?.estado === 'pronta' && (
+          <button
+            className="titlebar__atualizar"
+            onClick={() => void instalarAtualizacao()}
+            title={`A versão ${atualizacao.versao ?? 'nova'} está baixada. O app reinicia para trocar.`}
+          >
+            Atualizar para {atualizacao.versao ?? 'a versão nova'}
+          </button>
+        )}
+
         <div className="titlebar__acoes">
           <button
             className={`icone${mostrandoAjustes ? ' icone--ativo' : ''}`}

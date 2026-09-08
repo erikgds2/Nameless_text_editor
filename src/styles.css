@@ -1250,3 +1250,27 @@ button {
   background: var(--accent-wash);
   color: var(--ink-strong);
 }
+
+/* Atualização pronta. Fica na barra de título, discreto, e só some quando você
+   decide trocar de versão — nunca reinicia sozinho. */
+.titlebar__atualizar {
+  margin-left: auto;
+  padding: 3px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent-wash);
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: background-color var(--rapido), color var(--rapido);
+}
+
+.titlebar__atualizar:hover {
+  color: var(--ink-strong);
+}
+
+/* com o aviso presente, as ações perdem a margem que as empurrava para a direita */
+.titlebar__atualizar + .titlebar__acoes {
+  margin-left: 8px;
+}
