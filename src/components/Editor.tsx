@@ -4,9 +4,18 @@ import type { Bloco } from '../canvas';
 import { renderizar } from '../markdown';
 import Canvas from './Canvas';
 
+export type Salvamento = 'salvo' | 'salvando' | 'erro';
+
+const RECADO: Record<Salvamento, string> = {
+  salvo: 'Salva',
+  salvando: 'Salvando…',
+  erro: 'Não foi possível salvar',
+};
+
 type Props = {
   note: Note | null;
   preview: boolean;
+  salvamento?: Salvamento;
   onChange: (blocos: Bloco[]) => void;
   onDelete: (id: string) => void;
   onMudarTipo: (tipo: TipoDoc) => void;
@@ -28,6 +37,7 @@ function countWords(texto: string): number {
 export default function Editor({
   note,
   preview,
+  salvamento = 'salvo',
   onChange,
   onDelete,
   onMudarTipo,
@@ -137,6 +147,9 @@ export default function Editor({
         <span>{countWords(texto)} palavras</span>
         <span>{texto.length} caracteres</span>
         <span>{texto.split('\n').length} linhas</span>
+        <span className={salvamento === 'erro' ? 'editor__estado--erro' : undefined}>
+          {RECADO[salvamento]}
+        </span>
       </footer>
     </main>
   );

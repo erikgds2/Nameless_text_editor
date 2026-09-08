@@ -94,6 +94,84 @@ describe('renderizar', () => {
   it('texto vazio devolve string vazia', () => {
     expect(renderizar('')).toBe('');
   });
+
+  it('tabela simples com cabeçalho e uma linha', () => {
+    const texto = '| Conceito | Definição |\n| --- | --- |\n| Limite | valor de aproximação |';
+    expect(renderizar(texto)).toBe(
+      '<div class="preview__tabela"><table><thead><tr><th>Conceito</th><th>Definição</th></tr></thead>' +
+        '<tbody><tr><td>Limite</td><td>valor de aproximação</td></tr></tbody></table></div>',
+    );
+  });
+
+  it('tabela com alinhamento à esquerda, à direita e ao centro', () => {
+    const texto = '| A | B | C |\n| :--- | ---: | :---: |\n| a | b | c |';
+    expect(renderizar(texto)).toBe(
+      '<div class="preview__tabela"><table><thead><tr>' +
+        '<th style="text-align:left">A</th><th style="text-align:right">B</th><th style="text-align:center">C</th>' +
+        '</tr></thead><tbody><tr>' +
+        '<td style="text-align:left">a</td><td style="text-align:right">b</td><td style="text-align:center">c</td>' +
+        '</tr></tbody></table></div>',
+    );
+  });
+
+  it('formatação inline funciona dentro de célula de tabela', () => {
+    const texto = '| Nome | Nota |\n| --- | --- |\n| **negrito** | `código` |';
+    expect(renderizar(texto)).toBe(
+      '<div class="preview__tabela"><table><thead><tr><th>Nome</th><th>Nota</th></tr></thead>' +
+        '<tbody><tr><td><strong>negrito</strong></td><td><code>código</code></td></tr></tbody></table></div>',
+    );
+  });
+
+  it('linha de tabela com número de colunas irregular é completada ou cortada', () => {
+    const texto = '| A | B |\n| --- | --- |\n| um |\n| um | dois | três |';
+    expect(renderizar(texto)).toBe(
+      '<div class="preview__tabela"><table><thead><tr><th>A</th><th>B</th></tr></thead><tbody>' +
+        '<tr><td>um</td><td></td></tr>' +
+        '<tr><td>um</td><td>dois</td></tr>' +
+        '</tbody></table></div>',
+    );
+  });
+
+  it('sem a linha separadora não vira tabela, viram parágrafos comuns', () => {
+    const texto = '| A | B |\n| um | dois |';
+    expect(renderizar(texto)).toBe('<p>| A | B |<br>| um | dois |</p>');
+  });
+
+  it('pipe escapado dentro de uma célula é literal, não separador', () => {
+    const texto = '| A | B |\n| --- | --- |\n| a\\|b | c |';
+    expect(renderizar(texto)).toBe(
+      '<div class="preview__tabela"><table><thead><tr><th>A</th><th>B</th></tr></thead>' +
+        '<tbody><tr><td>a|b</td><td>c</td></tr></tbody></table></div>',
+    );
+  });
+
+  it('tabela seguida de parágrafo sem linha em branco entre eles', () => {
+    const texto = '| A | B |\n| --- | --- |\n| a | b |\nDepois da tabela.';
+    expect(renderizar(texto)).toBe(
+      '<div class="preview__tabela"><table><thead><tr><th>A</th><th>B</th></tr></thead>' +
+        '<tbody><tr><td>a</td><td>b</td></tr></tbody></table></div><p>Depois da tabela.</p>',
+    );
+  });
+
+  it('tarefa desmarcada e marcada, incluindo X maiúsculo', () => {
+    expect(renderizar('- [ ] fazer')).toBe(
+      '<ul><li class="tarefa"><input type="checkbox" disabled> fazer</li></ul>',
+    );
+    expect(renderizar('- [x] feito')).toBe(
+      '<ul><li class="tarefa"><input type="checkbox" checked disabled> feito</li></ul>',
+    );
+    expect(renderizar('- [X] feito')).toBe(
+      '<ul><li class="tarefa"><input type="checkbox" checked disabled> feito</li></ul>',
+    );
+  });
+
+  it('lista mista com itens comuns e itens de tarefa', () => {
+    expect(renderizar('- normal\n- [ ] tarefa\n- [x] outra')).toBe(
+      '<ul><li>normal</li>' +
+        '<li class="tarefa"><input type="checkbox" disabled> tarefa</li>' +
+        '<li class="tarefa"><input type="checkbox" checked disabled> outra</li></ul>',
+    );
+  });
 });
 
 describe('realcar', () => {
@@ -130,6 +208,12 @@ describe('realcar', () => {
     '[x](https://exemplo.com)',
     '---',
     'Não é? Café com açaí 🎉✨',
+    '| A | B |\n| --- | --- |\n| a | b |',
+    '| A | B |\n| :--- | ---: |\n| a\\|b | **c** |',
+    '- [ ] tarefa',
+    '- [x] feita',
+    '- [X] feita maiúscula',
+    '- normal\n- [ ] tarefa\n- [x] outra',
   ];
 
   it.each(casos)('preserva o texto original caractere a caractere: %s', (texto) => {
@@ -176,6 +260,7 @@ describe('realcar', () => {
     expect(realcar('- t')).toContain('md-lista');
     expect(realcar('[t](https://x.com)')).toContain('md-link');
     expect(realcar('~~t~~')).toContain('md-riscado');
+    expect(realcar('- [ ] t')).toContain('md-tarefa');
   });
 
   it('nunca deixa <script> virar tag real', () => {

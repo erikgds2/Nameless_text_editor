@@ -18,6 +18,8 @@ const RE_TITULO = /^(#{1,6}) (.*)$/;
 const RE_UL = /^[-*] /;
 const RE_OL = /^\d+\. /;
 const RE_URL_PERMITIDA = /^(https?:\/\/|#)/;
+const RE_TAREFA = /^\[([ xX])\] (.*)$/;
+const RE_CELULA_SEPARADORA = /^:?-+:?$/;
 
 export function renderizar(texto: string): string {
   if (!texto) return '';
@@ -78,7 +80,7 @@ export function renderizar(texto: string): string {
         itens.push(linhas[i].slice(2));
         i++;
       }
-      blocos.push(`<ul>${itens.map((l) => `<li>${segmentosParaHtml(parseInline(l))}</li>`).join('')}</ul>`);
+      blocos.push(`<ul>${itens.map((l) => itemListaParaHtml(l)).join('')}</ul>`);
       continue;
     }
 
@@ -92,8 +94,20 @@ export function renderizar(texto: string): string {
       continue;
     }
 
+    const tabela = inicioDeTabela(linhas, i);
+    if (tabela) {
+      i += 2;
+      const corpo: string[][] = [];
+      while (i < linhas.length && linhas[i].includes('|') && linhas[i].trim() !== '') {
+        corpo.push(dividirCelulas(linhas[i]));
+        i++;
+      }
+      blocos.push(tabelaParaHtml(tabela.cabecalho, tabela.alinhamentos, corpo));
+      continue;
+    }
+
     const paragrafo: string[] = [];
-    while (i < linhas.length && !ehLimiteDeBloco(linhas[i])) {
+    while (i < linhas.length && !ehLimiteDeBloco(linhas, i)) {
       paragrafo.push(linhas[i]);
       i++;
     }
@@ -146,6 +160,12 @@ function realcarLinha(linha: string): string {
   if (RE_UL.test(linha)) {
     const marcador = linha[0];
     const resto = linha.slice(2);
+    const tarefa = resto.match(RE_TAREFA);
+    if (tarefa) {
+      const caixa = `[${tarefa[1]}]`;
+      const texto = tarefa[2];
+      return `<span class="md-marcador">${escapar(marcador)}</span> <span class="md-lista"><span class="md-tarefa">${escapar(caixa)}</span> ${segmentosParaRealce(parseInline(texto))}</span>`;
+    }
     return `<span class="md-marcador">${escapar(marcador)}</span> <span class="md-lista">${segmentosParaRealce(parseInline(resto))}</span>`;
   }
 
@@ -159,7 +179,8 @@ function realcarLinha(linha: string): string {
   return segmentosParaRealce(parseInline(linha));
 }
 
-function ehLimiteDeBloco(linha: string): boolean {
+function ehLimiteDeBloco(linhas: string[], i: number): boolean {
+  const linha = linhas[i];
   return (
     linha.trim() === '' ||
     RE_CERCA.test(linha) ||
@@ -167,7 +188,8 @@ function ehLimiteDeBloco(linha: string): boolean {
     RE_TITULO.test(linha) ||
     ehCitacao(linha) ||
     RE_UL.test(linha) ||
-    RE_OL.test(linha)
+    RE_OL.test(linha) ||
+    inicioDeTabela(linhas, i) !== null
   );
 }
 
@@ -177,6 +199,107 @@ function ehCitacao(linha: string): boolean {
 
 function conteudoCitacao(linha: string): string {
   return linha === '>' ? '' : linha.slice(2);
+}
+
+/**
+ * Constrói um `<li>`; itens no formato `[ ] texto` / `[x] texto` viram
+ * caixas de tarefa (marcadas quando o `x`/`X` está presente).
+ */
+function itemListaParaHtml(conteudo: string): string {
+  const tarefa = conteudo.match(RE_TAREFA);
+  if (tarefa) {
+    const marcado = tarefa[1].toLowerCase() === 'x';
+    const texto = tarefa[2];
+    return `<li class="tarefa"><input type="checkbox"${marcado ? ' checked' : ''} disabled> ${segmentosParaHtml(parseInline(texto))}</li>`;
+  }
+  return `<li>${segmentosParaHtml(parseInline(conteudo))}</li>`;
+}
+
+/**
+ * Divide uma linha de tabela em células, respeitando `\|` como pipe literal
+ * e descartando a célula vazia que sobra quando a linha começa/termina com `|`.
+ */
+function dividirCelulas(linha: string): string[] {
+  const brutas: string[] = [];
+  let atual = '';
+  for (let j = 0; j < linha.length; j++) {
+    const c = linha[j];
+    if (c === '\\' && linha[j + 1] === '|') {
+      atual += '|';
+      j++;
+      continue;
+    }
+    if (c === '|') {
+      brutas.push(atual);
+      atual = '';
+      continue;
+    }
+    atual += c;
+  }
+  brutas.push(atual);
+
+  const celulas = brutas.map((c) => c.trim());
+  if (celulas.length > 0 && celulas[0] === '') celulas.shift();
+  if (celulas.length > 0 && celulas[celulas.length - 1] === '') celulas.pop();
+  return celulas;
+}
+
+/** Alinhamento de uma célula da linha separadora, ou `null` se não for uma. */
+function alinhamentoCelula(celula: string): string | null {
+  if (!RE_CELULA_SEPARADORA.test(celula)) return null;
+  const esquerda = celula.startsWith(':');
+  const direita = celula.endsWith(':');
+  if (esquerda && direita) return 'center';
+  if (direita) return 'right';
+  if (esquerda) return 'left';
+  return '';
+}
+
+/** Alinhamentos da linha separadora, ou `null` se a linha não for uma. */
+function linhaSeparadoraTabela(linha: string): string[] | null {
+  const celulas = dividirCelulas(linha);
+  if (celulas.length === 0) return null;
+  const alinhamentos: string[] = [];
+  for (const celula of celulas) {
+    const alinhamento = alinhamentoCelula(celula);
+    if (alinhamento === null) return null;
+    alinhamentos.push(alinhamento);
+  }
+  return alinhamentos;
+}
+
+/** Detecta se `linhas[i]` inicia uma tabela válida (cabeçalho + separadora). */
+function inicioDeTabela(
+  linhas: string[],
+  i: number,
+): { cabecalho: string[]; alinhamentos: string[] } | null {
+  const linha = linhas[i];
+  if (!linha.includes('|') || i + 1 >= linhas.length) return null;
+  const alinhamentos = linhaSeparadoraTabela(linhas[i + 1]);
+  if (!alinhamentos) return null;
+  const cabecalho = dividirCelulas(linha);
+  if (cabecalho.length === 0) return null;
+  return { cabecalho, alinhamentos };
+}
+
+/** Monta o HTML de uma tabela a partir do cabeçalho, alinhamentos e corpo já divididos em células. */
+function tabelaParaHtml(cabecalho: string[], alinhamentos: string[], corpo: string[][]): string {
+  const numColunas = cabecalho.length;
+  const estilo = (idx: number): string => {
+    const alinhamento = alinhamentos[idx];
+    return alinhamento ? ` style="text-align:${alinhamento}"` : '';
+  };
+  const th = cabecalho
+    .map((c, idx) => `<th${estilo(idx)}>${segmentosParaHtml(parseInline(c))}</th>`)
+    .join('');
+  const linhasHtml = corpo
+    .map((celulas) => {
+      const ajustadas = celulas.slice(0, numColunas);
+      while (ajustadas.length < numColunas) ajustadas.push('');
+      return `<tr>${ajustadas.map((c, idx) => `<td${estilo(idx)}>${segmentosParaHtml(parseInline(c))}</td>`).join('')}</tr>`;
+    })
+    .join('');
+  return `<div class="preview__tabela"><table><thead><tr>${th}</tr></thead><tbody>${linhasHtml}</tbody></table></div>`;
 }
 
 /**

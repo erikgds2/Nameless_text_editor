@@ -809,3 +809,48 @@ button {
     transition: none !important;
   }
 }
+
+/* ------------------------------------------------------ tabelas e tarefas */
+
+.preview__tabela {
+  overflow-x: auto;
+  margin: 0 0 16px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+
+.preview table {
+  border-collapse: collapse;
+  /* a tabela tem a largura do conteúdo; esticar até a borda afasta as colunas
+     umas das outras e destrói a leitura em linha */
+  width: auto;
+  font-size: 13px;
+}
+
+.preview th,
+.preview td {
+  padding: 6px 12px;
+  border: 1px solid var(--rule);
+  text-align: left;
+}
+
+.preview thead th {
+  font-family: var(--ui);
+  color: var(--ink-strong);
+  background: var(--surface-alt);
+}
+
+.preview li.tarefa {
+  list-style: none;
+}
+
+.preview li.tarefa input[type='checkbox'] {
+  margin-right: 8px;
+  accent-color: var(--accent);
+}
+
+/* Falhar em salvar não pode passar despercebido no meio dos contadores. */
+.editor__estado--erro {
+  color: var(--alert);
+  font-weight: 600;
+}

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import type { MouseEvent, PointerEvent, UIEvent } from 'react';
+import { flushSync } from 'react-dom';
+import type { KeyboardEvent, MouseEvent, PointerEvent, UIEvent } from 'react';
 import { ALTURA_MINIMA, LARGURA_MINIMA, criarBloco, type Bloco } from '../canvas';
 import { realcar } from '../markdown';
+import { alternarMarca, aoTeclarEnter, aoTeclarTab, inserirLink } from '../edicao';
 import type { TipoDoc } from '../notes';
 
 type Props = {
@@ -171,6 +173,36 @@ function Escrita({ bloco, realce, autoFocus, onFocus, onChange, onAltura, onBlur
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bloco.texto, bloco.altura, bloco.largura]);
 
+  /**
+   * As regras de Markdown no teclado — continuar a lista, sair dela, indentar,
+   * envolver a seleção em negrito. Elas moram em edicao.ts como funções puras;
+   * aqui só traduzimos tecla em chamada e devolvemos o cursor ao lugar certo.
+   */
+  function aoTeclar(event: KeyboardEvent<HTMLTextAreaElement>) {
+    const area = event.currentTarget;
+    const estado = { texto: area.value, inicio: area.selectionStart, fim: area.selectionEnd };
+
+    const novo = (() => {
+      if (!realce) return null;
+      if (event.key === 'Enter' && !event.shiftKey) return aoTeclarEnter(estado);
+      if (event.key === 'Tab') return aoTeclarTab(estado, event.shiftKey);
+      if (event.ctrlKey || event.metaKey) {
+        if (event.key === 'b') return alternarMarca(estado, '**');
+        if (event.key === 'i') return alternarMarca(estado, '*');
+        if (event.key === 'k') return inserirLink(estado, 'https://');
+      }
+      return null;
+    })();
+
+    if (!novo) return;
+    event.preventDefault();
+    // flushSync é obrigatório: sem ele o valor só chega ao campo no próximo
+    // frame, e a tecla seguinte de quem digita rápido cai na posição antiga do
+    // cursor — o que come letras no meio da palavra.
+    flushSync(() => onChange(novo.texto));
+    area.setSelectionRange(novo.inicio, novo.fim);
+  }
+
   function acompanharRolagem(event: UIEvent<HTMLTextAreaElement>) {
     if (!espelhoRef.current) return;
     espelhoRef.current.scrollTop = event.currentTarget.scrollTop;
@@ -195,6 +227,7 @@ function Escrita({ bloco, realce, autoFocus, onFocus, onChange, onAltura, onBlur
         spellCheck={false}
         autoFocus={autoFocus}
         onFocus={onFocus}
+        onKeyDown={aoTeclar}
         onScroll={acompanharRolagem}
         onChange={(event) => onChange(event.target.value)}
         onBlur={onBlur}

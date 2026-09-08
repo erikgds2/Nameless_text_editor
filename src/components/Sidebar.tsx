@@ -1,4 +1,5 @@
-import type { RefObject } from 'react';
+import { useRef } from 'react';
+import type { KeyboardEvent, RefObject } from 'react';
 import { deriveTitle, textoDaNota, type Note } from '../notes';
 
 type Props = {
@@ -29,6 +30,38 @@ export default function Sidebar({
   onNewNote,
   onTogglePin,
 }: Props) {
+  const listaRef = useRef<HTMLUListElement | null>(null);
+
+  // Seta troca de nota e leva o foco junto — é assim que se navega numa lista
+  // sem tocar no mouse, e o Enter fica livre para abrir o texto.
+  function irPara(indice: number) {
+    const nota = notes[indice];
+    if (!nota) return;
+    onSelect(nota.id);
+    listaRef.current
+      ?.querySelector<HTMLButtonElement>(`[data-nota="${CSS.escape(nota.id)}"]`)
+      ?.focus();
+  }
+
+  function aoTeclarNaLista(event: KeyboardEvent<HTMLUListElement>) {
+    const atual = notes.findIndex((nota) => nota.id === activeId);
+    const destino = {
+      ArrowDown: Math.min(notes.length - 1, atual + 1),
+      ArrowUp: Math.max(0, atual - 1),
+      Home: 0,
+      End: notes.length - 1,
+    }[event.key];
+    if (destino === undefined) return;
+    event.preventDefault();
+    irPara(destino);
+  }
+
+  function aoTeclarNaBusca(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    irPara(0);
+  }
+
   return (
     <aside className="sidebar">
       <div className="sidebar__top">
@@ -39,6 +72,7 @@ export default function Sidebar({
           value={query}
           placeholder="Buscar"
           onChange={(event) => onQueryChange(event.target.value)}
+          onKeyDown={aoTeclarNaBusca}
         />
         <button className="icone" onClick={onNewNote} title="Nova nota (Ctrl+N)" aria-label="Nova nota">
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
@@ -47,13 +81,14 @@ export default function Sidebar({
         </button>
       </div>
 
-      <ul className="notelist">
+      <ul className="notelist" ref={listaRef} onKeyDown={aoTeclarNaLista}>
         {notes.map((note) => {
           const texto = textoDaNota(note.blocos);
           return (
             <li key={note.id} className="noterow">
               <button
                 className={`noteitem${note.id === activeId ? ' noteitem--active' : ''}`}
+                data-nota={note.id}
                 onClick={() => onSelect(note.id)}
               >
                 <span className="noteitem__title">{deriveTitle(texto)}</span>

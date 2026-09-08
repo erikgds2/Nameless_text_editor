@@ -17,6 +17,7 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [ajustes, setAjustes] = useState<AjustesTipo>(carregarAjustes);
   const [mostrandoAjustes, setMostrandoAjustes] = useState(false);
+  const [salvamento, setSalvamento] = useState<'salvo' | 'salvando' | 'erro'>('salvo');
   const searchRef = useRef<HTMLInputElement | null>(null);
   // notas que mudaram e ainda nao foram para o disco
   const sujas = useRef(new Set<string>());
@@ -81,6 +82,7 @@ export default function App() {
     const timer = setTimeout(async () => {
       const pendentes = [...sujas.current];
       sujas.current.clear();
+      let falhou = false;
       for (const id of pendentes) {
         const nota = notes.find((outra) => outra.id === id);
         if (!nota) continue;
@@ -93,8 +95,11 @@ export default function App() {
           setActiveId((atual) => (atual === id ? salva.id : atual));
         } catch (err) {
           console.error('Não foi possível salvar a nota:', err);
+          falhou = true;
         }
       }
+      if (falhou) setSalvamento('erro');
+      else if (sujas.current.size === 0) setSalvamento('salvo');
     }, 500);
     return () => clearTimeout(timer);
   }, [notes, carregando, deposito]);
@@ -115,6 +120,7 @@ export default function App() {
 
   function marcar(id: string) {
     sujas.current.add(id);
+    setSalvamento('salvando');
   }
 
   function handleNewNote() {
@@ -231,6 +237,7 @@ export default function App() {
         <Editor
           note={activeNote}
           preview={ajustes.preview}
+          salvamento={salvamento}
           onChange={handleChangeBlocos}
           onDelete={handleDelete}
           onMudarTipo={handleMudarTipo}
