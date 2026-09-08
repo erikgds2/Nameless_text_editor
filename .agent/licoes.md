@@ -21,3 +21,6 @@ próximas tarefas. Gerado pelo run.mjs — pode editar e reescrever à mão.
 - (1x) nunca mande um subagente "nao deixar rastro": ele resolve com git restore e apaga trabalho de outro agente. Peca para trabalhar fora do repositorio
 - (1x) textarea controlado: depois de mudar o texto no keydown, aplique a selecao com flushSync e nao com requestAnimationFrame, senao quem digita rapido perde letras
 - (1x) efeito que ajusta altura a partir de scrollHeight precisa de folga: sem margem, o scrollHeight volta 1px maior que a altura recem-aplicada e o efeito se realimenta ate travar a aba
+- (1x) efeito que projeta algo sobre HTML injetado por dangerouslySetInnerHTML precisa rodar a cada render, sem lista de dependencias: o React reescreve esse HTML em rerrenderizacoes que nada tem a ver com o conteudo, e leva junto o que foi injetado por fora
+- (1x) ao reprocessar um elemento ja transformado, leia a fonte guardada em data-*, nunca o textContent: depois da primeira vez o textContent e o resultado, nao a entrada
+- (1x) teste de interface que procura um botao dentro de um painel fechado passa sem testar nada; confirme que o elemento existe antes de medir o efeito do clique

@@ -3,7 +3,7 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { deriveTitle, textoDaNota, type Note, type TipoDoc } from '../notes';
 import type { Bloco } from '../canvas';
 import { renderizar } from '../markdown';
-import { desenharDiagramas } from '../diagrama';
+import { desenharDiagramas, esquecerDiagramas, reporDiagramas } from '../diagrama';
 import Canvas from './Canvas';
 
 export type Salvamento = 'salvo' | 'salvando' | 'erro';
@@ -24,6 +24,7 @@ type Props = {
   onAlternarPreview: () => void;
   onColarImagem: (bytes: Uint8Array, tipo: string) => Promise<string | null>;
   temaEscuro: boolean;
+  acento: string;
   recado?: string | null;
   divisoria: number;
   onMudarDivisoria: (por_cento: number) => void;
@@ -60,6 +61,7 @@ export default function Editor({
   onAlternarPreview,
   onColarImagem,
   temaEscuro,
+  acento,
   recado,
   divisoria,
   onMudarDivisoria,
@@ -86,19 +88,34 @@ export default function Editor({
     [mostrandoPreview, texto],
   );
 
-  // Desenhar a cada tecla travaria a digitação: espera a pausa. O efeito roda
-  // depois que o React já pôs o HTML novo na tela, então há o que desenhar.
+  // As cores do diagrama ficam assadas dentro do SVG, então trocar de tema ou
+  // de cor de destaque exige refazê-lo. Este efeito vem antes do que desenha
+  // justamente para o próximo já encontrar serviço.
   useEffect(() => {
-    if (!html) return;
+    if (previewRef.current) esquecerDiagramas(previewRef.current);
+  }, [temaEscuro, acento]);
+
+  /**
+   * Sem lista de dependências de propósito. O React reescreve o HTML desta
+   * pré-visualização em rerrenderizações que nada têm a ver com o texto —
+   * arrastar a divisória, por exemplo — e leva junto o SVG que injetamos. Vigiar
+   * só o `html` deixava o diagrama voltar a ser código nessas horas.
+   *
+   * Repor o que já foi desenhado é imediato; só o diagrama novo espera a pausa
+   * na digitação, porque desenhar é lento.
+   */
+  useEffect(() => {
+    const raiz = previewRef.current;
+    if (!raiz) return;
+    if (!reporDiagramas(raiz)) return;
+
     const timer = setTimeout(() => {
-      if (previewRef.current) {
-        desenharDiagramas(previewRef.current, temaEscuro).catch((err) =>
-          console.error('Não foi possível desenhar o diagrama:', err),
-        );
-      }
+      desenharDiagramas(raiz, temaEscuro).catch((err) =>
+        console.error('Não foi possível desenhar o diagrama:', err),
+      );
     }, 300);
     return () => clearTimeout(timer);
-  }, [html, temaEscuro]);
+  });
 
   /**
    * Arrastar a divisória escreve direto no style, sem passar pelo React: a cada

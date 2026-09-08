@@ -388,6 +388,7 @@ export default function App() {
           divisoria={ajustes.divisoria}
           onMudarDivisoria={(divisoria) => setAjustes((prev) => ({ ...prev, divisoria }))}
           temaEscuro={ajustes.tema !== 'papel'}
+          acento={ajustes.acento}
           onAlternarPreview={() => setAjustes((prev) => ({ ...prev, preview: !prev.preview }))}
         />
       </div>
