@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { deriveTitle, textoDaNota, type Note, type TipoDoc } from '../notes';
 import type { Bloco } from '../canvas';
 import { renderizar } from '../markdown';
+import { desenharDiagramas } from '../diagrama';
 import Canvas from './Canvas';
 
 export type Salvamento = 'salvo' | 'salvando' | 'erro';
@@ -20,6 +21,8 @@ type Props = {
   onDelete: (id: string) => void;
   onMudarTipo: (tipo: TipoDoc) => void;
   onAlternarPreview: () => void;
+  onColarImagem: (bytes: Uint8Array, tipo: string) => Promise<string | null>;
+  temaEscuro: boolean;
 };
 
 const timeFormat = new Intl.DateTimeFormat('pt-BR', {
@@ -28,6 +31,15 @@ const timeFormat = new Intl.DateTimeFormat('pt-BR', {
   hour: '2-digit',
   minute: '2-digit',
 });
+
+/**
+ * O .md guarda `anexos/foo.png`, que é um caminho relativo e portátil. A janela
+ * não consegue ler arquivo do disco por conta própria: quem serve a imagem é o
+ * protocolo do app, e é aqui que o caminho vira endereço.
+ */
+function comAnexosResolvidos(html: string): string {
+  return html.replaceAll('src="anexos/', 'src="ardosia://anexos/');
+}
 
 function countWords(texto: string): number {
   const words = texto.trim().match(/\S+/g);
@@ -42,8 +54,11 @@ export default function Editor({
   onDelete,
   onMudarTipo,
   onAlternarPreview,
+  onColarImagem,
+  temaEscuro,
 }: Props) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const previewRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => setConfirmingDelete(false), [note?.id]);
 
@@ -59,9 +74,23 @@ export default function Editor({
 
   // renderizar a cada tecla custa caro em nota grande; só refaz quando muda
   const html = useMemo(
-    () => (mostrandoPreview ? renderizar(texto) : ''),
+    () => (mostrandoPreview ? comAnexosResolvidos(renderizar(texto)) : ''),
     [mostrandoPreview, texto],
   );
+
+  // Desenhar a cada tecla travaria a digitação: espera a pausa. O efeito roda
+  // depois que o React já pôs o HTML novo na tela, então há o que desenhar.
+  useEffect(() => {
+    if (!html) return;
+    const timer = setTimeout(() => {
+      if (previewRef.current) {
+        desenharDiagramas(previewRef.current, temaEscuro).catch((err) =>
+          console.error('Não foi possível desenhar o diagrama:', err),
+        );
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [html, temaEscuro]);
 
   if (!note) {
     return (
@@ -131,11 +160,21 @@ export default function Editor({
       </header>
 
       <div className={`editor__corpo${mostrandoPreview ? ' editor__corpo--dividido' : ''}`}>
-        <Canvas key={note.id} blocos={note.blocos} tipo={note.tipo} onChange={onChange} />
+        <Canvas
+          key={note.id}
+          blocos={note.blocos}
+          tipo={note.tipo}
+          onChange={onChange}
+          onColarImagem={onColarImagem}
+        />
         {mostrandoPreview &&
           (texto.trim() ? (
             // o html vem de renderizar(), que escapa todo o texto do usuário
-            <div className="preview" dangerouslySetInnerHTML={{ __html: html }} />
+            <div
+              className="preview"
+              ref={previewRef}
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
           ) : (
             <div className="preview">
               <p className="preview__vazio">A pré-visualização aparece aqui conforme você escreve.</p>

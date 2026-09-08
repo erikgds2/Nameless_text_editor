@@ -19,6 +19,8 @@ function montar(overrides: {
     onDelete: vi.fn(),
     onMudarTipo: vi.fn(),
     onAlternarPreview: vi.fn(),
+    onColarImagem: vi.fn(async () => 'imagem.png'),
+    temaEscuro: true,
   };
   render(<Editor {...props} />);
   return props;

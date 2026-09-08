@@ -7,6 +7,7 @@ import { textoDaNota, type Note, type TipoDoc } from './notes';
 import { abrirDeposito } from './deposito';
 import type { Bloco } from './canvas';
 import { matchesQuery } from './search';
+import { fixadasEmOrdem, proximaOrdem, reordenarFixadas } from './ordenacao';
 import { TAMANHOS, TEMAS, carregarAjustes, salvarAjustes, type Ajustes as AjustesTipo } from './ajustes';
 import type { Comando } from './comandos';
 
@@ -107,17 +108,14 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [notes, carregando, deposito]);
 
-  // [...notes] e obrigatorio: sort() muta o array, e este e o estado do React
-  const visibleNotes = useMemo(
-    () =>
-      [...notes]
-        .sort((a, b) => {
-          if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-          return b.updatedAt - a.updatedAt;
-        })
-        .filter((note) => matchesQuery(textoDaNota(note.blocos), query)),
-    [notes, query],
-  );
+  // As fixadas seguem a ordem que voce escolheu; o resto, a edicao mais
+  // recente. [...notes] e obrigatorio: sort() muta o array, e este e o estado.
+  const visibleNotes = useMemo(() => {
+    const soltas = [...notes].filter((n) => !n.pinned).sort((a, b) => b.updatedAt - a.updatedAt);
+    return [...fixadasEmOrdem(notes), ...soltas].filter((note) =>
+      matchesQuery(textoDaNota(note.blocos), query),
+    );
+  }, [notes, query]);
 
   const activeNote = notes.find((note) => note.id === activeId) ?? null;
 
@@ -161,8 +159,25 @@ export default function App() {
   function handleTogglePin(id: string) {
     marcar(id);
     setNotes((prev) =>
-      prev.map((note) => (note.id === id ? { ...note, pinned: !note.pinned } : note)),
+      prev.map((note) =>
+        note.id === id
+          ? { ...note, pinned: !note.pinned, ordem: note.pinned ? note.ordem : proximaOrdem(prev) }
+          : note,
+      ),
     );
+  }
+
+  /** Arrastar uma fixada sobre outra troca as posicoes das duas. */
+  function handleReordenar(idArrastada: string, idAlvo: string) {
+    setNotes((prev) => {
+      const depois = reordenarFixadas(prev, idArrastada, idAlvo);
+      // so as notas que realmente mudaram de posicao precisam ir ao disco
+      for (const nota of depois) {
+        if (nota !== prev.find((outra) => outra.id === nota.id)) sujas.current.add(nota.id);
+      }
+      if (depois !== prev) setSalvamento('salvando');
+      return depois;
+    });
   }
 
   async function handleTrocarPasta() {
@@ -324,6 +339,7 @@ export default function App() {
           onQueryChange={setQuery}
           onNewNote={handleNewNote}
           onTogglePin={handleTogglePin}
+          onReordenar={handleReordenar}
         />
         <Editor
           note={activeNote}
@@ -332,6 +348,8 @@ export default function App() {
           onChange={handleChangeBlocos}
           onDelete={handleDelete}
           onMudarTipo={handleMudarTipo}
+          onColarImagem={deposito.salvarAnexo}
+          temaEscuro={ajustes.tema !== 'papel'}
           onAlternarPreview={() => setAjustes((prev) => ({ ...prev, preview: !prev.preview }))}
         />
       </div>

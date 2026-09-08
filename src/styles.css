@@ -980,3 +980,41 @@ button {
   font-size: 13px;
   color: var(--ink-faint);
 }
+
+/* Arrastar uma nota fixada para mudar sua posição na lista. */
+.noterow--voando {
+  opacity: 0.4;
+}
+
+.noterow--alvo .noteitem {
+  border-left-color: var(--accent);
+  background: var(--accent-wash);
+}
+
+/* Imagem colada na nota: nunca estoura a largura da pré-visualização. */
+.preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+/* Diagrama de fluxo. Enquanto não vira desenho, continua sendo o código que
+   você escreveu — e continua assim se o desenho falhar. */
+.preview pre.diagrama {
+  overflow-x: auto;
+  text-align: center;
+}
+
+.preview pre.diagrama.diagrama--feito {
+  padding: 16px;
+  background: none;
+}
+
+.preview pre.diagrama--erro {
+  border-color: var(--alert);
+}
+
+.preview pre.diagrama svg {
+  max-width: 100%;
+  height: auto;
+}

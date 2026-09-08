@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import type { KeyboardEvent, RefObject } from 'react';
 import { deriveTitle, textoDaNota, type Note } from '../notes';
 import { trechoDoResultado } from '../search';
@@ -12,6 +12,7 @@ type Props = {
   onQueryChange: (query: string) => void;
   onNewNote: () => void;
   onTogglePin: (id: string) => void;
+  onReordenar: (idArrastada: string, idAlvo: string) => void;
 };
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' });
@@ -35,8 +36,11 @@ export default function Sidebar({
   onQueryChange,
   onNewNote,
   onTogglePin,
+  onReordenar,
 }: Props) {
   const listaRef = useRef<HTMLUListElement | null>(null);
+  const [arrastando, setArrastando] = useState<string | null>(null);
+  const [alvo, setAlvo] = useState<string | null>(null);
 
   // Seta troca de nota e leva o foco junto — é assim que se navega numa lista
   // sem tocar no mouse, e o Enter fica livre para abrir o texto.
@@ -60,6 +64,14 @@ export default function Sidebar({
     if (destino === undefined) return;
     event.preventDefault();
     irPara(destino);
+  }
+
+  // Só as fixadas se reordenam: a ordem das outras é a da última edição, e
+  // arrastá-las não teria onde ser guardado.
+  function largar(idAlvo: string) {
+    if (arrastando && arrastando !== idAlvo) onReordenar(arrastando, idAlvo);
+    setArrastando(null);
+    setAlvo(null);
   }
 
   function aoTeclarNaBusca(event: KeyboardEvent<HTMLInputElement>) {
@@ -91,10 +103,35 @@ export default function Sidebar({
         {notes.map((note) => {
           const texto = textoDaNota(note.blocos);
           return (
-            <li key={note.id} className="noterow">
+            <li
+              key={note.id}
+              className={[
+                'noterow',
+                note.pinned && alvo === note.id ? 'noterow--alvo' : '',
+                arrastando === note.id ? 'noterow--voando' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              draggable={note.pinned}
+              onDragStart={() => setArrastando(note.id)}
+              onDragEnd={() => {
+                setArrastando(null);
+                setAlvo(null);
+              }}
+              onDragOver={(event) => {
+                if (!arrastando || !note.pinned) return;
+                event.preventDefault();
+                setAlvo(note.id);
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                largar(note.id);
+              }}
+            >
               <button
                 className={`noteitem${note.id === activeId ? ' noteitem--active' : ''}`}
                 data-nota={note.id}
+                title={note.pinned ? 'Arraste para mudar a ordem' : undefined}
                 onClick={() => onSelect(note.id)}
               >
                 <span className="noteitem__title">{deriveTitle(texto)}</span>

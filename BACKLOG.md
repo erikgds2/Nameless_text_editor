@@ -23,7 +23,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 5 | `[x]` **P2** | `Ctrl+B` / `Ctrl+I` / `Ctrl+K` envolvem a seleção em negrito, itálico e link |
 | 6 | `[ ]` **P2** | Arrastar bloco com guias de alinhamento entre blocos vizinhos |
 | 7 | `[ ]` **P2** | Selecionar vários blocos e mover em conjunto |
-| 8 | `[ ]` **P2** | Colar imagem da área de transferência: salva ao lado do `.md` e insere `![](...)` |
+| 8 | `[x]` **P2** | Colar imagem da área de transferência: salva ao lado do `.md` e insere `![](...)` |
 | 9 | `[ ]` **P2** | Colar URL sobre texto selecionado vira `[texto](url)` |
 | 10 | `[ ]` **P2** | Bloco encolhe sozinho quando se apaga texto (hoje só cresce) |
 | 11 | `[ ]` **P2** | Modo foco: some tudo menos o bloco em edição (`Ctrl+Shift+F`) |
@@ -45,12 +45,12 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 22 | `[ ]` **P2** | Rolagem sincronizada entre editor e pré-visualização |
 | 23 | `[ ]` **P2** | Cabeçalho `#` aumenta de tamanho no próprio editor, não só no preview |
 | 24 | `[ ]` **P2** | Exportar a nota como HTML e como PDF |
-| 25 | `[ ]` **P3** | Imagens no preview, lendo o arquivo da pasta da nota |
+| 25 | `[x]` **P3** | Imagens no preview, lendo o arquivo da pasta da nota |
 | 26 | `[ ]` **P3** | Notas de rodapé `[^1]` |
 | 27 | `[ ]` **P3** | Fórmula matemática (`$...$`), útil para as notas de cálculo |
 | 28 | `[ ]` **P3** | Sumário automático a partir dos títulos |
 | 29 | `[ ]` **P3** | Colar HTML converte para Markdown |
-| 30 | `[ ]` **P3** | Diagrama Mermaid no preview |
+| 30 | `[x]` **P3** | Diagrama Mermaid no preview |
 
 ## C. Organização e busca (31–43)
 

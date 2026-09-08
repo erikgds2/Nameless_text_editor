@@ -1,6 +1,6 @@
 import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Sidebar from './Sidebar';
 import { createNote, type Note } from '../notes';
@@ -19,6 +19,7 @@ function montar(overrides: Partial<Parameters<typeof Sidebar>[0]> = {}) {
     onQueryChange: vi.fn(),
     onNewNote: vi.fn(),
     onTogglePin: vi.fn(),
+    onReordenar: vi.fn(),
     ...overrides,
   };
   render(<Sidebar {...props} />);
@@ -95,5 +96,40 @@ describe('Sidebar', () => {
     montar({ notes: [comTexto(createNote(), 'Uma'), comTexto(createNote(), 'Outra')] });
 
     expect(screen.getByText('2 notas')).toBeInTheDocument();
+  });
+});
+
+describe('ordem das notas fixadas', () => {
+  function fixada(titulo: string, id: string) {
+    return { ...comTexto(createNote(), titulo), id, pinned: true };
+  }
+
+  it('só a nota fixada pode ser arrastada', () => {
+    const props = montar({ notes: [fixada('Fixa', 'f'), comTexto(createNote(), 'Solta')] });
+    const linhas = document.querySelectorAll('.noterow');
+    expect(linhas[0].getAttribute('draggable')).toBe('true');
+    expect(linhas[1].getAttribute('draggable')).toBe('false');
+    expect(props.onReordenar).not.toHaveBeenCalled();
+  });
+
+  it('largar uma fixada sobre outra pede a troca de posição', () => {
+    const props = montar({ notes: [fixada('Primeira', 'a'), fixada('Segunda', 'b')] });
+    const [uma, outra] = document.querySelectorAll('.noterow');
+
+    fireEvent.dragStart(uma);
+    fireEvent.dragOver(outra);
+    fireEvent.drop(outra);
+
+    expect(props.onReordenar).toHaveBeenCalledWith('a', 'b');
+  });
+
+  it('largar a nota sobre ela mesma não faz nada', () => {
+    const props = montar({ notes: [fixada('Primeira', 'a'), fixada('Segunda', 'b')] });
+    const [uma] = document.querySelectorAll('.noterow');
+
+    fireEvent.dragStart(uma);
+    fireEvent.drop(uma);
+
+    expect(props.onReordenar).not.toHaveBeenCalled();
   });
 });

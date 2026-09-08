@@ -12,6 +12,7 @@ export function serializar(nota: Note): string {
     `criada: ${new Date(nota.createdAt).toISOString()}`,
     `atualizada: ${new Date(nota.updatedAt).toISOString()}`,
     `fixada: ${nota.pinned}`,
+    ...(nota.pinned && nota.ordem !== undefined ? [`ordem: ${nota.ordem}`] : []),
     '---',
   ].join('\n');
 
@@ -27,7 +28,7 @@ export function serializar(nota: Note): string {
 }
 
 export function desserializar(texto: string, id: string): Note {
-  const { createdAt, updatedAt, pinned, tipo, corpo } = extrairFrontmatter(normalizar(texto));
+  const { createdAt, updatedAt, pinned, ordem, tipo, corpo } = extrairFrontmatter(normalizar(texto));
   const blocos = extrairBlocos(corpo);
   return {
     id,
@@ -36,6 +37,7 @@ export function desserializar(texto: string, id: string): Note {
     createdAt,
     updatedAt,
     pinned,
+    ordem,
   };
 }
 
@@ -51,6 +53,7 @@ type Frontmatter = {
   createdAt: number;
   updatedAt: number;
   pinned: boolean;
+  ordem?: number;
   tipo: TipoDoc;
   corpo: string;
 };
@@ -76,6 +79,7 @@ function extrairFrontmatter(texto: string): Frontmatter {
     createdAt: Number.isFinite(criada) ? criada : agora,
     updatedAt: Number.isFinite(atualizada) ? atualizada : agora,
     pinned: campos.fixada === 'true',
+    ordem: Number.isFinite(Number(campos.ordem)) && campos.ordem !== undefined ? Number(campos.ordem) : undefined,
     tipo: campos.tipo === 'texto' ? 'texto' : 'markdown',
     corpo: texto.slice(match[0].length),
   };

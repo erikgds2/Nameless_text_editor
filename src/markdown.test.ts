@@ -172,6 +172,113 @@ describe('renderizar', () => {
         '<li class="tarefa"><input type="checkbox" checked disabled> outra</li></ul>',
     );
   });
+
+  it('imagem simples', () => {
+    expect(renderizar('![alt](https://exemplo.com/a.png)')).toBe(
+      '<p><img src="https://exemplo.com/a.png" alt="alt"></p>',
+    );
+  });
+
+  it('imagem com alt vazio', () => {
+    expect(renderizar('![](https://exemplo.com/a.png)')).toBe(
+      '<p><img src="https://exemplo.com/a.png" alt=""></p>',
+    );
+  });
+
+  it('imagem com alt contendo aspas e < é escapado como atributo', () => {
+    expect(renderizar('![a "b" <c>](https://exemplo.com/a.png)')).toBe(
+      '<p><img src="https://exemplo.com/a.png" alt="a &quot;b&quot; &lt;c&gt;"></p>',
+    );
+  });
+
+  it('imagem dentro de item de lista', () => {
+    expect(renderizar('- ![alt](https://exemplo.com/a.png)')).toBe(
+      '<ul><li><img src="https://exemplo.com/a.png" alt="alt"></li></ul>',
+    );
+  });
+
+  it('imagem dentro de célula de tabela', () => {
+    const texto = '| A |\n| --- |\n| ![alt](https://exemplo.com/a.png) |';
+    expect(renderizar(texto)).toBe(
+      '<div class="preview__tabela"><table><thead><tr><th>A</th></tr></thead>' +
+        '<tbody><tr><td><img src="https://exemplo.com/a.png" alt="alt"></td></tr></tbody></table></div>',
+    );
+  });
+
+  it('imagem dentro de link', () => {
+    expect(renderizar('[![alt](https://exemplo.com/a.png)](https://destino.com)')).toBe(
+      '<p><a href="https://destino.com" target="_blank" rel="noreferrer">' +
+        '<img src="https://exemplo.com/a.png" alt="alt"></a></p>',
+    );
+  });
+
+  it('rejeita origem javascript: em imagem', () => {
+    const html = renderizar('![x](javascript:alert(1))');
+    expect(html).not.toContain('<img');
+    expect(html).toContain('![x](javascript:alert(1))');
+  });
+
+  it('rejeita origem data: em imagem', () => {
+    const html = renderizar('![x](data:image/png;base64,AAA)');
+    expect(html).not.toContain('<img');
+    expect(html).toContain('![x](data:image/png;base64,AAA)');
+  });
+
+  it('rejeita caminho relativo fora de anexos/ em imagem', () => {
+    const html = renderizar('![x](../fora.png)');
+    expect(html).not.toContain('<img');
+    expect(html).toContain('![x](../fora.png)');
+  });
+
+  it('aceita caminho relativo anexos/ em imagem', () => {
+    expect(renderizar('![x](anexos/foto.png)')).toBe('<p><img src="anexos/foto.png" alt="x"></p>');
+  });
+
+  it('aceita origem ardosia:// em imagem', () => {
+    expect(renderizar('![x](ardosia://anexos/foto.png)')).toBe(
+      '<p><img src="ardosia://anexos/foto.png" alt="x"></p>',
+    );
+  });
+
+  it('cerca de código com linguagem gera classe linguagem-X', () => {
+    const html = renderizar('```js\nconst a = 1;\n```');
+    expect(html).toBe('<pre><code class="linguagem-js">const a = 1;</code></pre>');
+  });
+
+  it('cerca com linguagem em maiúsculo é normalizada para minúsculo', () => {
+    const html = renderizar('```JS\nconst a = 1;\n```');
+    expect(html).toBe('<pre><code class="linguagem-js">const a = 1;</code></pre>');
+  });
+
+  it('cerca com linguagem mermaid vira <pre class="diagrama"> sem classe no <code>', () => {
+    const html = renderizar('```mermaid\ngraph TD\nA --> B\n```');
+    expect(html).toBe('<pre class="diagrama"><code>graph TD\nA --&gt; B</code></pre>');
+  });
+
+  it('cerca com mermaid maiúsculo também vira diagrama', () => {
+    const html = renderizar('```MERMAID\ngraph TD\n```');
+    expect(html).toBe('<pre class="diagrama"><code>graph TD</code></pre>');
+  });
+
+  it('conteúdo de cerca mermaid não é interpretado como Markdown', () => {
+    const html = renderizar('```mermaid\n**não vira negrito**\n```');
+    expect(html).toBe('<pre class="diagrama"><code>**não vira negrito**</code></pre>');
+  });
+
+  it('cerca com linguagem válida contendo + e -', () => {
+    const html = renderizar('```c++\ncodigo\n```');
+    expect(html).toBe('<pre><code class="linguagem-c++">codigo</code></pre>');
+  });
+
+  it('cerca com linguagem inválida vira cerca sem linguagem', () => {
+    const html = renderizar('```c#$\ncodigo\n```');
+    expect(html).toBe('<pre><code>codigo</code></pre>');
+  });
+
+  it('cerca sem linguagem continua gerando <pre><code> simples', () => {
+    const html = renderizar('```\ncodigo\n```');
+    expect(html).toBe('<pre><code>codigo</code></pre>');
+  });
 });
 
 describe('realcar', () => {
@@ -217,6 +324,28 @@ describe('realcar', () => {
   ];
 
   it.each(casos)('preserva o texto original caractere a caractere: %s', (texto) => {
+    expect(textoVisivel(realcar(texto))).toBe(texto);
+  });
+
+  const casosImagem = [
+    '![alt](https://exemplo.com/a.png)',
+    '![](https://exemplo.com/a.png)',
+    '![a "b" <c>](https://exemplo.com/a.png)',
+    '- ![alt](https://exemplo.com/a.png)',
+    '| A |\n| --- |\n| ![alt](https://exemplo.com/a.png) |',
+    '[![alt](https://exemplo.com/a.png)](https://destino.com)',
+    '![x](javascript:alert(1))',
+    '![x](data:image/png;base64,AAA)',
+    '![x](../fora.png)',
+    '![x](anexos/foto.png)',
+    '![x](ardosia://anexos/foto.png)',
+    '```js\nconst a = 1;\n```',
+    '```MERMAID\ngraph TD\n```',
+    '```c++\ncodigo\n```',
+    '```c#$\ncodigo\n```',
+  ];
+
+  it.each(casosImagem)('preserva imagens e cercas com linguagem caractere a caractere: %s', (texto) => {
     expect(textoVisivel(realcar(texto))).toBe(texto);
   });
 

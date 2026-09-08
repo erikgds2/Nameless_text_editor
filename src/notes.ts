@@ -10,6 +10,8 @@ export type Note = {
   createdAt: number;
   updatedAt: number;
   pinned: boolean;
+  /** Posição entre as fixadas, escolhida à mão. Só vale quando pinned. */
+  ordem?: number;
 };
 
 export { textoDaNota };

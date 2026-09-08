@@ -1,8 +1,15 @@
-const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, net, protocol } = require('electron');
 const path = require('node:path');
+const { pathToFileURL } = require('node:url');
 const notas = require('./notas.cjs');
 
 const isDev = !app.isPackaged;
+
+// O esquema precisa ser declarado antes do app ficar pronto para o Chromium
+// tratar as imagens dos anexos como conteudo de origem normal.
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'ardosia', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+]);
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -115,6 +122,7 @@ function registrarCanais() {
   ipcMain.handle('ardosia:escrever', (_evento, id, texto) => notas.escrever(id, texto));
   ipcMain.handle('ardosia:renomear', (_evento, de, para) => notas.renomear(de, para));
   ipcMain.handle('ardosia:apagar', (_evento, id) => notas.apagar(id));
+  ipcMain.handle('ardosia:salvar-anexo', (_evento, bytes, tipo) => notas.salvarAnexo(bytes, tipo));
 
   // A captura grava pelo mesmo caminho das outras notas, entao o vigia da pasta
   // reconhece a escrita como nossa e nao avisa ninguem. O aviso vem daqui.
@@ -127,6 +135,17 @@ function registrarCanais() {
 }
 
 app.whenReady().then(() => {
+  // ardosia://anexos/<arquivo> serve as imagens coladas. E o unico caminho pelo
+  // qual a janela le arquivo do disco, e ele so alcanca a subpasta de anexos.
+  protocol.handle('ardosia', async (requisicao) => {
+    try {
+      return await net.fetch(pathToFileURL(await notas.anexoDaUrl(requisicao.url)).toString());
+    } catch (err) {
+      console.error('Anexo não encontrado:', err.message);
+      return new Response('anexo não encontrado', { status: 404 });
+    }
+  });
+
   registrarCanais();
   createWindow();
 

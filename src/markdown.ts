@@ -11,15 +11,27 @@ type Segmento =
   | { tipo: 'enfase'; marcador: '*' | '_'; filhos: Segmento[] }
   | { tipo: 'riscado'; filhos: Segmento[] }
   | { tipo: 'link'; texto: string; url: string }
+  | { tipo: 'imagem'; alt: string; src: string }
+  | { tipo: 'linkImagem'; alt: string; src: string; url: string }
   | { tipo: 'linkBruto'; bruto: string };
 
-const RE_CERCA = /^```$/;
+const RE_CERCA = /^```(.*)$/;
+const RE_LINGUAGEM_VALIDA = /^[a-zA-Z0-9+-]{1,20}$/;
 const RE_TITULO = /^(#{1,6}) (.*)$/;
 const RE_UL = /^[-*] /;
 const RE_OL = /^\d+\. /;
 const RE_URL_PERMITIDA = /^(https?:\/\/|#)/;
+const RE_SRC_PERMITIDA = /^(https?:\/\/|ardosia:\/\/|anexos\/)/;
+const RE_IMAGEM = /^\[([^\]]*)\]\(([^)]*)\)/;
+const RE_LINK_IMAGEM = /^\[!\[([^\]]*)\]\(([^)]*)\)\]\(([^)]*)\)/;
 const RE_TAREFA = /^\[([ xX])\] (.*)$/;
 const RE_CELULA_SEPARADORA = /^:?-+:?$/;
+
+/** Linguagem normalizada (minúscula) de uma cerca de código, ou `null` se ausente/inválida. */
+function normalizarLinguagem(bruto: string): string | null {
+  if (!RE_LINGUAGEM_VALIDA.test(bruto)) return null;
+  return bruto.toLowerCase();
+}
 
 export function renderizar(texto: string): string {
   if (!texto) return '';
@@ -31,7 +43,9 @@ export function renderizar(texto: string): string {
   while (i < linhas.length) {
     const linha = linhas[i];
 
-    if (RE_CERCA.test(linha)) {
+    const cercaAbertura = linha.match(RE_CERCA);
+    if (cercaAbertura) {
+      const linguagem = normalizarLinguagem(cercaAbertura[1]);
       i++;
       const conteudo: string[] = [];
       while (i < linhas.length && !RE_CERCA.test(linhas[i])) {
@@ -39,7 +53,14 @@ export function renderizar(texto: string): string {
         i++;
       }
       if (i < linhas.length) i++; // pula a cerca de fechamento
-      blocos.push(`<pre><code>${escapar(conteudo.join('\n'))}</code></pre>`);
+      const fonte = escapar(conteudo.join('\n'));
+      if (linguagem === 'mermaid') {
+        blocos.push(`<pre class="diagrama"><code>${fonte}</code></pre>`);
+      } else if (linguagem) {
+        blocos.push(`<pre><code class="linguagem-${linguagem}">${fonte}</code></pre>`);
+      } else {
+        blocos.push(`<pre><code>${fonte}</code></pre>`);
+      }
       continue;
     }
 
@@ -363,8 +384,37 @@ function parseInline(texto: string): Segmento[] {
       }
     }
 
+    if (c === '!' && texto[i + 1] === '[') {
+      const m = texto.slice(i + 1).match(RE_IMAGEM);
+      if (m) {
+        flush();
+        const alt = m[1];
+        const src = m[2];
+        if (RE_SRC_PERMITIDA.test(src)) {
+          segmentos.push({ tipo: 'imagem', alt, src });
+        } else {
+          segmentos.push({ tipo: 'linkBruto', bruto: '!' + m[0] });
+        }
+        i += 1 + m[0].length;
+        continue;
+      }
+    }
+
     if (c === '[') {
-      const m = texto.slice(i).match(/^\[([^\]]*)\]\(([^)]*)\)/);
+      const nested = texto.slice(i).match(RE_LINK_IMAGEM);
+      if (nested) {
+        const alt = nested[1];
+        const src = nested[2];
+        const url = nested[3];
+        if (RE_SRC_PERMITIDA.test(src) && RE_URL_PERMITIDA.test(url)) {
+          flush();
+          segmentos.push({ tipo: 'linkImagem', alt, src, url });
+          i += nested[0].length;
+          continue;
+        }
+      }
+
+      const m = texto.slice(i).match(RE_IMAGEM);
       if (m) {
         flush();
         const url = m[2];
@@ -404,6 +454,10 @@ function segmentoParaHtml(seg: Segmento): string {
       return `<del>${segmentosParaHtml(seg.filhos)}</del>`;
     case 'link':
       return `<a href="${escaparAtributo(seg.url)}" target="_blank" rel="noreferrer">${escapar(seg.texto)}</a>`;
+    case 'imagem':
+      return `<img src="${escaparAtributo(seg.src)}" alt="${escaparAtributo(seg.alt)}">`;
+    case 'linkImagem':
+      return `<a href="${escaparAtributo(seg.url)}" target="_blank" rel="noreferrer"><img src="${escaparAtributo(seg.src)}" alt="${escaparAtributo(seg.alt)}"></a>`;
     case 'linkBruto':
       return escapar(seg.bruto);
   }
@@ -427,6 +481,10 @@ function segmentoParaRealce(seg: Segmento): string {
       return `<span class="md-marcador">~~</span><span class="md-riscado">${segmentosParaRealce(seg.filhos)}</span><span class="md-marcador">~~</span>`;
     case 'link':
       return `<span class="md-marcador">[</span><span class="md-link">${escapar(seg.texto)}</span><span class="md-marcador">](</span>${escapar(seg.url)}<span class="md-marcador">)</span>`;
+    case 'imagem':
+      return `<span class="md-marcador">![</span><span class="md-link">${escapar(seg.alt)}</span><span class="md-marcador">]</span><span class="md-marcador">(</span>${escapar(seg.src)}<span class="md-marcador">)</span>`;
+    case 'linkImagem':
+      return `<span class="md-marcador">[</span><span class="md-marcador">![</span><span class="md-link">${escapar(seg.alt)}</span><span class="md-marcador">]</span><span class="md-marcador">(</span>${escapar(seg.src)}<span class="md-marcador">)</span><span class="md-marcador">](</span>${escapar(seg.url)}<span class="md-marcador">)</span>`;
     case 'linkBruto':
       return escapar(seg.bruto);
   }

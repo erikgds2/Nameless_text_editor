@@ -23,6 +23,7 @@ function pontefalsa(inicial: Record<string, string> = {}) {
     },
     apagar: async (id) => void arquivos.delete(id),
     fecharCaptura: async () => {},
+    salvarAnexo: async () => 'imagem.png',
     aoMudarPasta: (callback) => {
       avisar = callback;
       return () => {

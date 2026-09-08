@@ -14,6 +14,7 @@ export type PonteDisco = {
   apagar(id: string): Promise<void>;
   aoMudarPasta(callback: () => void): () => void;
   fecharCaptura(gravou: boolean): Promise<void>;
+  salvarAnexo(bytes: Uint8Array, tipo: string): Promise<string>;
 };
 
 declare global {
@@ -33,6 +34,8 @@ export type Deposito = {
   abrirPasta(): Promise<void>;
   /** Avisa quando alguém mexeu nos arquivos por fora. Devolve como cancelar. */
   aoMudar(callback: () => void): () => void;
+  /** Guarda a imagem colada e devolve o nome do arquivo; null onde não dá. */
+  salvarAnexo(bytes: Uint8Array, tipo: string): Promise<string | null>;
 };
 
 const MARCA_MIGRACAO = 'ardosia:migrado-para-disco';
@@ -101,6 +104,7 @@ export function depositoEmDisco(ponte: PonteDisco): Deposito {
     escolherPasta: () => ponte.escolherPasta(),
     abrirPasta: () => ponte.abrirPasta(),
     aoMudar: (callback) => ponte.aoMudarPasta(callback),
+    salvarAnexo: (bytes, tipo) => ponte.salvarAnexo(bytes, tipo),
   };
 }
 
@@ -125,6 +129,8 @@ export function depositoNoNavegador(): Deposito {
     abrirPasta: async () => {},
     // no navegador não há pasta que alguém possa mexer por fora
     aoMudar: () => () => {},
+    // sem disco não há onde guardar a imagem; o app avisa em vez de fingir
+    salvarAnexo: async () => null,
   };
 }
 

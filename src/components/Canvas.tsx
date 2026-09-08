@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import type { KeyboardEvent, MouseEvent, PointerEvent, UIEvent } from 'react';
+import type { ClipboardEvent, KeyboardEvent, MouseEvent, PointerEvent, UIEvent } from 'react';
 import { ALTURA_MINIMA, LARGURA_MINIMA, criarBloco, type Bloco } from '../canvas';
 import { realcar } from '../markdown';
 import { alternarMarca, aoTeclarEnter, aoTeclarTab, inserirLink } from '../edicao';
@@ -10,6 +10,7 @@ type Props = {
   blocos: Bloco[];
   tipo: TipoDoc;
   onChange: (blocos: Bloco[]) => void;
+  onColarImagem: (bytes: Uint8Array, tipo: string) => Promise<string | null>;
 };
 
 /** Margem de tolerância do auto-crescimento do bloco, em pixels. */
@@ -19,7 +20,7 @@ type Arraste =
   | { tipo: 'mover'; id: string; offsetX: number; offsetY: number }
   | { tipo: 'redimensionar'; id: string; inicioX: number; inicioY: number; larguraInicial: number; alturaInicial: number };
 
-export default function Canvas({ blocos, tipo, onChange }: Props) {
+export default function Canvas({ blocos, tipo, onChange, onColarImagem }: Props) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [ativoId, setAtivoId] = useState<string | null>(null);
   const [criadoRecentemente, setCriadoRecentemente] = useState<string | null>(null);
@@ -136,6 +137,7 @@ export default function Canvas({ blocos, tipo, onChange }: Props) {
             onFocus={() => setAtivoId(bloco.id)}
             onChange={(texto) => handleChangeTexto(bloco.id, texto)}
             onAltura={(altura) => handleAltura(bloco.id, altura)}
+            onColarImagem={onColarImagem}
             onBlur={() => handleBlurTexto(bloco)}
           />
           <div
@@ -157,6 +159,7 @@ type EscritaProps = {
   onFocus: () => void;
   onChange: (texto: string) => void;
   onAltura: (altura: number) => void;
+  onColarImagem: (bytes: Uint8Array, tipo: string) => Promise<string | null>;
   onBlur: () => void;
 };
 
@@ -165,7 +168,7 @@ type EscritaProps = {
  * realce atrás dele, com a mesma métrica. É o que permite negrito e título
  * coloridos sem perder o cursor, o desfazer e a acentuação nativos do sistema.
  */
-function Escrita({ bloco, realce, autoFocus, onFocus, onChange, onAltura, onBlur }: EscritaProps) {
+function Escrita({ bloco, realce, autoFocus, onFocus, onChange, onAltura, onColarImagem, onBlur }: EscritaProps) {
   const espelhoRef = useRef<HTMLDivElement | null>(null);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -209,6 +212,32 @@ function Escrita({ bloco, realce, autoFocus, onFocus, onChange, onAltura, onBlur
     area.setSelectionRange(novo.inicio, novo.fim);
   }
 
+  /**
+   * Imagem colada vira arquivo na pasta e uma marcação Markdown no texto. O
+   * caminho gravado é relativo de propósito: o .md continua fazendo sentido
+   * fora do app, e quem resolve o caminho para exibir é a pré-visualização.
+   */
+  async function aoColar(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const item = [...event.clipboardData.items].find(
+      (candidato) => candidato.kind === 'file' && candidato.type.startsWith('image/'),
+    );
+    const imagem = item?.getAsFile();
+    if (!imagem) return;
+
+    event.preventDefault();
+    // o evento morre no await; guarde o que precisa antes
+    const area = event.currentTarget;
+    const { selectionStart, selectionEnd, value } = area;
+
+    const nome = await onColarImagem(new Uint8Array(await imagem.arrayBuffer()), imagem.type);
+    if (!nome) return;
+
+    const marca = `![](anexos/${nome})`;
+    onChange(value.slice(0, selectionStart) + marca + value.slice(selectionEnd));
+    const fim = selectionStart + marca.length;
+    requestAnimationFrame(() => area.setSelectionRange(fim, fim));
+  }
+
   function acompanharRolagem(event: UIEvent<HTMLTextAreaElement>) {
     if (!espelhoRef.current) return;
     espelhoRef.current.scrollTop = event.currentTarget.scrollTop;
@@ -234,6 +263,7 @@ function Escrita({ bloco, realce, autoFocus, onFocus, onChange, onAltura, onBlur
         autoFocus={autoFocus}
         onFocus={onFocus}
         onKeyDown={aoTeclar}
+        onPaste={aoColar}
         onScroll={acompanharRolagem}
         onChange={(event) => onChange(event.target.value)}
         onBlur={onBlur}

@@ -123,6 +123,60 @@ async function abrirPasta() {
 }
 
 // ---------------------------------------------------------------------------
+// Anexos: imagens coladas da area de transferencia. Ficam numa subpasta ao lado
+// das notas, como faz o Obsidian, para a pasta continuar sendo so arquivos.
+
+const EXTENSOES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' };
+
+/** O nome vem do conteudo: colar a mesma imagem duas vezes nao gera dois arquivos. */
+async function salvarAnexo(bytes, tipo) {
+  const extensao = EXTENSOES[tipo];
+  if (!extensao) throw new Error(`tipo de imagem nao suportado: ${tipo}`);
+
+  const conteudo = Buffer.from(bytes);
+  const nome = `${crypto.createHash('sha1').update(conteudo).digest('hex').slice(0, 12)}.${extensao}`;
+  const destino = caminhoDoAnexo(await pasta(), nome);
+
+  await fs.mkdir(path.dirname(destino), { recursive: true });
+  await fs.writeFile(destino, conteudo);
+  return nome;
+}
+
+/** Mesma defesa do caminho das notas, um andar abaixo. */
+function caminhoDoAnexo(base, nome) {
+  if (typeof nome !== 'string' || nome.length === 0 || nome.length > 120) {
+    throw new Error('nome de anexo invalido');
+  }
+  if (path.win32.basename(nome) !== nome || PROIBIDOS.test(nome) || nome === '.' || nome === '..') {
+    throw new Error('nome de anexo invalido');
+  }
+  const anexos = path.resolve(base, 'anexos');
+  const destino = path.resolve(anexos, nome);
+  if (!destino.startsWith(anexos + path.sep)) throw new Error('nome de anexo invalido');
+  return destino;
+}
+
+/**
+ * Traduz uma url ardosia://anexos/<nome> no arquivo, ou falha.
+ *
+ * Cuidado com uma sutileza: o construtor de URL ja resolve ".." sozinho, entao
+ * o nome que chega aqui nunca sobe de pasta. Ainda assim so servimos extensao
+ * de imagem — este protocolo existe para mostrar figura, e qualquer outra coisa
+ * na pasta nao tem por que ser alcancavel pela janela.
+ */
+async function anexoDaUrl(url) {
+  const { host, pathname } = new URL(url);
+  if (host !== 'anexos') throw new Error('url de anexo invalida');
+
+  const nome = decodeURIComponent(pathname.replace(/^\//, ''));
+  const extensao = path.extname(nome).slice(1).toLowerCase();
+  if (!Object.values(EXTENSOES).includes(extensao)) {
+    throw new Error('url de anexo invalida');
+  }
+  return caminhoDoAnexo(await pasta(), nome);
+}
+
+// ---------------------------------------------------------------------------
 // Vigia da pasta: editar a nota no Bloco de Notas com o app aberto tem de
 // aparecer na tela. O que o proprio app gravou nao conta como mudanca externa —
 // senao cada tecla digitada mandaria a nota recarregar.
@@ -189,6 +243,8 @@ async function vigiar(janela) {
 
 module.exports = {
   pasta,
+  salvarAnexo,
+  anexoDaUrl,
   escolherPasta,
   listar,
   escrever,
