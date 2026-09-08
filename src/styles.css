@@ -475,3 +475,51 @@ html[data-native="true"] body {
 ::selection {
   background: var(--accent-wash);
 }
+
+.pasta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-soft);
+}
+
+.pasta__rotulo {
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pasta__local {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: color 120ms;
+}
+
+.pasta__local:hover {
+  color: var(--accent);
+}
+
+.pasta__trocar {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color 120ms;
+}
+
+.pasta__trocar:hover {
+  color: var(--accent);
+}

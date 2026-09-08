@@ -3,6 +3,10 @@
 Caderno de estudo local-first. Escreva em qualquer ponto da página: cada trecho
 é um bloco que você move e redimensiona, como numa folha de rascunho.
 
+Cada nota é um arquivo `.md` numa pasta sua — em `Documentos\Ardósia`, até você
+escolher outra. Dá para editar no Bloco de Notas, versionar no git ou fazer
+backup como qualquer outro arquivo de texto.
+
 App desktop (Electron, com o material acrílico do Windows 11) rodando o mesmo
 código no navegador.
 
@@ -28,7 +32,12 @@ menu Iniciar como **Ardósia**.
 ## Estrutura
 
 - `electron/main.cjs` — janela nativa e material acrílico
-- `src/notes.ts` — modelo das notas e persistência (única camada que toca o storage)
+- `electron/preload.cjs` — a única ponte entre a nota na tela e o arquivo em disco
+- `electron/notas.cjs` — acesso ao disco, com a pasta validada aqui e em nenhum outro lugar
+- `src/deposito.ts` — onde as notas moram: disco no desktop, `localStorage` no navegador
+- `src/formato.ts` — a nota escrita como `.md` e lida de volta
+- `src/nomes.ts` — o título virando nome de arquivo
+- `src/notes.ts` — modelo das notas
 - `src/canvas.ts` — blocos de texto posicionados
 - `src/search.ts` — busca que ignora acentos
 - `src/theme.ts` — temas acrílico, papel e tinta

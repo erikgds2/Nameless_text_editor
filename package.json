@@ -10,7 +10,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "check": "tsc -b && vitest run && vite build",
+    "check": "node --check electron/main.cjs && node --check electron/preload.cjs && node --check electron/notas.cjs && tsc -b && vitest run && vite build",
     "dist": "npm run build && electron-builder"
   },
   "dependencies": {

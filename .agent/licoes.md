@@ -17,3 +17,4 @@ próximas tarefas. Gerado pelo run.mjs — pode editar e reescrever à mão.
 - (1x) textarea com max-width e margin auto dentro de flex-column encolhe para a largura intrinseca de 20 caracteres: sempre acrescente width: 100%
 - (1x) error TS2304: Cannot find name 'useMemo'.
 - (1x) nunca chame .sort() direto em estado do React: sort() muta o array, sempre copie antes com [...lista]
+- (1x) arquivo .md editado no Windows volta com CRLF e as vezes BOM: normalize antes de procurar frontmatter, senao ele vira texto da nota

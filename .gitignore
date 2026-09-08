@@ -4,9 +4,7 @@ dist
 tsconfig.tsbuildinfo
 .agent/.backup
 .agent/report.json
-.agent/live.log
 .agent/attempts
-.agent/vite.log
 .agent/ultimo-resumo.txt
-.agent/electron.log
 release
+.agent/*.log

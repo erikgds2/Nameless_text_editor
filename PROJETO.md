@@ -48,20 +48,25 @@ arquivos em disco muda um arquivo, não o app.
 
 Lista, editor, busca, autosave, fixar notas. Guardado em `localStorage`.
 
-### Fase 2 — Fundação: arquivos de verdade
+### Fase 2 — Fundação: arquivos de verdade ✅
 
-O `localStorage` é uma prótese: ele não sobrevive ao empacotamento e ninguém
-consegue abrir as notas fora do app.
+O `localStorage` era uma prótese: não sobrevivia ao empacotamento e ninguém
+conseguia abrir as notas fora do app.
 
-- Cada nota vira um `.md` numa pasta escolhida por você, com frontmatter mínimo.
+- Cada nota é um `.md` em `Documentos\Ardósia`, ou na pasta que você escolher.
 - Acesso ao disco via IPC do Electron (`contextBridge`, sem `nodeIntegration`).
-- Migração automática do que já está no `localStorage`.
-- Busca que **ignora acentos e maiúsculas** — o terceiro pedido mais discutido do
-  fórum do Obsidian, e obrigatório em português.
-- Na web, degrada para File System Access API ou segue em `localStorage`.
+  O renderer nunca manda um caminho: manda o nome da nota, e todo caminho nasce
+  dentro de `electron/notas.cjs`, obrigado a cair dentro da pasta.
+- Migração automática do que estava no `localStorage` — que continua lá, intacto.
+- Busca que **ignora acentos e maiúsculas**.
+- Na web, segue em `localStorage`.
 
-*Pronto quando:* fechar o app, editar a nota no Bloco de Notas do Windows, reabrir
-e ver a edição.
+O layout dos blocos vive em comentários HTML dentro do próprio `.md`, invisíveis
+em qualquer renderizador de Markdown. Um `.md` escrito à mão, sem marcador
+nenhum, abre como uma nota de um bloco só.
+
+*Pronto:* fechar o app, editar a nota no Bloco de Notas do Windows, reabrir e ver
+a edição.
 
 ### Fase 3 — Escrita
 

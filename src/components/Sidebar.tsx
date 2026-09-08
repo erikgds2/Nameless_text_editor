@@ -13,9 +13,17 @@ type Props = {
   onTogglePin: (id: string) => void;
   tema: TemaId;
   onTrocarTema: (tema: TemaId) => void;
+  pasta: string | null;
+  onAbrirPasta: () => void;
+  onTrocarPasta: () => void;
 };
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' });
+
+/** Do caminho inteiro so o nome interessa na barra; o resto vive no title. */
+function nomeDaPasta(caminho: string): string {
+  return caminho.split(/[\\/]/).filter(Boolean).pop() ?? caminho;
+}
 
 function preview(texto: string): string {
   const rest = texto.split('\n').slice(1).join(' ').trim();
@@ -33,6 +41,9 @@ export default function Sidebar({
   onTogglePin,
   tema,
   onTrocarTema,
+  pasta,
+  onAbrirPasta,
+  onTrocarPasta,
 }: Props) {
   return (
     <aside className="sidebar">
@@ -82,6 +93,18 @@ export default function Sidebar({
         <p className="sidebar__empty">
           {query ? 'Nenhuma nota encontrada.' : 'Nenhuma nota ainda.'}
         </p>
+      )}
+
+      {pasta && (
+        <div className="pasta">
+          <span className="pasta__rotulo">Pasta</span>
+          <button className="pasta__local" onClick={onAbrirPasta} title={`Abrir ${pasta}`}>
+            {nomeDaPasta(pasta)}
+          </button>
+          <button className="pasta__trocar" onClick={onTrocarPasta} title="Guardar as notas em outra pasta">
+            Trocar
+          </button>
+        </div>
       )}
 
       <footer className="sidebar__footer">

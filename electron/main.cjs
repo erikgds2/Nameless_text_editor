@@ -1,5 +1,6 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
+const notas = require('./notas.cjs');
 
 const isDev = !app.isPackaged;
 
@@ -19,8 +20,10 @@ function createWindow() {
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: '#00000000', symbolColor: '#C8C2B8', height: 38 },
     webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
   });
 
@@ -33,7 +36,20 @@ function createWindow() {
   }
 }
 
+function registrarCanais() {
+  ipcMain.handle('ardosia:pasta', () => notas.pasta());
+  ipcMain.handle('ardosia:escolher-pasta', (evento) =>
+    notas.escolherPasta(BrowserWindow.fromWebContents(evento.sender)),
+  );
+  ipcMain.handle('ardosia:abrir-pasta', () => notas.abrirPasta());
+  ipcMain.handle('ardosia:listar', () => notas.listar());
+  ipcMain.handle('ardosia:escrever', (_evento, id, texto) => notas.escrever(id, texto));
+  ipcMain.handle('ardosia:renomear', (_evento, de, para) => notas.renomear(de, para));
+  ipcMain.handle('ardosia:apagar', (_evento, id) => notas.apagar(id));
+}
+
 app.whenReady().then(() => {
+  registrarCanais();
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

@@ -1,19 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
-import { createNote, loadNotes, saveNotes, textoDaNota, type Note } from './notes';
+import { textoDaNota, type Note } from './notes';
+import { abrirDeposito } from './deposito';
 import type { Bloco } from './canvas';
 import { matchesQuery } from './search';
 import { carregarTema, salvarTema, type TemaId } from './theme';
 
 export default function App() {
-  const [notes, setNotes] = useState<Note[]>(loadNotes);
-  const [activeId, setActiveId] = useState<string | null>(
-    () => [...notes].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ?? null,
-  );
+  const deposito = useMemo(abrirDeposito, []);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [pasta, setPasta] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [tema, setTema] = useState<TemaId>(carregarTema());
   const searchRef = useRef<HTMLInputElement | null>(null);
+  // notas que mudaram e ainda nao foram para o disco
+  const sujas = useRef(new Set<string>());
 
   useEffect(() => {
     document.documentElement.dataset.theme = tema;
@@ -27,9 +31,43 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => saveNotes(notes), 250);
+    let vivo = true;
+    Promise.all([deposito.listar(), deposito.pasta()]).then(([carregadas, caminho]) => {
+      if (!vivo) return;
+      setNotes(carregadas);
+      setPasta(caminho);
+      setActiveId([...carregadas].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ?? null);
+      setCarregando(false);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [deposito]);
+
+  // Grava so o que mudou, e so depois que a digitacao para. Uma nota nova e
+  // vazia nunca chega ao disco: arquivo so nasce quando ha o que guardar.
+  useEffect(() => {
+    if (carregando || sujas.current.size === 0) return;
+    const timer = setTimeout(async () => {
+      const pendentes = [...sujas.current];
+      sujas.current.clear();
+      for (const id of pendentes) {
+        const nota = notes.find((outra) => outra.id === id);
+        if (!nota) continue;
+        try {
+          const salva = await deposito.salvar(nota);
+          if (salva.id === id) continue;
+          // o arquivo provisorio adotou o titulo: a nota passa a ter outro id
+          if (sujas.current.delete(id)) sujas.current.add(salva.id);
+          setNotes((prev) => prev.map((outra) => (outra.id === id ? salva : outra)));
+          setActiveId((atual) => (atual === id ? salva.id : atual));
+        } catch (err) {
+          console.error('Não foi possível salvar a nota:', err);
+        }
+      }
+    }, 500);
     return () => clearTimeout(timer);
-  }, [notes]);
+  }, [notes, carregando, deposito]);
 
   // [...notes] e obrigatorio: sort() muta o array, e este e o estado do React
   const visibleNotes = useMemo(
@@ -46,7 +84,7 @@ export default function App() {
   const activeNote = notes.find((note) => note.id === activeId) ?? null;
 
   function handleNewNote() {
-    const note = createNote();
+    const note = deposito.criar();
     setNotes((prev) => [note, ...prev]);
     setActiveId(note.id);
     setQuery('');
@@ -54,6 +92,7 @@ export default function App() {
 
   function handleChangeBlocos(blocos: Bloco[]) {
     if (!activeId) return;
+    sujas.current.add(activeId);
     setNotes((prev) =>
       prev.map((note) =>
         note.id === activeId ? { ...note, blocos, updatedAt: Date.now() } : note,
@@ -62,18 +101,29 @@ export default function App() {
   }
 
   function handleDelete(id: string) {
+    sujas.current.delete(id);
     setNotes((prev) => prev.filter((note) => note.id !== id));
     if (activeId === id) setActiveId(null);
+    deposito.apagar(id).catch((err) => console.error('Não foi possível apagar a nota:', err));
   }
 
   function handleTogglePin(id: string) {
+    sujas.current.add(id);
     setNotes((prev) =>
       prev.map((note) => (note.id === id ? { ...note, pinned: !note.pinned } : note)),
     );
   }
 
-  function onTrocarTema(novoTema: TemaId) {
-    setTema(novoTema);
+  async function handleTrocarPasta() {
+    const escolhida = await deposito.escolherPasta();
+    if (!escolhida) return;
+    sujas.current.clear();
+    setCarregando(true);
+    setPasta(escolhida);
+    const carregadas = await deposito.listar();
+    setNotes(carregadas);
+    setActiveId([...carregadas].sort((a, b) => b.updatedAt - a.updatedAt)[0]?.id ?? null);
+    setCarregando(false);
   }
 
   useEffect(() => {
@@ -110,7 +160,10 @@ export default function App() {
           onNewNote={handleNewNote}
           onTogglePin={handleTogglePin}
           tema={tema}
-          onTrocarTema={onTrocarTema}
+          onTrocarTema={setTema}
+          pasta={pasta}
+          onAbrirPasta={deposito.abrirPasta}
+          onTrocarPasta={handleTrocarPasta}
         />
         <Editor note={activeNote} onChange={handleChangeBlocos} onDelete={handleDelete} />
       </div>
