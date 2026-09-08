@@ -189,7 +189,7 @@ export default function Ajustes({
               <span className="ajustes__nome">
                 Pasta das notas
                 <span className="ajustes__dica" title={pasta}>
-                  {pasta}
+                  {pasta.split(/[\/]/).filter(Boolean).pop()}
                 </span>
               </span>
               <div className="opcoes">

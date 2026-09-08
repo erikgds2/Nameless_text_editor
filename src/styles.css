@@ -681,9 +681,12 @@ button {
 
 /* ------------------------------------------------------------ ajustes */
 
+/* Comeca abaixo da barra de titulo: no topo ficam os botoes que o Windows
+   desenha, e o X de fechar o painel apareceria logo abaixo do X de fechar o
+   aplicativo — dois X empilhados, um deles destrutivo. */
 .ajustes {
   position: fixed;
-  top: 0;
+  top: 40px;
   right: 0;
   bottom: 0;
   z-index: 2;
@@ -691,7 +694,7 @@ button {
   flex-direction: column;
   width: 360px;
   border-left: 1px solid var(--rule);
-  border-radius: 6px 0 0 6px;
+  border-radius: 0 0 0 6px;
   background: var(--base);
   box-shadow: var(--sombra);
   animation: entrar var(--entrada);
@@ -920,7 +923,7 @@ button {
 
 .paleta__fundo {
   position: fixed;
-  inset: 0;
+  inset: 40px 0 0 0;
   z-index: 3;
   display: flex;
   justify-content: center;
@@ -1097,4 +1100,37 @@ button {
   font-size: 11px;
   text-align: right;
   color: var(--ink-soft);
+}
+
+/* Aviso passageiro no rodapé: o que falhou em silêncio precisa dizer por quê. */
+.editor__recado {
+  margin-left: auto;
+  color: var(--accent);
+}
+
+/* Excluir um bloco. Só aparece sob o cursor e só quando há mais de um: apagar
+   o único bloco da nota deixaria uma página sem onde escrever. */
+.bloco__excluir {
+  position: absolute;
+  z-index: 2;
+  top: 2px;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--rapido), color var(--rapido), background-color var(--rapido);
+}
+
+.bloco:hover .bloco__excluir {
+  opacity: 1;
+}
+
+.bloco__excluir:hover {
+  color: var(--alert);
+  background: var(--alert-wash);
 }

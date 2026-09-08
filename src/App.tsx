@@ -3,7 +3,7 @@ import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
 import Ajustes from './components/Ajustes';
 import Paleta from './components/Paleta';
-import { textoDaNota, type Note, type TipoDoc } from './notes';
+import { deriveTitle, textoDaNota, type Note, type TipoDoc } from './notes';
 import { abrirDeposito } from './deposito';
 import type { Bloco } from './canvas';
 import { matchesQuery } from './search';
@@ -22,6 +22,27 @@ export default function App() {
   const [mostrandoAjustes, setMostrandoAjustes] = useState(false);
   const [mostrandoPaleta, setMostrandoPaleta] = useState(false);
   const [salvamento, setSalvamento] = useState<'salvo' | 'salvando' | 'erro'>('salvo');
+  const [recado, setRecado] = useState<string | null>(null);
+
+  // Um aviso que some sozinho: serve para o que falhou sem barulho, como colar
+  // imagem onde não há disco para guardá-la.
+  useEffect(() => {
+    if (!recado) return;
+    const timer = setTimeout(() => setRecado(null), 4000);
+    return () => clearTimeout(timer);
+  }, [recado]);
+
+  async function handleColarImagem(bytes: Uint8Array, tipo: string) {
+    try {
+      const nome = await deposito.salvarAnexo(bytes, tipo);
+      if (!nome) setRecado('Colar imagem só funciona no aplicativo instalado.');
+      return nome;
+    } catch (err) {
+      console.error('Não foi possível guardar a imagem:', err);
+      setRecado('Não foi possível guardar a imagem.');
+      return null;
+    }
+  }
   const searchRef = useRef<HTMLInputElement | null>(null);
   // notas que mudaram e ainda nao foram para o disco
   const sujas = useRef(new Set<string>());
@@ -256,6 +277,14 @@ export default function App() {
         atalho: 'Ctrl + ,',
         executar: () => setMostrandoAjustes(true),
       },
+      // As notas entram por ultimo: com a busca vazia, os comandos aparecem
+      // primeiro; digitar duas letras do titulo traz a nota na frente.
+      ...visibleNotes.map((nota) => ({
+        id: `abrir-${nota.id}`,
+        titulo: deriveTitle(textoDaNota(nota.blocos)),
+        secao: 'Abrir nota',
+        executar: () => setActiveId(nota.id),
+      })),
       ...(pasta
         ? [
             {
@@ -354,7 +383,8 @@ export default function App() {
           onChange={handleChangeBlocos}
           onDelete={handleDelete}
           onMudarTipo={handleMudarTipo}
-          onColarImagem={deposito.salvarAnexo}
+          onColarImagem={handleColarImagem}
+          recado={recado}
           temaEscuro={ajustes.tema !== 'papel'}
           onAlternarPreview={() => setAjustes((prev) => ({ ...prev, preview: !prev.preview }))}
         />

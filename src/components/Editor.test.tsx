@@ -8,19 +8,19 @@ function comTexto(note: Note, texto: string): Note {
   return { ...note, blocos: [{ ...note.blocos[0], texto }] };
 }
 
-function montar(overrides: {
-  note?: Note | null;
-  preview?: boolean;
-} = {}) {
+// aceita qualquer prop do Editor: o helper anterior repassava só duas, e o
+// resto era descartado em silêncio — testes passavam sem testar nada
+function montar(overrides: Partial<Parameters<typeof Editor>[0]> = {}) {
   const props = {
-    note: overrides.note === undefined ? createNote() : overrides.note,
-    preview: overrides.preview ?? true,
+    note: createNote() as Note | null,
+    preview: true,
     onChange: vi.fn(),
     onDelete: vi.fn(),
     onMudarTipo: vi.fn(),
     onAlternarPreview: vi.fn(),
     onColarImagem: vi.fn(async () => 'imagem.png'),
     temaEscuro: true,
+    ...overrides,
   };
   render(<Editor {...props} />);
   return props;
@@ -91,5 +91,17 @@ describe('Editor', () => {
     expect(screen.getByText('5 palavras')).toBeInTheDocument();
     expect(screen.getByText(`${texto.length} caracteres`)).toBeInTheDocument();
     expect(screen.getByText('2 linhas')).toBeInTheDocument();
+  });
+});
+
+describe('recado passageiro', () => {
+  it('mostra o aviso quando algo falha em silêncio', () => {
+    montar({ note: comTexto(createNote(), 'Uma nota'), recado: 'Não foi possível guardar a imagem.' });
+    expect(screen.getByText('Não foi possível guardar a imagem.')).toBeInTheDocument();
+  });
+
+  it('sem aviso, o rodapé fica só com os contadores', () => {
+    montar({ note: comTexto(createNote(), 'Uma nota') });
+    expect(screen.queryByText(/Não foi possível guardar/)).toBeNull();
   });
 });

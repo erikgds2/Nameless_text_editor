@@ -130,6 +130,18 @@ export default function Canvas({ blocos, tipo, onChange, onColarImagem }: Props)
             onPointerMove={handlePointerMoveAlca}
             onPointerUp={handlePointerUp}
           />
+          {blocos.length > 1 && (
+            <button
+              className="bloco__excluir"
+              title="Excluir este bloco"
+              aria-label="Excluir este bloco"
+              onClick={() => onChange(blocos.filter((outro) => outro.id !== bloco.id))}
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
           <Escrita
             bloco={bloco}
             realce={tipo === 'markdown'}

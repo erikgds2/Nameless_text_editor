@@ -23,6 +23,7 @@ type Props = {
   onAlternarPreview: () => void;
   onColarImagem: (bytes: Uint8Array, tipo: string) => Promise<string | null>;
   temaEscuro: boolean;
+  recado?: string | null;
 };
 
 const timeFormat = new Intl.DateTimeFormat('pt-BR', {
@@ -56,6 +57,7 @@ export default function Editor({
   onAlternarPreview,
   onColarImagem,
   temaEscuro,
+  recado,
 }: Props) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
@@ -189,6 +191,7 @@ export default function Editor({
         <span className={salvamento === 'erro' ? 'editor__estado--erro' : undefined}>
           {RECADO[salvamento]}
         </span>
+        {recado && <span className="editor__recado">{recado}</span>}
       </footer>
     </main>
   );
