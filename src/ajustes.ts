@@ -11,8 +11,14 @@ export type Ajustes = {
   corpo: 13 | 15 | 17;
   /** A cor de destaque, em #rrggbb. */
   acento: string;
-  /** Quanto do fundo é sólido, de 0 (só o acrílico) a 100 (opaco). */
+  /** Quanto do fundo é sólido, de 0 (transparente) a 100 (opaco). */
   opacidade: number;
+  /**
+   * Acrílico é o vidro fosco do Windows: borra o que está atrás. Vidro é
+   * transparência de verdade, como o Terminal com opacidade baixa. Só vale no
+   * aplicativo instalado, e trocar reabre a janela.
+   */
+  fundo: 'acrilico' | 'vidro';
   /** Quanto da largura fica com o editor quando há pré-visualização, em %. */
   divisoria: number;
 };
@@ -45,6 +51,7 @@ export const PADRAO: Ajustes = {
   corpo: 15,
   acento: '#d8934a',
   opacidade: 0,
+  fundo: 'acrilico',
   divisoria: 50,
 };
 
@@ -91,6 +98,7 @@ function completar(parcial: Partial<Ajustes>): Ajustes {
     opacidade: typeof parcial.opacidade === 'number' && Number.isFinite(parcial.opacidade)
       ? Math.min(100, Math.max(0, Math.round(parcial.opacidade)))
       : PADRAO.opacidade,
+    fundo: parcial.fundo === 'vidro' ? 'vidro' : PADRAO.fundo,
     // nem tudo para um lado: abaixo de 20% nao sobra onde escrever nem onde ler
     divisoria: typeof parcial.divisoria === 'number' && Number.isFinite(parcial.divisoria)
       ? Math.min(80, Math.max(20, Math.round(parcial.divisoria)))

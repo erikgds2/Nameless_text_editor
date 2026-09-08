@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('ardosia', {
 
   fecharCaptura: (gravou) => ipcRenderer.invoke('ardosia:fechar-captura', gravou),
   salvarAnexo: (bytes, tipo) => ipcRenderer.invoke('ardosia:salvar-anexo', bytes, tipo),
+  modoDeFundo: () => ipcRenderer.invoke('ardosia:modo-de-fundo'),
+  trocarModoDeFundo: (modo) => ipcRenderer.invoke('ardosia:trocar-modo-de-fundo', modo),
 
   // Só o aviso atravessa: o objeto de evento do IPC fica deste lado da ponte.
   aoMudarPasta: (callback) => {

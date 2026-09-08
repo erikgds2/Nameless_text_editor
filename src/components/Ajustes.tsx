@@ -7,6 +7,7 @@ type Props = {
   pasta: string | null;
   onAbrirPasta: () => void;
   onTrocarPasta: () => void;
+  onTrocarFundo: (fundo: 'acrilico' | 'vidro') => void;
   onFechar: () => void;
 };
 
@@ -16,6 +17,7 @@ export default function Ajustes({
   pasta,
   onAbrirPasta,
   onTrocarPasta,
+  onTrocarFundo,
   onFechar,
 }: Props) {
   useEffect(() => {
@@ -91,12 +93,43 @@ export default function Ajustes({
             </div>
           </div>
 
+          {pasta && ajustes.tema === 'acrilico' && (
+            <div className="ajustes__linha">
+              <span className="ajustes__nome">
+                Fundo da janela
+                <span className="ajustes__dica">
+                  {ajustes.fundo === 'vidro'
+                    ? 'Dá para ler o que está atrás da janela'
+                    : 'O material do Windows borra o que está atrás'}
+                </span>
+              </span>
+              <div className="opcoes">
+                <button
+                  className={`opcao${ajustes.fundo === 'acrilico' ? ' opcao--on' : ''}`}
+                  onClick={() => onTrocarFundo('acrilico')}
+                  title="Material do Windows: borra o que está atrás"
+                >
+                  Fosco
+                </button>
+                <button
+                  className={`opcao${ajustes.fundo === 'vidro' ? ' opcao--on' : ''}`}
+                  onClick={() => onTrocarFundo('vidro')}
+                  title="Transparência de verdade, como o Terminal. A janela reabre."
+                >
+                  Transparente
+                </button>
+              </div>
+            </div>
+          )}
+
           {ajustes.tema === 'acrilico' && (
             <div className="ajustes__linha">
               <span className="ajustes__nome">
-                Opacidade da janela
+                {ajustes.fundo === 'vidro' ? 'Opacidade da janela' : 'Camada sobre o acrílico'}
                 <span className="ajustes__dica">
-                  0% deixa o acrílico do Windows passar inteiro
+                  {ajustes.fundo === 'vidro'
+                    ? 'Quanto menor, mais se enxerga o que está atrás'
+                    : 'O acrílico é fosco; isto só o escurece'}
                 </span>
               </span>
               <div className="medida">

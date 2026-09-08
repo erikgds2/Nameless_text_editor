@@ -73,10 +73,13 @@ html[data-native='true'] .titlebar {
   padding-right: 148px;
 }
 
-/* No Electron o fundo é o acrílico do sistema, atrás da janela inteira. A
-   opacidade escolhida nos ajustes decide quanto do fundo sólido cobre esse
-   acrílico: 0% deixa passar tudo, 100% fecha de vez. */
-html[data-native='true'][data-theme='acrilico'] body {
+/* Dois fundos possíveis no aplicativo instalado, e a diferença importa:
+   ACRÍLICO é o material do Windows — vidro fosco, que borra o que está atrás e
+   nunca fica realmente translúcido. VIDRO é uma janela transparente de verdade,
+   como o Terminal com opacidade baixa: dá para ler o que está atrás.
+   Nos dois casos a opacidade decide quanto do fundo sólido cobre o que passa. */
+html[data-native='true'][data-theme='acrilico'][data-fundo='acrilico'] body,
+html[data-native='true'][data-fundo='vidro'] body {
   background: color-mix(in srgb, var(--base) var(--opacidade, 0%), transparent);
 }
 

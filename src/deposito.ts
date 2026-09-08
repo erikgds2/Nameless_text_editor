@@ -15,6 +15,8 @@ export type PonteDisco = {
   aoMudarPasta(callback: () => void): () => void;
   fecharCaptura(gravou: boolean): Promise<void>;
   salvarAnexo(bytes: Uint8Array, tipo: string): Promise<string>;
+  modoDeFundo(): Promise<'acrilico' | 'vidro'>;
+  trocarModoDeFundo(modo: 'acrilico' | 'vidro'): Promise<void>;
 };
 
 declare global {
@@ -36,6 +38,8 @@ export type Deposito = {
   aoMudar(callback: () => void): () => void;
   /** Guarda a imagem colada e devolve o nome do arquivo; null onde não dá. */
   salvarAnexo(bytes: Uint8Array, tipo: string): Promise<string | null>;
+  /** Acrílico ou vidro. Só o aplicativo instalado tem janela para trocar. */
+  trocarModoDeFundo(modo: 'acrilico' | 'vidro'): Promise<void>;
 };
 
 const MARCA_MIGRACAO = 'ardosia:migrado-para-disco';
@@ -105,6 +109,7 @@ export function depositoEmDisco(ponte: PonteDisco): Deposito {
     abrirPasta: () => ponte.abrirPasta(),
     aoMudar: (callback) => ponte.aoMudarPasta(callback),
     salvarAnexo: (bytes, tipo) => ponte.salvarAnexo(bytes, tipo),
+    trocarModoDeFundo: (modo) => ponte.trocarModoDeFundo(modo),
   };
 }
 
@@ -131,6 +136,8 @@ export function depositoNoNavegador(): Deposito {
     aoMudar: () => () => {},
     // sem disco não há onde guardar a imagem; o app avisa em vez de fingir
     salvarAnexo: async () => null,
+    // no navegador a janela é do navegador; não há fundo para trocar
+    trocarModoDeFundo: async () => {},
   };
 }
 

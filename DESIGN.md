@@ -137,10 +137,17 @@ Translucidez do material acrílico do Windows 11, o mesmo do Windows Terminal.
 A janela é transparente e quem pinta é o sistema operacional. Usa a paleta
 escura, com `--base` aplicado só quando não há acrílico (navegador).
 
-Quanto do acrílico aparece é regulado em Ajustes → Aparência: `--opacidade` vai
-de 0% (o material do sistema passa inteiro) a 100% (fundo sólido). A camada é
-o próprio `background` do `body`, via `color-mix` — nunca `setOpacity` da janela,
-que deixaria o texto transparente junto.
+O fundo tem dois modos, e a diferença é grande:
+
+- **Fosco** — o material acrílico do Windows. Ele *borra* o que está atrás; por
+  mais que se baixe a camada por cima, nunca fica realmente translúcido. É o
+  padrão, e é o que dá a identidade de janela do sistema.
+- **Transparente** — janela de verdade transparente (`transparent: true`), como
+  o Terminal com opacidade baixa: dá para ler o que está atrás. Exclui o
+  acrílico, porque os dois não convivem, e trocar recria a janela.
+
+Nos dois casos `--opacidade` é o `background` do `body`, via `color-mix` — nunca
+`setOpacity` da janela, que deixaria o texto transparente junto com o fundo.
 
 Fora do Electron o `body` recebe `var(--base)` sólido, porque navegador não tem
 acrílico e um fundo transparente ficaria branco.

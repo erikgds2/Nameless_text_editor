@@ -11,18 +11,26 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'ardosia', privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
-function createWindow() {
+/**
+ * Os dois fundos possiveis, e eles nao convivem:
+ *
+ * - `acrilico` usa o material do Windows 11 — vidro FOSCO. Borra o que esta
+ *   atras e nunca fica realmente translucido, por mais que se baixe a tinta.
+ * - `vidro` usa uma janela transparente de verdade, como o Terminal com
+ *   opacidade baixa: da para ler o que esta atras. Quem decide quanto e o CSS.
+ *
+ * A escolha so vale na criacao da janela, entao trocar de modo recria a janela.
+ */
+function createWindow(modo, bounds) {
+  const vidro = modo === 'vidro';
   const win = new BrowserWindow({
-    width: 1100,
-    height: 720,
+    ...(bounds ?? { width: 1100, height: 720 }),
     minWidth: 760,
     minHeight: 480,
     title: 'Ardósia',
     icon: path.join(__dirname, '..', 'build', 'icone.ico'),
-    // acrilico do Windows 11: o mesmo material do Windows Terminal.
-    // exige fundo totalmente transparente para o material aparecer.
     backgroundColor: '#00000000',
-    backgroundMaterial: 'acrylic',
+    ...(vidro ? { transparent: true } : { backgroundMaterial: 'acrylic' }),
     show: false,
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: '#00000000', symbolColor: '#C8C2B8', height: 40 },
@@ -54,6 +62,7 @@ function createWindow() {
   } else {
     win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
+  return win;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,6 +132,20 @@ function registrarCanais() {
   ipcMain.handle('ardosia:renomear', (_evento, de, para) => notas.renomear(de, para));
   ipcMain.handle('ardosia:apagar', (_evento, id) => notas.apagar(id));
   ipcMain.handle('ardosia:salvar-anexo', (_evento, bytes, tipo) => notas.salvarAnexo(bytes, tipo));
+  ipcMain.handle('ardosia:modo-de-fundo', () => notas.modoDeFundo());
+
+  // Trocar o fundo exige uma janela nova: transparencia e material do sistema
+  // sao decididos no nascimento dela. A posicao e o tamanho vao junto, para a
+  // troca parecer uma mudanca de aparencia e nao um reinicio.
+  ipcMain.handle('ardosia:trocar-modo-de-fundo', async (evento, modo) => {
+    if ((await notas.modoDeFundo()) === modo) return;
+    await notas.gravarModoDeFundo(modo);
+
+    const antiga = BrowserWindow.fromWebContents(evento.sender);
+    const bounds = antiga?.getBounds();
+    createWindow(modo, bounds);
+    antiga?.destroy();
+  });
 
   // A captura grava pelo mesmo caminho das outras notas, entao o vigia da pasta
   // reconhece a escrita como nossa e nao avisa ninguem. O aviso vem daqui.
@@ -134,7 +157,7 @@ function registrarCanais() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // ardosia://anexos/<arquivo> serve as imagens coladas. E o unico caminho pelo
   // qual a janela le arquivo do disco, e ele so alcanca a subpasta de anexos.
   protocol.handle('ardosia', async (requisicao) => {
@@ -147,14 +170,14 @@ app.whenReady().then(() => {
   });
 
   registrarCanais();
-  createWindow();
+  createWindow(await notas.modoDeFundo());
 
   if (!globalShortcut.register(ATALHO_DE_CAPTURA, abrirCaptura)) {
     console.error(`Outro programa já usa ${ATALHO_DE_CAPTURA}; a captura rápida ficou sem atalho.`);
   }
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  app.on('activate', async () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(await notas.modoDeFundo());
   });
 });
 

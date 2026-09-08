@@ -121,3 +121,19 @@ describe('divisória entre editor e pré-visualização', () => {
     expect(carregarAjustes().divisoria).toBe(65);
   });
 });
+
+describe('fundo da janela', () => {
+  it('começa no acrílico, que é o material do Windows', () => {
+    expect(carregarAjustes().fundo).toBe('acrilico');
+  });
+
+  it('lembra a escolha do vidro', () => {
+    salvarAjustes({ ...PADRAO, fundo: 'vidro' });
+    expect(carregarAjustes().fundo).toBe('vidro');
+  });
+
+  it('valor desconhecido volta para o acrílico', () => {
+    localStorage.setItem('ardosia:ajustes:v1', JSON.stringify({ fundo: 'cristal' }));
+    expect(carregarAjustes().fundo).toBe('acrilico');
+  });
+});

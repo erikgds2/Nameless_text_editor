@@ -38,6 +38,21 @@ async function pasta() {
   return pastaEmMemoria;
 }
 
+/**
+ * Acrilico e o vidro FOSCO do Windows: borra o que esta atras e nunca fica
+ * translucido de verdade. Vidro e transparencia real, como o Terminal com
+ * opacidade baixa. Sao mutuamente exclusivos e so podem ser escolhidos na
+ * criacao da janela, por isso ficam na config em disco e nao so no navegador.
+ */
+async function modoDeFundo() {
+  const config = await lerConfig();
+  return config.fundo === 'vidro' ? 'vidro' : 'acrilico';
+}
+
+async function gravarModoDeFundo(modo) {
+  await gravarConfig({ ...(await lerConfig()), fundo: modo === 'vidro' ? 'vidro' : 'acrilico' });
+}
+
 async function escolherPasta(janela) {
   const escolha = await dialog.showOpenDialog(janela, {
     title: 'Onde guardar suas notas',
@@ -243,6 +258,8 @@ async function vigiar(janela) {
 
 module.exports = {
   pasta,
+  modoDeFundo,
+  gravarModoDeFundo,
   salvarAnexo,
   anexoDaUrl,
   escolherPasta,

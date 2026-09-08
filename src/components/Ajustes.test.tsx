@@ -14,6 +14,7 @@ function montar(overrides: {
     pasta: overrides.pasta ?? null,
     onAbrirPasta: vi.fn(),
     onTrocarPasta: vi.fn(),
+    onTrocarFundo: vi.fn(),
     onFechar: vi.fn(),
   };
   render(<Ajustes {...props} />);
@@ -87,5 +88,36 @@ describe('Ajustes', () => {
 
     expect(screen.getByText('Ctrl + N')).toBeInTheDocument();
     expect(screen.getByText('Ctrl + ,')).toBeInTheDocument();
+  });
+});
+
+describe('escolha do fundo da janela', () => {
+  it('só aparece no aplicativo instalado, onde há uma janela para trocar', () => {
+    montar({ pasta: null });
+    expect(screen.queryByRole('button', { name: 'Transparente' })).toBeNull();
+  });
+
+  it('oferece os dois fundos quando há pasta', () => {
+    montar({ pasta: 'C:/notas' });
+    expect(screen.getByRole('button', { name: 'Fosco' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Transparente' })).toBeInTheDocument();
+  });
+
+  it('os nomes não colidem com os do tema', () => {
+    montar({ pasta: 'C:/notas' });
+    // "Acrílico" é nome de tema; o fundo usa Fosco/Transparente para não haver
+    // dois botões com o mesmo nome significando coisas diferentes
+    expect(screen.getAllByRole('button', { name: 'Acrílico' })).toHaveLength(1);
+  });
+
+  it('escolher transparente avisa quem cuida da janela', async () => {
+    const props = montar({ pasta: 'C:/notas' });
+    await userEvent.click(screen.getByRole('button', { name: 'Transparente' }));
+    expect(props.onTrocarFundo).toHaveBeenCalledWith('vidro');
+  });
+
+  it('o rótulo da opacidade diz o que ela faz em cada fundo', () => {
+    montar({ pasta: 'C:/notas', ajustes: { ...PADRAO, fundo: 'vidro' } });
+    expect(screen.getByText('Quanto menor, mais se enxerga o que está atrás')).toBeInTheDocument();
   });
 });

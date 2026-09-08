@@ -54,6 +54,7 @@ export default function App() {
     raiz.style.setProperty('--corpo', `${ajustes.corpo}px`);
     raiz.style.setProperty('--acento', ajustes.acento);
     raiz.style.setProperty('--opacidade', `${ajustes.opacidade}%`);
+    raiz.dataset.fundo = ajustes.fundo;
     salvarAjustes(ajustes);
   }, [ajustes]);
 
@@ -246,6 +247,18 @@ export default function App() {
       if (depois !== prev) setSalvamento('salvando');
       return depois;
     });
+  }
+
+  /**
+   * Trocar entre acrílico e vidro reabre a janela: transparência e material do
+   * sistema são decididos quando ela nasce. Sair do acrílico com o fundo
+   * totalmente transparente deixaria só texto no ar, então damos um piso.
+   */
+  async function handleTrocarFundo(fundo: 'acrilico' | 'vidro') {
+    if (fundo === ajustes.fundo) return;
+    const opacidade = fundo === 'vidro' && ajustes.opacidade < 20 ? 45 : ajustes.opacidade;
+    setAjustes((prev) => ({ ...prev, fundo, opacidade }));
+    await deposito.trocarModoDeFundo(fundo);
   }
 
   async function handleTrocarPasta() {
@@ -453,6 +466,7 @@ export default function App() {
           pasta={pasta}
           onAbrirPasta={deposito.abrirPasta}
           onTrocarPasta={handleTrocarPasta}
+          onTrocarFundo={handleTrocarFundo}
           onFechar={() => setMostrandoAjustes(false)}
         />
       )}

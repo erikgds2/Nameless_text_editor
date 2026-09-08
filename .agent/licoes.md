@@ -25,3 +25,4 @@ próximas tarefas. Gerado pelo run.mjs — pode editar e reescrever à mão.
 - (1x) ao reprocessar um elemento ja transformado, leia a fonte guardada em data-*, nunca o textContent: depois da primeira vez o textContent e o resultado, nao a entrada
 - (1x) teste de interface que procura um botao dentro de um painel fechado passa sem testar nada; confirme que o elemento existe antes de medir o efeito do clique
 - (1x) num campo controlado, nunca guarde posicao de texto em estado do React para usar depois: quem digita rapido passa na frente da reconciliacao e a substituicao parte o texto ao meio. Recalcule do proprio campo no momento de aplicar
+- (1x) acrilico do Windows nao e transparencia: e vidro fosco, borra o que esta atras e nunca deixa ver. Transparencia de verdade exige transparent:true na criacao da janela, e os dois nao convivem
