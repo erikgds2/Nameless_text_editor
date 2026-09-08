@@ -147,11 +147,25 @@ describe('arquivosDaPasta', () => {
     expect(arquivos.get('novo.md')?.texto).toBe('do novo, intocado');
   });
 
-  it('renomear tolera nota provisória que ainda não foi escrita em disco', async () => {
+  it('renomear o que não existe é erro, e não silêncio', async () => {
     const { raiz, arquivos } = duploNovo();
-    const id = await arquivosDaPasta(raiz).renomear('nota-nova', 'primeiro-titulo');
-    expect(id).toBe('primeiro-titulo');
-    expect(arquivos.has('nota-nova.md')).toBe(false);
+    // O depósito grava antes de renomear justamente para isto nunca acontecer.
+    // Engolir a falha esconderia uma nota que não chegou a ser escrita.
+    await expect(arquivosDaPasta(raiz).renomear('nunca-escrita', 'titulo')).rejects.toThrow();
+    expect(arquivos.has('titulo.md')).toBe(false);
+  });
+
+  it('a primeira gravação de uma nota com título funciona de ponta a ponta', async () => {
+    const { raiz, arquivos } = duploNovo();
+    const arquivosDa = arquivosDaPasta(raiz);
+    // é a sequência que o depósito faz: escrever com o nome provisório e só
+    // então batizar pelo título
+    await arquivosDa.escrever('nota-abc123', '# Revisão de Cálculo\n');
+    const id = await arquivosDa.renomear('nota-abc123', 'revisao-de-calculo');
+
+    expect(id).toBe('revisao-de-calculo');
+    expect(arquivos.has('revisao-de-calculo.md')).toBe(true);
+    expect(arquivos.has('nota-abc123.md')).toBe(false);
   });
 
   it('apagar o que não existe não lança', async () => {

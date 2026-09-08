@@ -113,18 +113,14 @@ export function arquivosDaPasta(raiz: FileSystemDirectoryHandle): Arquivos {
       if (de === para) return de;
       if (await existeArquivo(raiz, para)) return de;
 
-      // A nota provisória ainda pode não ter sido escrita em disco nenhuma
-      // vez — o depósito às vezes renomeia antes do primeiro `escrever`. Sem
-      // arquivo de origem, não há o que copiar: só reservamos o nome.
-      try {
-        const antigo = await raiz.getFileHandle(nomeDoArquivo(de));
-        const texto = await (await antigo.getFile()).text();
-        const novo = await raiz.getFileHandle(nomeDoArquivo(para), { create: true });
-        await escreverArquivo(novo, texto);
-        await raiz.removeEntry(nomeDoArquivo(de));
-      } catch (erro) {
-        if (!(erro instanceof DOMException && erro.name === 'NotFoundError')) throw erro;
-      }
+      // Renomear o que não existe é erro, e aqui ele sobe: o depósito grava
+      // antes de renomear justamente para isto nunca acontecer. Engolir a falha
+      // esconderia, amanhã, uma nota que não chegou a ser escrita.
+      const antigo = await raiz.getFileHandle(nomeDoArquivo(de));
+      const texto = await (await antigo.getFile()).text();
+      const novo = await raiz.getFileHandle(nomeDoArquivo(para), { create: true });
+      await escreverArquivo(novo, texto);
+      await raiz.removeEntry(nomeDoArquivo(de));
       return para;
     },
 
