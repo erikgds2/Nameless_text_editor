@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
 import Ajustes from './components/Ajustes';
+import Paleta from './components/Paleta';
 import { textoDaNota, type Note, type TipoDoc } from './notes';
 import { abrirDeposito } from './deposito';
 import type { Bloco } from './canvas';
 import { matchesQuery } from './search';
-import { carregarAjustes, salvarAjustes, type Ajustes as AjustesTipo } from './ajustes';
+import { TAMANHOS, TEMAS, carregarAjustes, salvarAjustes, type Ajustes as AjustesTipo } from './ajustes';
+import type { Comando } from './comandos';
 
 export default function App() {
   const deposito = useMemo(abrirDeposito, []);
@@ -17,6 +19,7 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [ajustes, setAjustes] = useState<AjustesTipo>(carregarAjustes);
   const [mostrandoAjustes, setMostrandoAjustes] = useState(false);
+  const [mostrandoPaleta, setMostrandoPaleta] = useState(false);
   const [salvamento, setSalvamento] = useState<'salvo' | 'salvando' | 'erro'>('salvo');
   const searchRef = useRef<HTMLInputElement | null>(null);
   // notas que mudaram e ainda nao foram para o disco
@@ -174,9 +177,97 @@ export default function App() {
     setCarregando(false);
   }
 
+  // A lista da paleta é a lista de tudo que o app faz. Um comando que não
+  // aparece aqui é um comando que só existe para quem usa o mouse.
+  function montarComandos(): Comando[] {
+    const trocarTema = TEMAS.map((tema) => ({
+      id: `tema-${tema.id}`,
+      titulo: `Tema ${tema.rotulo}`,
+      secao: 'Aparência',
+      executar: () => setAjustes((prev) => ({ ...prev, tema: tema.id })),
+    }));
+
+    const mudarCorpo = (passo: number) => () =>
+      setAjustes((prev) => {
+        const indice = TAMANHOS.indexOf(prev.corpo) + passo;
+        const corpo = TAMANHOS[Math.min(TAMANHOS.length - 1, Math.max(0, indice))];
+        return { ...prev, corpo };
+      });
+
+    return [
+      { id: 'nova', titulo: 'Nova nota', secao: 'Notas', atalho: 'Ctrl + N', executar: handleNewNote },
+      {
+        id: 'buscar',
+        titulo: 'Buscar nas notas',
+        secao: 'Notas',
+        atalho: 'Ctrl + F',
+        executar: () => searchRef.current?.focus(),
+      },
+      {
+        id: 'fixar',
+        titulo: activeNote?.pinned ? 'Desafixar esta nota' : 'Fixar esta nota',
+        secao: 'Notas',
+        executar: () => activeId && handleTogglePin(activeId),
+      },
+      {
+        id: 'preview',
+        titulo: ajustes.preview ? 'Esconder a pré-visualização' : 'Mostrar a pré-visualização',
+        secao: 'Editor',
+        atalho: 'Ctrl + E',
+        executar: () => setAjustes((prev) => ({ ...prev, preview: !prev.preview })),
+      },
+      {
+        id: 'markdown',
+        titulo: 'Tratar esta nota como Markdown',
+        secao: 'Editor',
+        executar: () => handleMudarTipo('markdown'),
+      },
+      {
+        id: 'texto',
+        titulo: 'Tratar esta nota como texto puro',
+        secao: 'Editor',
+        executar: () => handleMudarTipo('texto'),
+      },
+      ...trocarTema,
+      { id: 'maior', titulo: 'Aumentar o texto', secao: 'Aparência', executar: mudarCorpo(1) },
+      { id: 'menor', titulo: 'Diminuir o texto', secao: 'Aparência', executar: mudarCorpo(-1) },
+      {
+        id: 'ajustes',
+        titulo: 'Abrir os ajustes',
+        secao: 'Aparência',
+        atalho: 'Ctrl + ,',
+        executar: () => setMostrandoAjustes(true),
+      },
+      ...(pasta
+        ? [
+            {
+              id: 'abrir-pasta',
+              titulo: 'Abrir a pasta das notas',
+              secao: 'Arquivos',
+              executar: () => void deposito.abrirPasta(),
+            },
+            {
+              id: 'trocar-pasta',
+              titulo: 'Guardar as notas em outra pasta',
+              secao: 'Arquivos',
+              executar: () => void handleTrocarPasta(),
+            },
+          ]
+        : []),
+    ];
+  }
+
+  // Remontada a cada render de propósito: é barato, e mantém os rótulos que
+  // dependem do estado ("Fixar" x "Desafixar") sempre corretos.
+  const comandos = montarComandos();
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (!event.ctrlKey && !event.metaKey) return;
+      if (event.key === 'k') {
+        event.preventDefault();
+        setMostrandoPaleta((prev) => !prev);
+      }
       if (event.key === 'n') {
         event.preventDefault();
         handleNewNote();
@@ -244,6 +335,10 @@ export default function App() {
           onAlternarPreview={() => setAjustes((prev) => ({ ...prev, preview: !prev.preview }))}
         />
       </div>
+
+      {mostrandoPaleta && (
+        <Paleta comandos={comandos} onFechar={() => setMostrandoPaleta(false)} />
+      )}
 
       {mostrandoAjustes && (
         <Ajustes

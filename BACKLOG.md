@@ -1,6 +1,6 @@
 # BACKLOG — 100 melhorias
 
-Cem itens **pendentes**, agrupados por tema e ordenados por valor dentro de cada
+Cem itens, agrupados por tema e ordenados por valor dentro de cada
 grupo. Marcados assim:
 
 - `[ ]` a fazer · `[~]` em andamento · `[x]` pronto
@@ -17,10 +17,10 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | # | | Item |
 | --- | --- | --- |
 | 1 | `[ ]` **P1** | Desfazer/refazer do documento inteiro (`Ctrl+Z`/`Ctrl+Y`), não só dentro de um bloco |
-| 2 | `[ ]` **P1** | Duplo `Enter` em lista encerra a lista, como em todo editor de Markdown |
-| 3 | `[ ]` **P1** | Continuação automática de lista: `Enter` numa linha `- ` cria o próximo `- ` |
-| 4 | `[ ]` **P1** | `Tab`/`Shift+Tab` aninham e desaninham item de lista |
-| 5 | `[ ]` **P2** | `Ctrl+B` / `Ctrl+I` / `Ctrl+K` envolvem a seleção em negrito, itálico e link |
+| 2 | `[x]` **P1** | Duplo `Enter` em lista encerra a lista, como em todo editor de Markdown |
+| 3 | `[x]` **P1** | Continuação automática de lista: `Enter` numa linha `- ` cria o próximo `- ` |
+| 4 | `[x]` **P1** | `Tab`/`Shift+Tab` aninham e desaninham item de lista |
+| 5 | `[x]` **P2** | `Ctrl+B` / `Ctrl+I` / `Ctrl+K` envolvem a seleção em negrito, itálico e link |
 | 6 | `[ ]` **P2** | Arrastar bloco com guias de alinhamento entre blocos vizinhos |
 | 7 | `[ ]` **P2** | Selecionar vários blocos e mover em conjunto |
 | 8 | `[ ]` **P2** | Colar imagem da área de transferência: salva ao lado do `.md` e insere `![](...)` |
@@ -39,8 +39,8 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 
 | # | | Item |
 | --- | --- | --- |
-| 19 | `[ ]` **P1** | Tabelas: `\| a \| b \|` no motor e no preview |
-| 20 | `[ ]` **P1** | Lista de tarefas `- [ ]` / `- [x]`, clicável direto na pré-visualização |
+| 19 | `[x]` **P1** | Tabelas: `\| a \| b \|` no motor e no preview |
+| 20 | `[x]` **P1** | Lista de tarefas `- [ ]` / `- [x]`, clicável direto na pré-visualização |
 | 21 | `[ ]` **P2** | Cerca de código com linguagem (` ```ts `) e realce de sintaxe no preview |
 | 22 | `[ ]` **P2** | Rolagem sincronizada entre editor e pré-visualização |
 | 23 | `[ ]` **P2** | Cabeçalho `#` aumenta de tamanho no próprio editor, não só no preview |
@@ -57,8 +57,8 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | # | | Item |
 | --- | --- | --- |
 | 31 | `[ ]` **P1** | Busca dentro da nota aberta, com realce das ocorrências |
-| 32 | `[ ]` **P1** | Paleta de comandos (`Ctrl+K`): abrir nota, trocar tema, tudo sem mouse |
-| 33 | `[ ]` **P1** | Busca mostra o trecho onde o termo apareceu, não só o começo da nota |
+| 32 | `[x]` **P1** | Paleta de comandos (`Ctrl+K`): abrir nota, trocar tema, tudo sem mouse |
+| 33 | `[x]` **P1** | Busca mostra o trecho onde o termo apareceu, não só o começo da nota |
 | 34 | `[ ]` **P2** | Tags `#assunto` no texto viram filtro na barra lateral |
 | 35 | `[ ]` **P2** | Ordenar a lista por título, criação ou edição |
 | 36 | `[ ]` **P2** | Lixeira: apagar move para `.lixeira/` e dá 30 dias de arrependimento |
@@ -101,9 +101,9 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 
 | # | | Item |
 | --- | --- | --- |
-| 61 | `[ ]` **P1** | Recarregar a nota quando o arquivo muda em disco, com o app aberto |
+| 61 | `[x]` **P1** | Recarregar a nota quando o arquivo muda em disco, com o app aberto |
 | 62 | `[ ]` **P1** | Aviso de conflito quando o arquivo mudou por fora e por dentro ao mesmo tempo |
-| 63 | `[ ]` **P1** | Indicador de "salvo / salvando / erro ao salvar" visível |
+| 63 | `[x]` **P1** | Indicador de "salvo / salvando / erro ao salvar" visível |
 | 64 | `[ ]` **P2** | Backup automático diário da pasta, em zip, com retenção curta |
 | 65 | `[ ]` **P2** | Abrir a nota na pasta pelo Explorer (menu de contexto na lista) |
 | 66 | `[ ]` **P2** | Importar uma pasta de `.md` existente (Obsidian, Notion exportado) |
@@ -134,8 +134,8 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 
 | # | | Item |
 | --- | --- | --- |
-| 84 | `[ ]` **P1** | Captura rápida global: atalho do sistema abre uma janelinha, escreve, some |
-| 85 | `[ ]` **P1** | Navegar a lista de notas pelo teclado (setas, Enter abre) |
+| 84 | `[x]` **P1** | Captura rápida global: atalho do sistema abre uma janelinha, escreve, some |
+| 85 | `[x]` **P1** | Navegar a lista de notas pelo teclado (setas, Enter abre) |
 | 86 | `[ ]` **P2** | Todos os atalhos configuráveis nos Ajustes |
 | 87 | `[ ]` **P2** | Leitor de tela: rótulos e regiões corretas em toda a interface |
 | 88 | `[ ]` **P2** | `Esc` sai do bloco para a lista sem usar o mouse |
@@ -146,7 +146,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 
 | # | | Item |
 | --- | --- | --- |
-| 91 | `[ ]` **P1** | Testes de componente (React Testing Library): hoje só há testes de módulo |
+| 91 | `[x]` **P1** | Testes de componente (React Testing Library): hoje só há testes de módulo |
 | 92 | `[ ]` **P1** | Teste de ponta a ponta do Electron: abrir, escrever, fechar, reabrir |
 | 93 | `[ ]` **P1** | Teste do IPC: nenhum caminho fora da pasta é aceito, em nenhuma rota |
 | 94 | `[ ]` **P2** | Teste de propriedade no formato: qualquer nota sobrevive à ida e volta |

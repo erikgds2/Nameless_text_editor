@@ -20,3 +20,4 @@ próximas tarefas. Gerado pelo run.mjs — pode editar e reescrever à mão.
 - (1x) arquivo .md editado no Windows volta com CRLF e as vezes BOM: normalize antes de procurar frontmatter, senao ele vira texto da nota
 - (1x) nunca mande um subagente "nao deixar rastro": ele resolve com git restore e apaga trabalho de outro agente. Peca para trabalhar fora do repositorio
 - (1x) textarea controlado: depois de mudar o texto no keydown, aplique a selecao com flushSync e nao com requestAnimationFrame, senao quem digita rapido perde letras
+- (1x) efeito que ajusta altura a partir de scrollHeight precisa de folga: sem margem, o scrollHeight volta 1px maior que a altura recem-aplicada e o efeito se realimenta ate travar a aba

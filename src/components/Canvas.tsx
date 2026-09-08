@@ -12,6 +12,9 @@ type Props = {
   onChange: (blocos: Bloco[]) => void;
 };
 
+/** Margem de tolerância do auto-crescimento do bloco, em pixels. */
+const FOLGA = 4;
+
 type Arraste =
   | { tipo: 'mover'; id: string; offsetX: number; offsetY: number }
   | { tipo: 'redimensionar'; id: string; inicioX: number; inicioY: number; larguraInicial: number; alturaInicial: number };
@@ -166,9 +169,12 @@ function Escrita({ bloco, realce, autoFocus, onFocus, onChange, onAltura, onBlur
   const espelhoRef = useRef<HTMLDivElement | null>(null);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
 
+  // A folga não é frescura: sem ela, um scrollHeight que volta um ou dois
+  // pixels maior que a altura recém-aplicada realimenta o efeito para sempre e
+  // trava a aba. Crescer só quando falta espaço de verdade faz o laço convergir.
   useEffect(() => {
     const area = areaRef.current;
-    if (area && area.scrollHeight > bloco.altura) onAltura(area.scrollHeight);
+    if (area && area.scrollHeight > bloco.altura + FOLGA) onAltura(area.scrollHeight + FOLGA);
     // onAltura vem do render atual; incluí-lo aqui repetiria o efeito à toa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bloco.texto, bloco.altura, bloco.largura]);
