@@ -153,3 +153,36 @@ describe('sugestões de ligação', () => {
     expect(campo).toHaveValue('[[Limites e continuidade]]');
   });
 });
+
+describe('escolher a ligação sem perder texto', () => {
+  it('digitar depressa e escolher não parte o texto ao meio', async () => {
+    montarVivo([bloco('')]);
+    const campo = screen.getByRole('textbox');
+    // sem espera entre as teclas: é assim que o contexto guardado em estado
+    // fica para trás e a substituição usa uma posição velha
+    await userEvent.type(campo, 'ver [[[[Limites e contin', { delay: null });
+    await userEvent.type(campo, '{Enter}', { delay: null });
+    expect(campo).toHaveValue('ver [[Limites e continuidade]]');
+  });
+
+  it('o texto ao redor da ligação continua intacto', async () => {
+    montarVivo([bloco('')]);
+    const campo = screen.getByRole('textbox');
+    await digitar(campo, 'antes [[kant');
+    await userEvent.type(campo, '{Enter}');
+    await digitar(campo, ' depois');
+    expect(campo).toHaveValue('antes [[Aula de Kant]] depois');
+  });
+
+  it('escolher no meio do texto não come o que vem depois', async () => {
+    montarVivo([bloco('fim da frase')]);
+    const campo = screen.getByRole('textbox');
+    // o type põe o cursor no fim a cada chamada, então digitar e escolher
+    // precisam acontecer na mesma: senão o cursor pula e a lista fecha
+    await userEvent.type(campo, '[[[[lim{Enter}', {
+      initialSelectionStart: 0,
+      initialSelectionEnd: 0,
+    });
+    expect(campo).toHaveValue('[[Limites e continuidade]]fim da frase');
+  });
+});

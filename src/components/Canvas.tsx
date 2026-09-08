@@ -208,9 +208,16 @@ function Escrita({
     setEscolhido(0);
   }
 
+  /**
+   * O trecho a substituir é recalculado do campo AGORA, e não lido do estado.
+   * O estado fica para trás quando se digita mais rápido do que o React
+   * reconcilia — e substituir usando uma posição velha parte o texto ao meio,
+   * deixando sobras como `[[Nome]]ome]]`.
+   */
   function escolher(area: HTMLTextAreaElement, alvo: string) {
-    if (!escrevendo) return;
-    const { texto, cursor } = completarLigacao(area.value, alvo, escrevendo);
+    const onde = ligacaoSendoEscrita(area.value, area.selectionStart);
+    if (!onde) return;
+    const { texto, cursor } = completarLigacao(area.value, alvo, onde);
     setEscrevendo(null);
     flushSync(() => onChange(texto));
     area.setSelectionRange(cursor, cursor);

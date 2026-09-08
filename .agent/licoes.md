@@ -24,3 +24,4 @@ próximas tarefas. Gerado pelo run.mjs — pode editar e reescrever à mão.
 - (1x) efeito que projeta algo sobre HTML injetado por dangerouslySetInnerHTML precisa rodar a cada render, sem lista de dependencias: o React reescreve esse HTML em rerrenderizacoes que nada tem a ver com o conteudo, e leva junto o que foi injetado por fora
 - (1x) ao reprocessar um elemento ja transformado, leia a fonte guardada em data-*, nunca o textContent: depois da primeira vez o textContent e o resultado, nao a entrada
 - (1x) teste de interface que procura um botao dentro de um painel fechado passa sem testar nada; confirme que o elemento existe antes de medir o efeito do clique
+- (1x) num campo controlado, nunca guarde posicao de texto em estado do React para usar depois: quem digita rapido passa na frente da reconciliacao e a substituicao parte o texto ao meio. Recalcule do proprio campo no momento de aplicar

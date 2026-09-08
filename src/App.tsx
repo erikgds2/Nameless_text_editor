@@ -159,9 +159,14 @@ export default function App() {
     [activeId, indice, notes],
   );
 
+  // A nota aberta fica fora da lista: sugerir uma ligação para ela mesma não
+  // leva a lugar nenhum, e o título dela é justo o texto que se está digitando.
   const titulos = useMemo(
-    () => notes.map((nota) => deriveTitle(textoDaNota(nota.blocos))),
-    [notes],
+    () =>
+      notes
+        .filter((nota) => nota.id !== activeId)
+        .map((nota) => deriveTitle(textoDaNota(nota.blocos))),
+    [notes, activeId],
   );
 
   /**
