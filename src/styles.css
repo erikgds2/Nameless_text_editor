@@ -854,3 +854,40 @@ button {
   color: var(--alert);
   font-weight: 600;
 }
+
+/* --------------------------------------------------------- captura rápida */
+
+.captura {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px 20px 12px;
+}
+
+.captura__texto {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: none;
+  outline: none;
+  resize: none;
+  font-family: var(--mono);
+  font-size: var(--corpo);
+  line-height: 1.65;
+  color: var(--ink);
+  caret-color: var(--accent);
+}
+
+.captura__texto::placeholder {
+  color: var(--ink-faint);
+}
+
+.captura__rodape {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+  font-size: 11px;
+  color: var(--ink-faint);
+}

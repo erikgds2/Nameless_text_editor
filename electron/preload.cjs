@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('ardosia', {
   renomear: (de, para) => ipcRenderer.invoke('ardosia:renomear', de, para),
   apagar: (id) => ipcRenderer.invoke('ardosia:apagar', id),
 
+  fecharCaptura: (gravou) => ipcRenderer.invoke('ardosia:fechar-captura', gravou),
+
   // Só o aviso atravessa: o objeto de evento do IPC fica deste lado da ponte.
   aoMudarPasta: (callback) => {
     const ouvinte = () => callback();

@@ -13,6 +13,7 @@ export type PonteDisco = {
   renomear(de: string, para: string): Promise<string>;
   apagar(id: string): Promise<void>;
   aoMudarPasta(callback: () => void): () => void;
+  fecharCaptura(gravou: boolean): Promise<void>;
 };
 
 declare global {

@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import type { KeyboardEvent, RefObject } from 'react';
 import { deriveTitle, textoDaNota, type Note } from '../notes';
+import { trechoDoResultado } from '../search';
 
 type Props = {
   notes: Note[];
@@ -15,7 +16,12 @@ type Props = {
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' });
 
-function preview(texto: string): string {
+/**
+ * Com busca ativa, o resumo mostra o trecho em que o termo apareceu — o começo
+ * da nota quase nunca é o motivo pelo qual ela está no resultado.
+ */
+function preview(texto: string, busca: string): string {
+  if (busca.trim()) return trechoDoResultado(texto, busca);
   const rest = texto.split('\n').slice(1).join(' ').trim();
   return rest.length > 0 ? rest.slice(0, 90) : 'Vazia';
 }
@@ -92,7 +98,7 @@ export default function Sidebar({
                 onClick={() => onSelect(note.id)}
               >
                 <span className="noteitem__title">{deriveTitle(texto)}</span>
-                <span className="noteitem__preview">{preview(texto)}</span>
+                <span className="noteitem__preview">{preview(texto, query)}</span>
                 <span className="noteitem__date">{dateFormat.format(note.updatedAt)}</span>
               </button>
               <button
