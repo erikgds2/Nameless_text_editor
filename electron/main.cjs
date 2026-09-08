@@ -27,7 +27,10 @@ function createWindow() {
     },
   });
 
-  win.once('ready-to-show', () => win.show());
+  win.once('ready-to-show', () => {
+    win.show();
+    notas.vigiar(win).catch((err) => console.error('Não foi possível vigiar a pasta:', err));
+  });
 
   if (isDev) {
     win.loadURL('http://localhost:5173');
@@ -38,9 +41,13 @@ function createWindow() {
 
 function registrarCanais() {
   ipcMain.handle('ardosia:pasta', () => notas.pasta());
-  ipcMain.handle('ardosia:escolher-pasta', (evento) =>
-    notas.escolherPasta(BrowserWindow.fromWebContents(evento.sender)),
-  );
+  ipcMain.handle('ardosia:escolher-pasta', async (evento) => {
+    const janela = BrowserWindow.fromWebContents(evento.sender);
+    const escolhida = await notas.escolherPasta(janela);
+    // a pasta antiga deixa de interessar; o vigia acompanha a nova
+    if (escolhida && janela) await notas.vigiar(janela);
+    return escolhida;
+  });
   ipcMain.handle('ardosia:abrir-pasta', () => notas.abrirPasta());
   ipcMain.handle('ardosia:listar', () => notas.listar());
   ipcMain.handle('ardosia:escrever', (_evento, id, texto) => notas.escrever(id, texto));

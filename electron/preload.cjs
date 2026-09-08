@@ -10,4 +10,11 @@ contextBridge.exposeInMainWorld('ardosia', {
   escrever: (id, texto) => ipcRenderer.invoke('ardosia:escrever', id, texto),
   renomear: (de, para) => ipcRenderer.invoke('ardosia:renomear', de, para),
   apagar: (id) => ipcRenderer.invoke('ardosia:apagar', id),
+
+  // Só o aviso atravessa: o objeto de evento do IPC fica deste lado da ponte.
+  aoMudarPasta: (callback) => {
+    const ouvinte = () => callback();
+    ipcRenderer.on('ardosia:pasta-mudou', ouvinte);
+    return () => ipcRenderer.off('ardosia:pasta-mudou', ouvinte);
+  },
 });

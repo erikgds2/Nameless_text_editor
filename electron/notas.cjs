@@ -3,6 +3,8 @@
 // pasta escolhida — e uma nota so pode existir dentro dela.
 const { app, dialog, shell } = require('electron');
 const fs = require('node:fs/promises');
+const fsSync = require('node:fs');
+const crypto = require('node:crypto');
 const path = require('node:path');
 
 const ARQUIVO_CONFIG = () => path.join(app.getPath('userData'), 'config.json');
@@ -91,6 +93,7 @@ async function escrever(id, texto) {
   const base = await pasta();
   const destino = caminhoDe(base, id);
   const temporario = `${destino}.escrevendo`;
+  digitaisGravadas.set(id, digital(texto));
   await fs.writeFile(temporario, texto, 'utf8');
   await fs.rename(temporario, destino);
 }
@@ -119,4 +122,79 @@ async function abrirPasta() {
   await shell.openPath(await pasta());
 }
 
-module.exports = { pasta, escolherPasta, listar, escrever, renomear, apagar, abrirPasta, caminhoDe };
+// ---------------------------------------------------------------------------
+// Vigia da pasta: editar a nota no Bloco de Notas com o app aberto tem de
+// aparecer na tela. O que o proprio app gravou nao conta como mudanca externa —
+// senao cada tecla digitada mandaria a nota recarregar.
+//
+// A distincao e feita pelo conteudo, nao pelo relogio: guardamos a digital do
+// que gravamos e comparamos com o que esta em disco. Uma janela de tempo seria
+// mais simples, mas deixaria o app cego para uma edicao externa que caisse logo
+// depois de um salvamento nosso.
+
+const AGRUPAMENTO = 300;
+
+const digitaisGravadas = new Map();
+let vigia = null;
+let aviso = null;
+const mudados = new Set();
+
+function digital(texto) {
+  return crypto.createHash('sha1').update(texto).digest('hex');
+}
+
+function pararDeVigiar() {
+  if (vigia) vigia.close();
+  if (aviso) clearTimeout(aviso);
+  vigia = null;
+  aviso = null;
+  mudados.clear();
+}
+
+/** Verdadeiro se o arquivo em disco nao e o que este app gravou por ultimo. */
+async function mudouPorFora(base, id) {
+  try {
+    const texto = await fs.readFile(caminhoDe(base, id), 'utf8');
+    return digitaisGravadas.get(id) !== digital(texto);
+  } catch {
+    // sumiu ou ficou ilegivel: se conheciamos o arquivo, alguem mexeu nele
+    const conheciamos = digitaisGravadas.delete(id);
+    return conheciamos;
+  }
+}
+
+async function vigiar(janela) {
+  pararDeVigiar();
+  const base = await pasta();
+
+  vigia = fsSync.watch(base, { persistent: false }, (_evento, arquivo) => {
+    if (typeof arquivo !== 'string' || !arquivo.toLowerCase().endsWith('.md')) return;
+    mudados.add(arquivo.slice(0, -3));
+
+    // o sistema dispara varios eventos por salvamento; um aviso basta
+    if (aviso) clearTimeout(aviso);
+    aviso = setTimeout(async () => {
+      aviso = null;
+      const candidatos = [...mudados];
+      mudados.clear();
+      const externas = await Promise.all(candidatos.map((id) => mudouPorFora(base, id)));
+      if (externas.some(Boolean) && !janela.isDestroyed()) {
+        janela.webContents.send('ardosia:pasta-mudou');
+      }
+    }, AGRUPAMENTO);
+  });
+
+  janela.on('closed', pararDeVigiar);
+}
+
+module.exports = {
+  pasta,
+  escolherPasta,
+  listar,
+  escrever,
+  renomear,
+  apagar,
+  abrirPasta,
+  vigiar,
+  caminhoDe,
+};

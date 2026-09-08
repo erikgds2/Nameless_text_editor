@@ -6,6 +6,8 @@ import { criarBloco } from './canvas';
 /** Uma pasta de mentira, com as mesmas regras da de verdade. */
 function pontefalsa(inicial: Record<string, string> = {}) {
   const arquivos = new Map(Object.entries(inicial));
+  // quem testa dispara isto para simular alguém mexendo nos arquivos por fora
+  let avisar: (() => void) | null = null;
   const ponte: PonteDisco = {
     pasta: async () => 'C:/notas',
     escolherPasta: async () => null,
@@ -20,8 +22,14 @@ function pontefalsa(inicial: Record<string, string> = {}) {
       return para;
     },
     apagar: async (id) => void arquivos.delete(id),
+    aoMudarPasta: (callback) => {
+      avisar = callback;
+      return () => {
+        avisar = null;
+      };
+    },
   };
-  return { ponte, arquivos };
+  return { ponte, arquivos, mexerPorFora: () => avisar?.() };
 }
 
 function notaCom(texto: string) {

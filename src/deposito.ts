@@ -12,6 +12,7 @@ export type PonteDisco = {
   escrever(id: string, texto: string): Promise<void>;
   renomear(de: string, para: string): Promise<string>;
   apagar(id: string): Promise<void>;
+  aoMudarPasta(callback: () => void): () => void;
 };
 
 declare global {
@@ -29,6 +30,8 @@ export type Deposito = {
   pasta(): Promise<string | null>;
   escolherPasta(): Promise<string | null>;
   abrirPasta(): Promise<void>;
+  /** Avisa quando alguém mexeu nos arquivos por fora. Devolve como cancelar. */
+  aoMudar(callback: () => void): () => void;
 };
 
 const MARCA_MIGRACAO = 'ardosia:migrado-para-disco';
@@ -96,6 +99,7 @@ export function depositoEmDisco(ponte: PonteDisco): Deposito {
     pasta: () => ponte.pasta(),
     escolherPasta: () => ponte.escolherPasta(),
     abrirPasta: () => ponte.abrirPasta(),
+    aoMudar: (callback) => ponte.aoMudarPasta(callback),
   };
 }
 
@@ -118,6 +122,8 @@ export function depositoNoNavegador(): Deposito {
     pasta: async () => null,
     escolherPasta: async () => null,
     abrirPasta: async () => {},
+    // no navegador não há pasta que alguém possa mexer por fora
+    aoMudar: () => () => {},
   };
 }
 

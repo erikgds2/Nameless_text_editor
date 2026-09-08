@@ -1,13 +1,12 @@
-// localStorage nao existe no Node; um Map basta para o que notes.ts usa.
-const store = new Map<string, string>();
+// O ambiente de teste agora é o jsdom, que já traz localStorage de verdade —
+// o polyfill manual daqui virou desnecessário e podia mascarar diferenças de
+// comportamento em relação ao navegador. Ficam só os matchers de DOM do
+// Testing Library, a limpeza do DOM entre testes e a limpeza do localStorage,
+// para que um teste nunca herde estado de armazenamento do teste anterior.
+import '@testing-library/jest-dom/vitest';
+import { afterEach, beforeEach } from 'vitest';
+import { cleanup } from '@testing-library/react';
 
-globalThis.localStorage = {
-  getItem: (key: string) => store.get(key) ?? null,
-  setItem: (key: string, value: string) => void store.set(key, value),
-  removeItem: (key: string) => void store.delete(key),
-  clear: () => store.clear(),
-  key: (index: number) => [...store.keys()][index] ?? null,
-  get length() {
-    return store.size;
-  },
-} as Storage;
+afterEach(cleanup);
+
+beforeEach(() => localStorage.clear());

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
 import Ajustes from './components/Ajustes';
@@ -46,6 +46,33 @@ export default function App() {
       vivo = false;
     };
   }, [deposito]);
+
+  /**
+   * Relê a pasta sem atropelar quem está escrevendo: o que ainda não foi
+   * gravado, e a nota nova que nem chegou ao disco, continuam como estão.
+   */
+  const recarregarDoDisco = useCallback(async () => {
+    const doDisco = await deposito.listar();
+    setNotes((anteriores) => {
+      const preservadas = anteriores.filter(
+        (nota) => sujas.current.has(nota.id) || textoDaNota(nota.blocos).trim() === '',
+      );
+      const porId = new Map(preservadas.map((nota) => [nota.id, nota]));
+      const juntas = doDisco.map((doArquivo) => porId.get(doArquivo.id) ?? doArquivo);
+      const idsEmDisco = new Set(doDisco.map((nota) => nota.id));
+      return [...preservadas.filter((nota) => !idsEmDisco.has(nota.id)), ...juntas];
+    });
+  }, [deposito]);
+
+  useEffect(
+    () =>
+      deposito.aoMudar(() => {
+        recarregarDoDisco().catch((err) =>
+          console.error('Não foi possível reler a pasta:', err),
+        );
+      }),
+    [deposito, recarregarDoDisco],
+  );
 
   // Grava so o que mudou, e so depois que a digitacao para. Uma nota nova e
   // vazia nunca chega ao disco: arquivo so nasce quando ha o que guardar.
