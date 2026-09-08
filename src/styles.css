@@ -12,11 +12,11 @@
   --ink-soft: #8e8880;
   --ink-faint: #6e675e;
   --rule: rgba(255, 255, 255, 0.07);
-  --accent: #d8934a;
-  --accent-wash: rgba(216, 147, 74, 0.13);
+  --accent: var(--acento, #d8934a);
+  --accent-wash: color-mix(in srgb, var(--accent) 13%, transparent);
   --alert: #e08672;
   --alert-wash: rgba(224, 134, 114, 0.13);
-  --marker: rgba(216, 147, 74, 0.2);
+  --marker: color-mix(in srgb, var(--accent) 20%, transparent);
   --sombra: 0 8px 24px rgba(0, 0, 0, 0.32);
 }
 
@@ -29,11 +29,11 @@
   --ink-soft: #6b645c;
   --ink-faint: #948c82;
   --rule: rgba(26, 23, 20, 0.1);
-  --accent: #a4551a;
-  --accent-wash: rgba(164, 85, 26, 0.1);
+  --accent: color-mix(in srgb, var(--acento, #a4551a) 65%, #1a1714);
+  --accent-wash: color-mix(in srgb, var(--accent) 10%, transparent);
   --alert: #8c2f1d;
   --alert-wash: rgba(140, 47, 29, 0.1);
-  --marker: rgba(164, 85, 26, 0.16);
+  --marker: color-mix(in srgb, var(--accent) 16%, transparent);
   --sombra: 0 8px 24px rgba(26, 23, 20, 0.14);
 }
 
@@ -66,9 +66,18 @@ body {
   overflow: hidden;
 }
 
-/* No Electron o fundo é o acrílico do sistema, atrás da janela inteira. */
+/* Dentro do Electron os botões de minimizar, maximizar e fechar são desenhados
+   pelo Windows no canto direito da barra. Sem ceder esse espaço, os botões do
+   app ficam embaixo deles. */
+html[data-native='true'] .titlebar {
+  padding-right: 148px;
+}
+
+/* No Electron o fundo é o acrílico do sistema, atrás da janela inteira. A
+   opacidade escolhida nos ajustes decide quanto do fundo sólido cobre esse
+   acrílico: 0% deixa passar tudo, 100% fecha de vez. */
 html[data-native='true'][data-theme='acrilico'] body {
-  background: transparent;
+  background: color-mix(in srgb, var(--base) var(--opacidade, 0%), transparent);
 }
 
 button {
@@ -435,7 +444,7 @@ button {
 .bloco__texto {
   position: absolute;
   inset: 0;
-  padding: 12px;
+  padding: 20px 12px 12px;
   border: 0;
   font-family: var(--mono);
   font-size: var(--corpo);
@@ -468,17 +477,31 @@ button {
   color: var(--ink);
 }
 
+/* O z-index não é enfeite: o textarea ocupa o bloco inteiro e vem depois no
+   DOM, então sem isto ele fica por cima da alça e engole o clique de arrastar. */
 .bloco__alca {
   position: absolute;
+  z-index: 1;
   top: 0;
   left: 0;
   right: 0;
-  height: 14px;
+  height: 18px;
   border-radius: 4px 4px 0 0;
   cursor: move;
   background: var(--surface-alt);
   opacity: 0;
   transition: opacity var(--rapido);
+}
+
+/* A barrinha diz onde pegar. Sem ela a faixa é invisível até o cursor passar. */
+.bloco__alca::after {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 2px;
+  margin: 8px auto 0;
+  border-radius: 2px;
+  background: var(--ink-faint);
 }
 
 .bloco:hover .bloco__alca {
@@ -487,6 +510,7 @@ button {
 
 .bloco__canto {
   position: absolute;
+  z-index: 1;
   right: 2px;
   bottom: 2px;
   width: 12px;
@@ -1017,4 +1041,60 @@ button {
 .preview pre.diagrama svg {
   max-width: 100%;
   height: auto;
+}
+
+/* ------------------------------------------------- cor e opacidade */
+
+.cores {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.cor {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color var(--rapido);
+}
+
+.cor:hover {
+  border-color: var(--ink-soft);
+}
+
+/* A cor escolhida ganha um anel, não só a borda: a marca não pode depender de
+   distinguir dois tons parecidos lado a lado. */
+.cor--on {
+  border-color: var(--ink-strong);
+  outline: 2px solid var(--ink-strong);
+  outline-offset: 2px;
+}
+
+.cor--livre {
+  background: none;
+}
+
+.medida {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.medida input[type='range'] {
+  width: 120px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.medida__valor {
+  min-width: 34px;
+  font-size: 11px;
+  text-align: right;
+  color: var(--ink-soft);
 }

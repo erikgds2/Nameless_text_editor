@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { PADRAO, TAMANHOS, TEMAS, carregarAjustes, salvarAjustes } from './ajustes';
+import { ACENTOS, PADRAO, TAMANHOS, TEMAS, carregarAjustes, salvarAjustes } from './ajustes';
 
 beforeEach(() => localStorage.clear());
 
@@ -23,13 +23,17 @@ describe('ajustes', () => {
   });
 
   it('lembra a escolha inteira', () => {
-    salvarAjustes({ tema: 'papel', tipoPadrao: 'texto', preview: false, corpo: 17 });
-    expect(carregarAjustes()).toEqual({
-      tema: 'papel',
-      tipoPadrao: 'texto',
+    const escolhido = {
+      ...PADRAO,
+      tema: 'papel' as const,
+      tipoPadrao: 'texto' as const,
       preview: false,
-      corpo: 17,
-    });
+      corpo: 17 as const,
+      acento: '#7fa06a',
+      opacidade: 60,
+    };
+    salvarAjustes(escolhido);
+    expect(carregarAjustes()).toEqual(escolhido);
   });
 
   it('herda o tema que a versão anterior do app tinha salvo', () => {
@@ -61,5 +65,41 @@ describe('ajustes', () => {
   it('sobrevive a um storage corrompido', () => {
     localStorage.setItem('ardosia:ajustes:v1', '{não é json');
     expect(carregarAjustes()).toEqual(PADRAO);
+  });
+});
+
+describe('acento e opacidade', () => {
+  it('oferece cores de acento com rótulo e hex válido', () => {
+    expect(ACENTOS.length).toBeGreaterThan(3);
+    for (const cor of ACENTOS) {
+      expect(cor.hex).toMatch(/^#[0-9a-f]{6}$/);
+      expect(cor.rotulo.length).toBeGreaterThan(2);
+    }
+  });
+
+  it('aceita qualquer cor válida, inclusive fora da lista', () => {
+    salvarAjustes({ ...PADRAO, acento: '#123ABC' });
+    expect(carregarAjustes().acento).toBe('#123abc');
+  });
+
+  it('recusa cor malformada e volta para o ocre', () => {
+    localStorage.setItem('ardosia:ajustes:v1', JSON.stringify({ acento: 'vermelho' }));
+    expect(carregarAjustes().acento).toBe(PADRAO.acento);
+    localStorage.setItem('ardosia:ajustes:v1', JSON.stringify({ acento: '#abc' }));
+    expect(carregarAjustes().acento).toBe(PADRAO.acento);
+  });
+
+  it('prende a opacidade entre 0 e 100', () => {
+    localStorage.setItem('ardosia:ajustes:v1', JSON.stringify({ opacidade: 250 }));
+    expect(carregarAjustes().opacidade).toBe(100);
+    localStorage.setItem('ardosia:ajustes:v1', JSON.stringify({ opacidade: -40 }));
+    expect(carregarAjustes().opacidade).toBe(0);
+    localStorage.setItem('ardosia:ajustes:v1', JSON.stringify({ opacidade: 'muito' }));
+    expect(carregarAjustes().opacidade).toBe(PADRAO.opacidade);
+  });
+
+  it('arredonda a opacidade para um inteiro', () => {
+    salvarAjustes({ ...PADRAO, opacidade: 42.7 });
+    expect(carregarAjustes().opacidade).toBe(43);
   });
 });

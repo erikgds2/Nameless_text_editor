@@ -9,6 +9,10 @@ export type Ajustes = {
   tipoPadrao: TipoDoc;
   preview: boolean;
   corpo: 13 | 15 | 17;
+  /** A cor de destaque, em #rrggbb. */
+  acento: string;
+  /** Quanto do fundo é sólido, de 0 (só o acrílico) a 100 (opaco). */
+  opacidade: number;
 };
 
 export const TEMAS: { id: TemaId; rotulo: string }[] = [
@@ -19,11 +23,26 @@ export const TEMAS: { id: TemaId; rotulo: string }[] = [
 
 export const TAMANHOS: Ajustes['corpo'][] = [13, 15, 17];
 
+// Cores de acento sem neon: a escolha é sua, mas nenhuma das oferecidas briga
+// com o texto ao lado. O seletor livre aceita qualquer outra.
+export const ACENTOS: { hex: string; rotulo: string }[] = [
+  { hex: '#d8934a', rotulo: 'Ocre' },
+  { hex: '#cf7455', rotulo: 'Terracota' },
+  { hex: '#c9a227', rotulo: 'Âmbar' },
+  { hex: '#7fa06a', rotulo: 'Sálvia' },
+  { hex: '#6f9ac4', rotulo: 'Aço' },
+  { hex: '#a781b8', rotulo: 'Ameixa' },
+];
+
+const HEX = /^#[0-9a-f]{6}$/i;
+
 export const PADRAO: Ajustes = {
   tema: 'acrilico',
   tipoPadrao: 'markdown',
   preview: true,
   corpo: 15,
+  acento: '#d8934a',
+  opacidade: 0,
 };
 
 const CHAVE = 'ardosia:ajustes:v1';
@@ -63,6 +82,12 @@ function completar(parcial: Partial<Ajustes>): Ajustes {
     corpo: TAMANHOS.includes(parcial.corpo as Ajustes['corpo'])
       ? (parcial.corpo as Ajustes['corpo'])
       : PADRAO.corpo,
+    acento: typeof parcial.acento === 'string' && HEX.test(parcial.acento)
+      ? parcial.acento.toLowerCase()
+      : PADRAO.acento,
+    opacidade: typeof parcial.opacidade === 'number' && Number.isFinite(parcial.opacidade)
+      ? Math.min(100, Math.max(0, Math.round(parcial.opacidade)))
+      : PADRAO.opacidade,
   };
 }
 

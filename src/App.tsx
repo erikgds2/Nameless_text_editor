@@ -27,8 +27,11 @@ export default function App() {
   const sujas = useRef(new Set<string>());
 
   useEffect(() => {
-    document.documentElement.dataset.theme = ajustes.tema;
-    document.documentElement.style.setProperty('--corpo', `${ajustes.corpo}px`);
+    const raiz = document.documentElement;
+    raiz.dataset.theme = ajustes.tema;
+    raiz.style.setProperty('--corpo', `${ajustes.corpo}px`);
+    raiz.style.setProperty('--acento', ajustes.acento);
+    raiz.style.setProperty('--opacidade', `${ajustes.opacidade}%`);
     salvarAjustes(ajustes);
   }, [ajustes]);
 
@@ -316,14 +319,17 @@ export default function App() {
             title="Ajustes (Ctrl + ,)"
             aria-label="Ajustes"
           >
+            {/* controles deslizantes: a engrenagem anterior, um círculo com
+                raios, era lida como um sol nesse tamanho */}
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-              <circle cx="8" cy="8" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.2" />
               <path
-                d="M8 1.6v1.6M8 12.8v1.6M14.4 8h-1.6M3.2 8H1.6M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1M12.5 12.5l-1.1-1.1M4.6 4.6L3.5 3.5"
+                d="M2 5h5.5M11.5 5H14M2 11h2.5M8.5 11H14"
                 stroke="currentColor"
-                strokeWidth="1.2"
+                strokeWidth="1.3"
                 strokeLinecap="round"
               />
+              <circle cx="9.5" cy="5" r="1.7" fill="none" stroke="currentColor" strokeWidth="1.3" />
+              <circle cx="6.5" cy="11" r="1.7" fill="none" stroke="currentColor" strokeWidth="1.3" />
             </svg>
           </button>
         </div>

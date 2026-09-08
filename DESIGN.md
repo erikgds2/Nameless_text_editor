@@ -31,7 +31,9 @@ texto quase branco vibra na borda das letras. O conforto mora entre 7:1 e 11:1.
 - `backdrop-filter` / `filter: blur()` — o acrílico vem do sistema operacional,
   atrás de tudo, uma vez só. Vidro empilhado dentro da interface é slop.
 - Fonte Inter, e qualquer fonte com serifa no corpo do texto
-- Roxo, violeta, ciano neon, magenta — a paleta é quente, ponto
+- Ciano neon, magenta, qualquer cor de saturação alta como acento. As opções
+  oferecidas são todas dessaturadas; o seletor livre existe porque a decisão
+  final é de quem usa, não do documento.
 - Dois acentos competindo. É um.
 - Emoji usado como ícone
 - Três ou mais cards idênticos lado a lado
@@ -134,6 +136,11 @@ solto num canto da barra lateral. A escolha persiste.
 Translucidez do material acrílico do Windows 11, o mesmo do Windows Terminal.
 A janela é transparente e quem pinta é o sistema operacional. Usa a paleta
 escura, com `--base` aplicado só quando não há acrílico (navegador).
+
+Quanto do acrílico aparece é regulado em Ajustes → Aparência: `--opacidade` vai
+de 0% (o material do sistema passa inteiro) a 100% (fundo sólido). A camada é
+o próprio `background` do `body`, via `color-mix` — nunca `setOpacity` da janela,
+que deixaria o texto transparente junto.
 
 O `body` recebe `background: var(--base)` sempre; dentro do Electron
 (`data-native="true"`) ele passa a `transparent` para o acrílico aparecer.

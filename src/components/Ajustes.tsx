@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { TAMANHOS, TEMAS, type Ajustes as AjustesTipo } from '../ajustes';
+import { ACENTOS, TAMANHOS, TEMAS, type Ajustes as AjustesTipo } from '../ajustes';
 
 type Props = {
   ajustes: AjustesTipo;
@@ -63,6 +63,58 @@ export default function Ajustes({
               ))}
             </div>
           </div>
+
+          <div className="ajustes__linha">
+            <span className="ajustes__nome">
+              Cor de destaque
+              <span className="ajustes__dica">Vale para links, marcações e diagramas</span>
+            </span>
+            <div className="cores">
+              {ACENTOS.map((cor) => (
+                <button
+                  key={cor.hex}
+                  className={`cor${cor.hex === ajustes.acento ? ' cor--on' : ''}`}
+                  style={{ background: cor.hex }}
+                  title={cor.rotulo}
+                  aria-label={cor.rotulo}
+                  onClick={() => onMudar({ ...ajustes, acento: cor.hex })}
+                />
+              ))}
+              <input
+                className="cor cor--livre"
+                type="color"
+                value={ajustes.acento}
+                title="Escolher outra cor"
+                aria-label="Escolher outra cor"
+                onChange={(event) => onMudar({ ...ajustes, acento: event.target.value })}
+              />
+            </div>
+          </div>
+
+          {ajustes.tema === 'acrilico' && (
+            <div className="ajustes__linha">
+              <span className="ajustes__nome">
+                Opacidade da janela
+                <span className="ajustes__dica">
+                  0% deixa o acrílico do Windows passar inteiro
+                </span>
+              </span>
+              <div className="medida">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={ajustes.opacidade}
+                  aria-label="Opacidade da janela"
+                  onChange={(event) =>
+                    onMudar({ ...ajustes, opacidade: Number(event.target.value) })
+                  }
+                />
+                <span className="medida__valor">{ajustes.opacidade}%</span>
+              </div>
+            </div>
+          )}
 
           <div className="ajustes__linha">
             <span className="ajustes__nome">
