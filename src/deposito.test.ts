@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { depositoEmDisco, depositoNoNavegador, type PonteDisco } from './deposito';
+import { depositoEmDisco, depositoNoNavegador, type Arquivos } from './deposito';
+import { contratoDeDeposito } from './deposito.contrato';
 import { createNote, saveNotes, textoDaNota } from './notes';
 import { criarBloco } from './canvas';
 
@@ -8,7 +9,7 @@ function pontefalsa(inicial: Record<string, string> = {}) {
   const arquivos = new Map(Object.entries(inicial));
   // quem testa dispara isto para simular alguém mexendo nos arquivos por fora
   let avisar: (() => void) | null = null;
-  const ponte: PonteDisco = {
+  const ponte: Arquivos = {
     pasta: async () => 'C:/notas',
     escolherPasta: async () => null,
     abrirPasta: async () => {},
@@ -16,16 +17,16 @@ function pontefalsa(inicial: Record<string, string> = {}) {
       [...arquivos].map(([id, texto]) => ({ id, texto, atualizadoEm: 0 })),
     escrever: async (id, texto) => void arquivos.set(id, texto),
     renomear: async (de, para) => {
+      // fiel ao disco de verdade: renomear o que não existe é erro, e foi
+      // justamente o `?? ''` complacente daqui que escondeu um bug real
+      if (!arquivos.has(de)) throw new Error(`não existe: ${de}`);
       if (de === para || arquivos.has(para)) return de;
-      arquivos.set(para, arquivos.get(de) ?? '');
+      arquivos.set(para, arquivos.get(de) as string);
       arquivos.delete(de);
       return para;
     },
     apagar: async (id) => void arquivos.delete(id),
-    fecharCaptura: async () => {},
     salvarAnexo: async () => 'imagem.png',
-    modoDeFundo: async () => 'acrilico' as const,
-    trocarModoDeFundo: async () => {},
     aoMudarPasta: (callback) => {
       avisar = callback;
       return () => {
@@ -166,3 +167,8 @@ describe('deposito no navegador', () => {
     expect(await depositoNoNavegador().pasta()).toBeNull();
   });
 });
+
+// A mesma bateria roda contra as duas implementações: o que uma faz, a outra
+// tem de fazer igual, senão trocar de ambiente custa nota perdida.
+contratoDeDeposito('pasta do aplicativo', () => depositoEmDisco(pontefalsa().ponte));
+contratoDeDeposito('localStorage do navegador', () => depositoNoNavegador());

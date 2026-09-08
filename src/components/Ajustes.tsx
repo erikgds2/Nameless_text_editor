@@ -8,6 +8,8 @@ type Props = {
   onAbrirPasta: () => void;
   onTrocarPasta: () => void;
   onTrocarFundo: (fundo: 'acrilico' | 'vidro') => void;
+  podeUsarPasta: boolean;
+  onUsarPasta: () => void;
   onFechar: () => void;
 };
 
@@ -18,6 +20,8 @@ export default function Ajustes({
   onAbrirPasta,
   onTrocarPasta,
   onTrocarFundo,
+  podeUsarPasta,
+  onUsarPasta,
   onFechar,
 }: Props) {
   useEffect(() => {
@@ -213,6 +217,26 @@ export default function Ajustes({
             </div>
           </div>
         </section>
+
+        {podeUsarPasta && (
+          <section className="ajustes__secao">
+            <span className="ajustes__rotulo">Arquivos</span>
+
+            <div className="ajustes__linha">
+              <span className="ajustes__nome">
+                Usar a pasta do aplicativo
+                <span className="ajustes__dica">
+                  As mesmas notas do Ardósia instalado, e não uma cópia
+                </span>
+              </span>
+              <div className="opcoes">
+                <button className="opcao" onClick={onUsarPasta}>
+                  Escolher pasta
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
         {pasta && (
           <section className="ajustes__secao">

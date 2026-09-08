@@ -4,16 +4,21 @@ import Editor from './components/Editor';
 import Ajustes from './components/Ajustes';
 import Paleta from './components/Paleta';
 import { deriveTitle, textoDaNota, type Note, type TipoDoc } from './notes';
-import { abrirDeposito } from './deposito';
+import { abrirDeposito, depositoEmArquivos, type Deposito } from './deposito';
+import { arquivosDaPasta, escolherPastaDoNavegador, navegadorTemPasta, pastaLembrada } from './pasta';
 import type { Bloco } from './canvas';
 import { matchesQuery } from './search';
 import { fixadasEmOrdem, proximaOrdem, reordenarFixadas } from './ordenacao';
 import { construirIndice } from './links';
+import { trocarModoDeFundo } from './janela';
 import { TAMANHOS, TEMAS, carregarAjustes, salvarAjustes, type Ajustes as AjustesTipo } from './ajustes';
 import type { Comando } from './comandos';
 
 export default function App() {
-  const deposito = useMemo(abrirDeposito, []);
+  // O depósito pode trocar em pé: no navegador, quando você dá acesso à pasta
+  // do aplicativo, as notas deixam de vir do localStorage e passam a vir dos
+  // mesmos arquivos .md que o Ardósia instalado usa.
+  const [deposito, setDeposito] = useState<Deposito>(() => abrirDeposito());
   const [notes, setNotes] = useState<Note[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [pasta, setPasta] = useState<string | null>(null);
@@ -64,6 +69,15 @@ export default function App() {
     }
   }, []);
 
+  // A permissão dada numa sessão anterior é retomada sozinha; pedir uma nova
+  // exige um clique seu, e o navegador não deixa ser de outro jeito.
+  useEffect(() => {
+    if (window.ardosia) return;
+    pastaLembrada()
+      .then((raiz) => raiz && setDeposito(depositoEmArquivos(arquivosDaPasta(raiz))))
+      .catch((err) => console.error('Não foi possível retomar a pasta:', err));
+  }, []);
+
   useEffect(() => {
     let vivo = true;
     Promise.all([deposito.listar(), deposito.pasta()]).then(([carregadas, caminho]) => {
@@ -94,6 +108,21 @@ export default function App() {
       return [...preservadas.filter((nota) => !idsEmDisco.has(nota.id)), ...juntas];
     });
   }, [deposito]);
+
+  // No navegador não há vigia de pasta: a hora natural de reler é quando a
+  // janela volta a ficar visível, que é quando você acabou de mexer no outro.
+  useEffect(() => {
+    function aoVoltar() {
+      if (document.visibilityState !== 'visible') return;
+      recarregarDoDisco().catch((err) => console.error('Não foi possível reler a pasta:', err));
+    }
+    document.addEventListener('visibilitychange', aoVoltar);
+    window.addEventListener('focus', aoVoltar);
+    return () => {
+      document.removeEventListener('visibilitychange', aoVoltar);
+      window.removeEventListener('focus', aoVoltar);
+    };
+  }, [recarregarDoDisco]);
 
   useEffect(
     () =>
@@ -258,7 +287,23 @@ export default function App() {
     if (fundo === ajustes.fundo) return;
     const opacidade = fundo === 'vidro' && ajustes.opacidade < 20 ? 45 : ajustes.opacidade;
     setAjustes((prev) => ({ ...prev, fundo, opacidade }));
-    await deposito.trocarModoDeFundo(fundo);
+    await trocarModoDeFundo(fundo);
+  }
+
+  /**
+   * Dar ao navegador acesso à pasta do aplicativo. A partir daí os dois leem os
+   * mesmos arquivos: não é cópia nem sincronização, é a mesma fonte de verdade.
+   */
+  async function handleUsarPastaNoNavegador() {
+    try {
+      const raiz = await escolherPastaDoNavegador();
+      if (!raiz) return;
+      sujas.current.clear();
+      setDeposito(depositoEmArquivos(arquivosDaPasta(raiz)));
+    } catch (err) {
+      console.error('Não foi possível abrir a pasta:', err);
+      setRecado('Não foi possível abrir a pasta.');
+    }
   }
 
   async function handleTrocarPasta() {
@@ -467,6 +512,8 @@ export default function App() {
           onAbrirPasta={deposito.abrirPasta}
           onTrocarPasta={handleTrocarPasta}
           onTrocarFundo={handleTrocarFundo}
+          podeUsarPasta={navegadorTemPasta() && !pasta}
+          onUsarPasta={handleUsarPastaNoNavegador}
           onFechar={() => setMostrandoAjustes(false)}
         />
       )}

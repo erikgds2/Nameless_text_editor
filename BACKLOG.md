@@ -110,7 +110,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 67 | `[ ]` **P2** | Exportar tudo em zip |
 | 68 | `[ ]` **P3** | Anexos: arrastar arquivo para dentro da nota |
 | 69 | `[ ]` **P3** | Detectar e reparar `.md` com frontmatter corrompido |
-| 70 | `[ ]` **P3** | Suporte a File System Access API no navegador |
+| 70 | `[x]` **P3** | Suporte a File System Access API no navegador |
 | 71 | `[ ]` **P3** | Criptografar notas marcadas como privadas |
 | 72 | `[ ]` **P3** | Sincronização opcional por pasta compartilhada, sem servidor |
 

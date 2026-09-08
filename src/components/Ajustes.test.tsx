@@ -4,18 +4,20 @@ import userEvent from '@testing-library/user-event';
 import Ajustes from './Ajustes';
 import { PADRAO, type Ajustes as AjustesTipo } from '../ajustes';
 
-function montar(overrides: {
-  ajustes?: AjustesTipo;
-  pasta?: string | null;
-} = {}) {
+// aceita qualquer prop do painel: um helper que só repassa duas deixa passar
+// teste que não testa nada, e já aconteceu duas vezes neste projeto
+function montar(overrides: Partial<Parameters<typeof Ajustes>[0]> = {}) {
   const props = {
-    ajustes: overrides.ajustes ?? { ...PADRAO },
+    ajustes: { ...PADRAO } as AjustesTipo,
     onMudar: vi.fn(),
-    pasta: overrides.pasta ?? null,
+    pasta: null as string | null,
     onAbrirPasta: vi.fn(),
     onTrocarPasta: vi.fn(),
     onTrocarFundo: vi.fn(),
+    podeUsarPasta: false,
+    onUsarPasta: vi.fn(),
     onFechar: vi.fn(),
+    ...overrides,
   };
   render(<Ajustes {...props} />);
   return props;
@@ -119,5 +121,26 @@ describe('escolha do fundo da janela', () => {
   it('o rótulo da opacidade diz o que ela faz em cada fundo', () => {
     montar({ pasta: 'C:/notas', ajustes: { ...PADRAO, fundo: 'vidro' } });
     expect(screen.getByText('Quanto menor, mais se enxerga o que está atrás')).toBeInTheDocument();
+  });
+});
+
+describe('usar a pasta do aplicativo pelo navegador', () => {
+  it('a opção não aparece onde o navegador não suporta', () => {
+    montar({ podeUsarPasta: false });
+    expect(screen.queryByRole('button', { name: 'Escolher pasta' })).toBeNull();
+  });
+
+  it('aparece quando dá para escolher, e explica que não é cópia', () => {
+    montar({ podeUsarPasta: true });
+    expect(screen.getByRole('button', { name: 'Escolher pasta' })).toBeInTheDocument();
+    expect(
+      screen.getByText('As mesmas notas do Ardósia instalado, e não uma cópia'),
+    ).toBeInTheDocument();
+  });
+
+  it('clicar pede a pasta', async () => {
+    const props = montar({ podeUsarPasta: true });
+    await userEvent.click(screen.getByRole('button', { name: 'Escolher pasta' }));
+    expect(props.onUsarPasta).toHaveBeenCalled();
   });
 });

@@ -26,3 +26,5 @@ próximas tarefas. Gerado pelo run.mjs — pode editar e reescrever à mão.
 - (1x) teste de interface que procura um botao dentro de um painel fechado passa sem testar nada; confirme que o elemento existe antes de medir o efeito do clique
 - (1x) num campo controlado, nunca guarde posicao de texto em estado do React para usar depois: quem digita rapido passa na frente da reconciliacao e a substituicao parte o texto ao meio. Recalcule do proprio campo no momento de aplicar
 - (1x) acrilico do Windows nao e transparencia: e vidro fosco, borra o que esta atras e nunca deixa ver. Transparencia de verdade exige transparent:true na criacao da janela, e os dois nao convivem
+- (1x) duplo de teste complacente esconde bug: a ponte falsa tolerava renomear arquivo inexistente e o disco de verdade lanca ENOENT. Duplo tem de recusar o que o original recusa
+- (1x) escreva o arquivo antes de renomea-lo: na primeira gravacao o nome provisorio ainda nao existe no disco

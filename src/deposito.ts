@@ -4,7 +4,14 @@ import { createNote, deriveTitle, loadNotes, saveNotes, textoDaNota, type Note, 
 import { desserializar, serializar } from './formato';
 import { nomeDisponivel, slugDeTitulo } from './nomes';
 
-export type PonteDisco = {
+/**
+ * Uma pasta de notas, seja lá quem a alcance: o processo do aplicativo, pelo
+ * sistema de arquivos, ou o navegador, pela permissão que você deu a ele.
+ *
+ * É esta interface que faz os dois ambientes verem as MESMAS notas: quem
+ * fornece os arquivos muda, o depósito construído sobre eles não.
+ */
+export type Arquivos = {
   pasta(): Promise<string>;
   escolherPasta(): Promise<string | null>;
   abrirPasta(): Promise<void>;
@@ -13,8 +20,12 @@ export type PonteDisco = {
   renomear(de: string, para: string): Promise<string>;
   apagar(id: string): Promise<void>;
   aoMudarPasta(callback: () => void): () => void;
-  fecharCaptura(gravou: boolean): Promise<void>;
   salvarAnexo(bytes: Uint8Array, tipo: string): Promise<string>;
+};
+
+/** O que só o aplicativo instalado tem, além dos arquivos. */
+export type PonteDisco = Arquivos & {
+  fecharCaptura(gravou: boolean): Promise<void>;
   modoDeFundo(): Promise<'acrilico' | 'vidro'>;
   trocarModoDeFundo(modo: 'acrilico' | 'vidro'): Promise<void>;
 };
@@ -38,8 +49,6 @@ export type Deposito = {
   aoMudar(callback: () => void): () => void;
   /** Guarda a imagem colada e devolve o nome do arquivo; null onde não dá. */
   salvarAnexo(bytes: Uint8Array, tipo: string): Promise<string | null>;
-  /** Acrílico ou vidro. Só o aplicativo instalado tem janela para trocar. */
-  trocarModoDeFundo(modo: 'acrilico' | 'vidro'): Promise<void>;
 };
 
 const MARCA_MIGRACAO = 'ardosia:migrado-para-disco';
@@ -65,7 +74,7 @@ function nomeParaOTitulo(nota: Note): string {
  * continua la de proposito: so marcamos a migracao depois que tudo foi escrito,
  * e nada e apagado — se algo der errado, a copia antiga ainda existe.
  */
-async function migrar(ponte: PonteDisco): Promise<void> {
+async function migrar(ponte: Arquivos): Promise<void> {
   if (localStorage.getItem(MARCA_MIGRACAO)) return;
   const antigas = loadNotes();
   if (antigas.length > 0) {
@@ -79,7 +88,7 @@ async function migrar(ponte: PonteDisco): Promise<void> {
   localStorage.setItem(MARCA_MIGRACAO, new Date().toISOString());
 }
 
-export function depositoEmDisco(ponte: PonteDisco): Deposito {
+export function depositoEmArquivos(ponte: Arquivos): Deposito {
   return {
     emDisco: true,
     criar: (tipo) => ({ ...createNote(tipo), id: idProvisorio() }),
@@ -89,18 +98,27 @@ export function depositoEmDisco(ponte: PonteDisco): Deposito {
       return (await ponte.listar()).map((arquivo) => desserializar(arquivo.texto, arquivo.id));
     },
 
-    // O arquivo provisorio adota o titulo na primeira vez que a nota ganha um.
-    // Depois disso o nome e seu: renomeie no Explorer que o app respeita.
+    /**
+     * O arquivo provisório adota o título na primeira vez que a nota ganha um.
+     * Depois disso o nome é seu: renomeie no Explorer que o app respeita.
+     *
+     * Grava ANTES de renomear, e a ordem importa: na primeira gravação o
+     * arquivo provisório ainda não existe, e renomear o que não existe é erro
+     * em qualquer sistema de arquivos de verdade. O id não vai dentro do
+     * arquivo — ele é o nome —, então gravar e depois renomear é seguro.
+     */
     async salvar(nota) {
-      let id = nota.id;
+      await ponte.escrever(nota.id, serializar(nota));
+
       const nomeDoTitulo = nomeParaOTitulo(nota);
-      if (nomeDoTitulo && ehProvisorio(id)) {
-        const existentes = (await ponte.listar()).map((arquivo) => arquivo.id);
-        id = await ponte.renomear(id, nomeDisponivel(nomeDoTitulo, existentes, id));
-      }
-      const salva = { ...nota, id };
-      await ponte.escrever(id, serializar(salva));
-      return salva;
+      if (!nomeDoTitulo || !ehProvisorio(nota.id)) return nota;
+
+      const existentes = (await ponte.listar()).map((arquivo) => arquivo.id);
+      const id = await ponte.renomear(
+        nota.id,
+        nomeDisponivel(nomeDoTitulo, existentes, nota.id),
+      );
+      return { ...nota, id };
     },
 
     apagar: (id) => ponte.apagar(id),
@@ -109,7 +127,6 @@ export function depositoEmDisco(ponte: PonteDisco): Deposito {
     abrirPasta: () => ponte.abrirPasta(),
     aoMudar: (callback) => ponte.aoMudarPasta(callback),
     salvarAnexo: (bytes, tipo) => ponte.salvarAnexo(bytes, tipo),
-    trocarModoDeFundo: (modo) => ponte.trocarModoDeFundo(modo),
   };
 }
 
@@ -134,13 +151,14 @@ export function depositoNoNavegador(): Deposito {
     abrirPasta: async () => {},
     // no navegador não há pasta que alguém possa mexer por fora
     aoMudar: () => () => {},
-    // sem disco não há onde guardar a imagem; o app avisa em vez de fingir
+    // sem pasta não há onde guardar a imagem; o app avisa em vez de fingir
     salvarAnexo: async () => null,
-    // no navegador a janela é do navegador; não há fundo para trocar
-    trocarModoDeFundo: async () => {},
   };
 }
 
+/** Compatibilidade: o depósito do aplicativo é o de arquivos, com a ponte dele. */
+export const depositoEmDisco = depositoEmArquivos;
+
 export function abrirDeposito(): Deposito {
-  return window.ardosia ? depositoEmDisco(window.ardosia) : depositoNoNavegador();
+  return window.ardosia ? depositoEmArquivos(window.ardosia) : depositoNoNavegador();
 }
