@@ -8,6 +8,7 @@ import { abrirDeposito } from './deposito';
 import type { Bloco } from './canvas';
 import { matchesQuery } from './search';
 import { fixadasEmOrdem, proximaOrdem, reordenarFixadas } from './ordenacao';
+import { construirIndice } from './links';
 import { TAMANHOS, TEMAS, carregarAjustes, salvarAjustes, type Ajustes as AjustesTipo } from './ajustes';
 import type { Comando } from './comandos';
 
@@ -142,6 +143,44 @@ export default function App() {
   }, [notes, query]);
 
   const activeNote = notes.find((note) => note.id === activeId) ?? null;
+
+  // Quem cita quem. Refeito quando as notas mudam — é um Map por dentro, então
+  // aguenta as mil notas do teste sem pesar.
+  const indice = useMemo(() => construirIndice(notes), [notes]);
+
+  const backlinks = useMemo(
+    () =>
+      activeId
+        ? indice.apontadaPor(activeId).map((id) => ({
+            id,
+            titulo: deriveTitle(textoDaNota(notes.find((n) => n.id === id)?.blocos ?? [])),
+          }))
+        : [],
+    [activeId, indice, notes],
+  );
+
+  const titulos = useMemo(
+    () => notes.map((nota) => deriveTitle(textoDaNota(nota.blocos))),
+    [notes],
+  );
+
+  /**
+   * Seguir uma ligação. Se a nota não existe, ela nasce ali mesmo, já com o
+   * título que o link pedia — escrever `[[Kant]]` é uma forma de dizer "isto
+   * merece uma nota", e obrigar a criá-la à mão quebraria o pensamento.
+   */
+  function handleAbrirLigacao(alvo: string) {
+    const existente = indice.resolver(alvo);
+    if (existente) {
+      setActiveId(existente);
+      return;
+    }
+    const nova = deposito.criar(ajustes.tipoPadrao);
+    const comTitulo = { ...nova, blocos: [{ ...nova.blocos[0], texto: alvo }] };
+    marcar(comTitulo.id);
+    setNotes((prev) => [comTitulo, ...prev]);
+    setActiveId(comTitulo.id);
+  }
 
   function marcar(id: string) {
     sujas.current.add(id);
@@ -385,6 +424,11 @@ export default function App() {
           onMudarTipo={handleMudarTipo}
           onColarImagem={handleColarImagem}
           recado={recado}
+          backlinks={backlinks}
+          titulos={titulos}
+          existeNota={(alvo) => indice.resolver(alvo) !== null}
+          onAbrirLigacao={handleAbrirLigacao}
+          onAbrirNota={setActiveId}
           divisoria={ajustes.divisoria}
           onMudarDivisoria={(divisoria) => setAjustes((prev) => ({ ...prev, divisoria }))}
           temaEscuro={ajustes.tema !== 'papel'}

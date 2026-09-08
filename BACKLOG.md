@@ -56,7 +56,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 
 | # | | Item |
 | --- | --- | --- |
-| 31 | `[x]` **P1** | Busca dentro da nota aberta, com realce das ocorrências |
+| 31 | `[ ]` **P1** | Busca dentro da nota aberta, com realce das ocorrências |
 | 32 | `[x]` **P1** | Paleta de comandos (`Ctrl+K`): abrir nota, trocar tema, tudo sem mouse |
 | 33 | `[x]` **P1** | Busca mostra o trecho onde o termo apareceu, não só o começo da nota |
 | 34 | `[ ]` **P2** | Tags `#assunto` no texto viram filtro na barra lateral |
@@ -74,9 +74,9 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 
 | # | | Item |
 | --- | --- | --- |
-| 44 | `[ ]` **P1** | `[[links]]` entre notas, com autocompletar enquanto digita |
-| 45 | `[ ]` **P1** | Clicar num `[[link]]` abre a nota; `[[link]]` para nota inexistente a cria |
-| 46 | `[ ]` **P1** | Backlinks: "o que aponta para esta nota", no rodapé do editor |
+| 44 | `[x]` **P1** | `[[links]]` entre notas, com autocompletar enquanto digita |
+| 45 | `[x]` **P1** | Clicar num `[[link]]` abre a nota; `[[link]]` para nota inexistente a cria |
+| 46 | `[x]` **P1** | Backlinks: "o que aponta para esta nota", no rodapé do editor |
 | 47 | `[ ]` **P2** | Nota do dia, criada sozinha ao abrir o app |
 | 48 | `[ ]` **P2** | Autocompletar de `[[` mostra o trecho inicial da nota candidata |
 | 49 | `[ ]` **P3** | Renomear nota atualiza os `[[links]]` que apontam para ela |

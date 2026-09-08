@@ -83,8 +83,12 @@ a edição.
 
 ### Fase 4 — Conexão
 
-- `[[links]]` entre notas com autocompletar.
-- Backlinks: "o que aponta para esta nota".
+- `[[links]]` entre notas com autocompletar ✅ — digitar `[[` oferece as notas
+  pelo título; setas e Enter escolhem, sem tocar no mouse.
+- Backlinks ✅ — "apontam para esta nota", no rodapé do editor.
+- Ligação para nota que ainda não existe ✅ — aparece tracejada, e clicar cria a
+  nota já com aquele título. Escrever `[[Kant]]` é dizer "isto merece uma nota";
+  obrigar a criá-la à mão quebraria o pensamento.
 - Nota do dia, criada sozinha ao abrir.
 
 *Pronto quando:* uma nota de aula referencia três conceitos e você navega entre eles.

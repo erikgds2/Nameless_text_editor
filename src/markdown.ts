@@ -13,7 +13,8 @@ type Segmento =
   | { tipo: 'link'; texto: string; url: string }
   | { tipo: 'imagem'; alt: string; src: string }
   | { tipo: 'linkImagem'; alt: string; src: string; url: string }
-  | { tipo: 'linkBruto'; bruto: string };
+  | { tipo: 'linkBruto'; bruto: string }
+  | { tipo: 'ligacao'; alvo: string; bruto: string };
 
 const RE_CERCA = /^```(.*)$/;
 const RE_LINGUAGEM_VALIDA = /^[a-zA-Z0-9+-]{1,20}$/;
@@ -400,6 +401,20 @@ function parseInline(texto: string): Segmento[] {
       }
     }
 
+    if (c === '[' && texto[i + 1] === '[') {
+      const fim = texto.indexOf(']]', i + 2);
+      if (fim !== -1) {
+        const bruto = texto.slice(i + 2, fim);
+        const alvo = bruto.trim();
+        if (alvo !== '') {
+          flush();
+          segmentos.push({ tipo: 'ligacao', alvo, bruto });
+          i = fim + 2;
+          continue;
+        }
+      }
+    }
+
     if (c === '[') {
       const nested = texto.slice(i).match(RE_LINK_IMAGEM);
       if (nested) {
@@ -460,6 +475,8 @@ function segmentoParaHtml(seg: Segmento): string {
       return `<a href="${escaparAtributo(seg.url)}" target="_blank" rel="noreferrer"><img src="${escaparAtributo(seg.src)}" alt="${escaparAtributo(seg.alt)}"></a>`;
     case 'linkBruto':
       return escapar(seg.bruto);
+    case 'ligacao':
+      return `<a class="ligacao" data-alvo="${escaparAtributo(seg.alvo)}">${escapar(seg.alvo)}</a>`;
   }
 }
 
@@ -487,6 +504,8 @@ function segmentoParaRealce(seg: Segmento): string {
       return `<span class="md-marcador">[</span><span class="md-marcador">![</span><span class="md-link">${escapar(seg.alt)}</span><span class="md-marcador">]</span><span class="md-marcador">(</span>${escapar(seg.src)}<span class="md-marcador">)</span><span class="md-marcador">](</span>${escapar(seg.url)}<span class="md-marcador">)</span>`;
     case 'linkBruto':
       return escapar(seg.bruto);
+    case 'ligacao':
+      return `<span class="md-marcador">[[</span><span class="md-ligacao">${escapar(seg.bruto)}</span><span class="md-marcador">]]</span>`;
   }
 }
 

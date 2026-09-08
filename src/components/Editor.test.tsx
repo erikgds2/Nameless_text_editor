@@ -23,6 +23,11 @@ function montar(overrides: Partial<Parameters<typeof Editor>[0]> = {}) {
     acento: '#d8934a',
     divisoria: 50,
     onMudarDivisoria: vi.fn(),
+    backlinks: [] as { id: string; titulo: string }[],
+    titulos: [] as string[],
+    existeNota: () => true,
+    onAbrirLigacao: vi.fn(),
+    onAbrirNota: vi.fn(),
     ...overrides,
   };
   render(<Editor {...props} />);
@@ -106,5 +111,30 @@ describe('recado passageiro', () => {
   it('sem aviso, o rodapé fica só com os contadores', () => {
     montar({ note: comTexto(createNote(), 'Uma nota') });
     expect(screen.queryByText(/Não foi possível guardar/)).toBeNull();
+  });
+});
+
+describe('backlinks', () => {
+  const quemCita = [
+    { id: 'a', titulo: 'Aula de Kant' },
+    { id: 'b', titulo: 'Leituras da semana' },
+  ];
+
+  it('lista quem aponta para esta nota', () => {
+    montar({ note: comTexto(createNote(), 'Imperativo'), backlinks: quemCita });
+    expect(screen.getByText('Apontam para esta nota')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Aula de Kant' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Leituras da semana' })).toBeInTheDocument();
+  });
+
+  it('sem ninguém citando, a faixa não aparece', () => {
+    montar({ note: comTexto(createNote(), 'Imperativo'), backlinks: [] });
+    expect(screen.queryByText('Apontam para esta nota')).toBeNull();
+  });
+
+  it('clicar num backlink abre aquela nota', async () => {
+    const props = montar({ note: comTexto(createNote(), 'Imperativo'), backlinks: quemCita });
+    await userEvent.click(screen.getByRole('button', { name: 'Aula de Kant' }));
+    expect(props.onAbrirNota).toHaveBeenCalledWith('a');
   });
 });

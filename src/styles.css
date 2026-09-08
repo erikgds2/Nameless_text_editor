@@ -1147,3 +1147,103 @@ button {
   color: var(--alert);
   background: var(--alert-wash);
 }
+
+/* ------------------------------------------------------------- ligações */
+
+.preview a.ligacao {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-wash);
+  cursor: pointer;
+}
+
+.preview a.ligacao:hover {
+  border-bottom-color: var(--accent);
+}
+
+/* A nota ainda não existe: clicar vai criá-la, e isso se vê antes do clique. */
+.preview a.ligacao--nova {
+  color: var(--ink-soft);
+  border-bottom-style: dashed;
+}
+
+.md-ligacao {
+  color: var(--accent);
+}
+
+.backlinks {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 8px 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.backlinks__rotulo {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.backlinks__nota {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color var(--rapido), border-color var(--rapido), background-color var(--rapido);
+}
+
+.backlinks__nota:hover {
+  color: var(--ink-strong);
+  border-color: var(--accent);
+  background: var(--accent-wash);
+}
+
+/* Lista de notas sugeridas enquanto se escreve [[ ]]. */
+.sugestoes {
+  position: absolute;
+  z-index: 2;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  max-width: 320px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-top: 4px;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--base);
+  box-shadow: var(--sombra);
+}
+
+.sugestao {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-family: var(--ui);
+  font-size: 13px;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color var(--rapido), color var(--rapido);
+}
+
+.sugestao--on {
+  background: var(--accent-wash);
+  color: var(--ink-strong);
+}

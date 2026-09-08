@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
+import type {
+  CSSProperties,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react';
 import { deriveTitle, textoDaNota, type Note, type TipoDoc } from '../notes';
 import type { Bloco } from '../canvas';
 import { renderizar } from '../markdown';
@@ -28,6 +32,11 @@ type Props = {
   recado?: string | null;
   divisoria: number;
   onMudarDivisoria: (por_cento: number) => void;
+  backlinks: { id: string; titulo: string }[];
+  titulos: string[];
+  existeNota: (alvo: string) => boolean;
+  onAbrirLigacao: (alvo: string) => void;
+  onAbrirNota: (id: string) => void;
 };
 
 const timeFormat = new Intl.DateTimeFormat('pt-BR', {
@@ -65,6 +74,11 @@ export default function Editor({
   recado,
   divisoria,
   onMudarDivisoria,
+  backlinks,
+  titulos,
+  existeNota,
+  onAbrirLigacao,
+  onAbrirNota,
 }: Props) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
@@ -94,6 +108,16 @@ export default function Editor({
   useEffect(() => {
     if (previewRef.current) esquecerDiagramas(previewRef.current);
   }, [temaEscuro, acento]);
+
+  // Ligação para nota que ainda não existe fica com outra cara: clicar nela vai
+  // criar a nota, e isso precisa ser visível antes do clique, não depois.
+  useEffect(() => {
+    const raiz = previewRef.current;
+    if (!raiz) return;
+    for (const ligacao of raiz.querySelectorAll<HTMLElement>('a.ligacao[data-alvo]')) {
+      ligacao.classList.toggle('ligacao--nova', !existeNota(ligacao.dataset.alvo ?? ''));
+    }
+  });
 
   /**
    * Sem lista de dependências de propósito. O React reescreve o HTML desta
@@ -145,6 +169,14 @@ export default function Editor({
 
     window.addEventListener('pointermove', mover);
     window.addEventListener('pointerup', soltar);
+  }
+
+  /** O HTML é injetado inteiro, então o clique é ouvido no pai e não em cada link. */
+  function aoClicarNoTexto(event: ReactMouseEvent<HTMLDivElement>) {
+    const ligacao = (event.target as HTMLElement).closest<HTMLElement>('a.ligacao[data-alvo]');
+    if (!ligacao) return;
+    event.preventDefault();
+    onAbrirLigacao(ligacao.dataset.alvo ?? '');
   }
 
   if (!note) {
@@ -225,6 +257,7 @@ export default function Editor({
           tipo={note.tipo}
           onChange={onChange}
           onColarImagem={onColarImagem}
+          titulos={titulos}
         />
         {mostrandoPreview && (
           <div
@@ -240,6 +273,7 @@ export default function Editor({
             <div
               className="preview"
               ref={previewRef}
+              onClick={aoClicarNoTexto}
               dangerouslySetInnerHTML={{ __html: html }}
             />
           ) : (
@@ -248,6 +282,17 @@ export default function Editor({
             </div>
           ))}
       </div>
+
+      {backlinks.length > 0 && (
+        <div className="backlinks">
+          <span className="backlinks__rotulo">Apontam para esta nota</span>
+          {backlinks.map((quem) => (
+            <button key={quem.id} className="backlinks__nota" onClick={() => onAbrirNota(quem.id)}>
+              {quem.titulo}
+            </button>
+          ))}
+        </div>
+      )}
 
       <footer className="editor__footer">
         <span>{countWords(texto)} palavras</span>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { realcar, renderizar } from './markdown';
+import { extrairLigacoes } from './links';
 
 /** Remove tags HTML e desescapa entidades, para comparar com o texto original. */
 function textoVisivel(html: string): string {
@@ -279,6 +280,79 @@ describe('renderizar', () => {
     const html = renderizar('```\ncodigo\n```');
     expect(html).toBe('<pre><code>codigo</code></pre>');
   });
+
+  it('ligação simples entre notas', () => {
+    expect(renderizar('[[Nota]]')).toBe('<p><a class="ligacao" data-alvo="Nota">Nota</a></p>');
+  });
+
+  it('ligação com acento e espaço no nome', () => {
+    expect(renderizar('[[Café da Manhã]]')).toBe(
+      '<p><a class="ligacao" data-alvo="Café da Manhã">Café da Manhã</a></p>',
+    );
+  });
+
+  it('ligação com espaços nas pontas é aparada', () => {
+    expect(renderizar('[[  Kant  ]]')).toBe('<p><a class="ligacao" data-alvo="Kant">Kant</a></p>');
+  });
+
+  it('duas ligações na mesma linha', () => {
+    expect(renderizar('[[A]] e [[B]]')).toBe(
+      '<p><a class="ligacao" data-alvo="A">A</a> e <a class="ligacao" data-alvo="B">B</a></p>',
+    );
+  });
+
+  it('colchetes vazios não são ligação', () => {
+    expect(renderizar('[[]]')).toBe('<p>[[]]</p>');
+    expect(renderizar('[[   ]]')).toBe('<p>[[   ]]</p>');
+  });
+
+  it('ligação sem fechamento fica como texto literal', () => {
+    expect(renderizar('[[sem fechamento')).toBe('<p>[[sem fechamento</p>');
+  });
+
+  it('ligação dentro de bloco de código cercado é texto literal', () => {
+    expect(renderizar('```\n[[Nota]]\n```')).toBe('<pre><code>[[Nota]]</code></pre>');
+  });
+
+  it('ligação dentro de código inline é texto literal', () => {
+    expect(renderizar('`[[Nota]]`')).toBe('<p><code>[[Nota]]</code></p>');
+  });
+
+  it('depois que a cerca de código fecha, ligação volta a valer', () => {
+    expect(renderizar('```\ncodigo\n```\n[[Nota]]')).toBe(
+      '<pre><code>codigo</code></pre><p><a class="ligacao" data-alvo="Nota">Nota</a></p>',
+    );
+  });
+
+  it('ligação dentro de item de lista', () => {
+    expect(renderizar('- [[Nota]]')).toBe(
+      '<ul><li><a class="ligacao" data-alvo="Nota">Nota</a></li></ul>',
+    );
+  });
+
+  it('ligação dentro de célula de tabela', () => {
+    const texto = '| A |\n| --- |\n| [[Nota]] |';
+    expect(renderizar(texto)).toBe(
+      '<div class="preview__tabela"><table><thead><tr><th>A</th></tr></thead>' +
+        '<tbody><tr><td><a class="ligacao" data-alvo="Nota">Nota</a></td></tr></tbody></table></div>',
+    );
+  });
+
+  it('ligação dentro de citação', () => {
+    expect(renderizar('> [[Nota]]')).toBe(
+      '<blockquote><a class="ligacao" data-alvo="Nota">Nota</a></blockquote>',
+    );
+  });
+
+  it('ligação não é link markdown: [[a]](b) não vira link com destino b', () => {
+    expect(renderizar('[[a]](b)')).toBe('<p><a class="ligacao" data-alvo="a">a</a>(b)</p>');
+  });
+
+  it('ligação com aspas e < no nome, escapados no atributo e no texto', () => {
+    expect(renderizar('[[A "B" <C>]]')).toBe(
+      '<p><a class="ligacao" data-alvo="A &quot;B&quot; &lt;C&gt;">A "B" &lt;C&gt;</a></p>',
+    );
+  });
 });
 
 describe('realcar', () => {
@@ -349,6 +423,32 @@ describe('realcar', () => {
     expect(textoVisivel(realcar(texto))).toBe(texto);
   });
 
+  const casosLigacao = [
+    '[[Nota]]',
+    '[[Café da Manhã]]',
+    '[[  Kant  ]]',
+    '[[A]] e [[B]]',
+    '[[]]',
+    '[[   ]]',
+    '[[sem fechamento',
+    '```\n[[Nota]]\n```',
+    '`[[Nota]]`',
+    '```\ncodigo\n```\n[[Nota]]',
+    '- [[Nota]]',
+    '| A |\n| --- |\n| [[Nota]] |',
+    '> [[Nota]]',
+    '[[a]](b)',
+    '[[A "B" <C>]]',
+  ];
+
+  it.each(casosLigacao)('preserva ligações caractere a caractere: %s', (texto) => {
+    expect(textoVisivel(realcar(texto))).toBe(texto);
+  });
+
+  it('classe md-ligacao aparece numa ligação', () => {
+    expect(realcar('[[Nota]]')).toContain('md-ligacao');
+  });
+
   it('preserva um texto longo com todos os elementos misturados', () => {
     const texto = [
       '# Título principal',
@@ -412,5 +512,35 @@ describe('desempenho', () => {
     const duracao = performance.now() - inicio;
 
     expect(duracao).toBeLessThan(1000);
+  });
+});
+
+describe('concordância entre renderizar e extrairLigacoes (src/links.ts)', () => {
+  const textos = [
+    '[[Nota]]',
+    '[[Café da Manhã]]',
+    '[[  Kant  ]]',
+    '[[A]] e [[B]]',
+    '[[]]',
+    '[[   ]]',
+    '[[sem fechamento',
+    '```\n[[Nota]]\n```',
+    '`[[Nota]]`',
+    '```\ncodigo\n```\n[[Nota]]',
+    '- [[Nota]]',
+    '| A |\n| --- |\n| [[Nota]] |',
+    '> [[Nota]]',
+    '[[a]](b)',
+    '[[a|b]]',
+    '[[A "B" <C>]]',
+    'texto sem nenhuma ligação',
+    '[[um]] parágrafo\ncom [[dois]] e [[três]] nomes',
+  ];
+
+  it.each(textos)('conta a mesma quantidade de ligações que extrairLigacoes: %s', (texto) => {
+    const html = renderizar(texto);
+    const emHtml = (html.match(/<a class="ligacao"/g) ?? []).length;
+    const emLigacoes = extrairLigacoes(texto).length;
+    expect(emHtml).toBe(emLigacoes);
   });
 });

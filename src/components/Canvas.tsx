@@ -4,6 +4,7 @@ import type { ClipboardEvent, KeyboardEvent, MouseEvent, PointerEvent, UIEvent }
 import { ALTURA_MINIMA, LARGURA_MINIMA, criarBloco, type Bloco } from '../canvas';
 import { realcar } from '../markdown';
 import { alternarMarca, aoTeclarEnter, aoTeclarTab, inserirLink } from '../edicao';
+import { completarLigacao, ligacaoSendoEscrita, ordenarCandidatos, type Escrevendo } from '../sugestoes';
 import type { TipoDoc } from '../notes';
 
 type Props = {
@@ -11,6 +12,8 @@ type Props = {
   tipo: TipoDoc;
   onChange: (blocos: Bloco[]) => void;
   onColarImagem: (bytes: Uint8Array, tipo: string) => Promise<string | null>;
+  /** Títulos das outras notas, para sugerir enquanto se escreve uma ligação. */
+  titulos: string[];
 };
 
 /** Margem de tolerância do auto-crescimento do bloco, em pixels. */
@@ -20,7 +23,7 @@ type Arraste =
   | { tipo: 'mover'; id: string; offsetX: number; offsetY: number }
   | { tipo: 'redimensionar'; id: string; inicioX: number; inicioY: number; larguraInicial: number; alturaInicial: number };
 
-export default function Canvas({ blocos, tipo, onChange, onColarImagem }: Props) {
+export default function Canvas({ blocos, tipo, onChange, onColarImagem, titulos }: Props) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [ativoId, setAtivoId] = useState<string | null>(null);
   const [criadoRecentemente, setCriadoRecentemente] = useState<string | null>(null);
@@ -150,6 +153,7 @@ export default function Canvas({ blocos, tipo, onChange, onColarImagem }: Props)
             onChange={(texto) => handleChangeTexto(bloco.id, texto)}
             onAltura={(altura) => handleAltura(bloco.id, altura)}
             onColarImagem={onColarImagem}
+            titulos={titulos}
             onBlur={() => handleBlurTexto(bloco)}
           />
           <div
@@ -172,6 +176,7 @@ type EscritaProps = {
   onChange: (texto: string) => void;
   onAltura: (altura: number) => void;
   onColarImagem: (bytes: Uint8Array, tipo: string) => Promise<string | null>;
+  titulos: string[];
   onBlur: () => void;
 };
 
@@ -180,7 +185,36 @@ type EscritaProps = {
  * realce atrás dele, com a mesma métrica. É o que permite negrito e título
  * coloridos sem perder o cursor, o desfazer e a acentuação nativos do sistema.
  */
-function Escrita({ bloco, realce, autoFocus, onFocus, onChange, onAltura, onColarImagem, onBlur }: EscritaProps) {
+function Escrita({
+  bloco,
+  realce,
+  autoFocus,
+  onFocus,
+  onChange,
+  onAltura,
+  onColarImagem,
+  titulos,
+  onBlur,
+}: EscritaProps) {
+  const [escrevendo, setEscrevendo] = useState<Escrevendo | null>(null);
+  const [escolhido, setEscolhido] = useState(0);
+
+  const candidatos = escrevendo ? ordenarCandidatos(titulos, escrevendo.termo).slice(0, 8) : [];
+
+  // Quem digita `[[` está procurando uma nota; a lista acompanha o que já foi
+  // escrito e some assim que a ligação fecha.
+  function reavaliar(area: HTMLTextAreaElement) {
+    setEscrevendo(realce ? ligacaoSendoEscrita(area.value, area.selectionStart) : null);
+    setEscolhido(0);
+  }
+
+  function escolher(area: HTMLTextAreaElement, alvo: string) {
+    if (!escrevendo) return;
+    const { texto, cursor } = completarLigacao(area.value, alvo, escrevendo);
+    setEscrevendo(null);
+    flushSync(() => onChange(texto));
+    area.setSelectionRange(cursor, cursor);
+  }
   const espelhoRef = useRef<HTMLDivElement | null>(null);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -201,6 +235,32 @@ function Escrita({ bloco, realce, autoFocus, onFocus, onChange, onAltura, onCola
    */
   function aoTeclar(event: KeyboardEvent<HTMLTextAreaElement>) {
     const area = event.currentTarget;
+
+    // Com a lista aberta, as setas e o Enter pertencem a ela: continuar a lista
+    // de Markdown no meio de uma escolha seria o contrário do esperado.
+    if (candidatos.length > 0) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setEscolhido((atual) => Math.min(candidatos.length - 1, atual + 1));
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setEscolhido((atual) => Math.max(0, atual - 1));
+        return;
+      }
+      if (event.key === 'Enter' || event.key === 'Tab') {
+        event.preventDefault();
+        escolher(area, candidatos[escolhido]);
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setEscrevendo(null);
+        return;
+      }
+    }
+
     const estado = { texto: area.value, inicio: area.selectionStart, fim: area.selectionEnd };
 
     const novo = (() => {
@@ -277,9 +337,37 @@ function Escrita({ bloco, realce, autoFocus, onFocus, onChange, onAltura, onCola
         onKeyDown={aoTeclar}
         onPaste={aoColar}
         onScroll={acompanharRolagem}
-        onChange={(event) => onChange(event.target.value)}
-        onBlur={onBlur}
+        onChange={(event) => {
+          onChange(event.target.value);
+          reavaliar(event.target);
+        }}
+        onSelect={(event) => reavaliar(event.currentTarget)}
+        onBlur={() => {
+          setEscrevendo(null);
+          onBlur();
+        }}
       />
+
+      {candidatos.length > 0 && (
+        <ul className="sugestoes">
+          {candidatos.map((titulo, indice) => (
+            <li key={titulo}>
+              <button
+                className={`sugestao${indice === escolhido ? ' sugestao--on' : ''}`}
+                // onMouseDown e não onClick: o clique tira o foco do campo antes
+                // de disparar, e aí a lista já teria fechado
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  const area = areaRef.current;
+                  if (area) escolher(area, titulo);
+                }}
+              >
+                {titulo}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 }
