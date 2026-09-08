@@ -142,8 +142,8 @@ de 0% (o material do sistema passa inteiro) a 100% (fundo sólido). A camada é
 o próprio `background` do `body`, via `color-mix` — nunca `setOpacity` da janela,
 que deixaria o texto transparente junto.
 
-O `body` recebe `background: var(--base)` sempre; dentro do Electron
-(`data-native="true"`) ele passa a `transparent` para o acrílico aparecer.
+Fora do Electron o `body` recebe `var(--base)` sólido, porque navegador não tem
+acrílico e um fundo transparente ficaria branco.
 
 ### `carvao` — escuro opaco
 
