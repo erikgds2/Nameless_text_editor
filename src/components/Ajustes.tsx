@@ -133,7 +133,7 @@ export default function Ajustes({
                 <span className="ajustes__dica">
                   {ajustes.fundo === 'vidro'
                     ? 'Quanto menor, mais se enxerga o que está atrás'
-                    : 'O acrílico é fosco; isto só o escurece'}
+                    : 'Quanto menor, mais o acrílico do Windows aparece'}
                 </span>
               </span>
               <div className="medida">

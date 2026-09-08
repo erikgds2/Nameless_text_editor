@@ -83,6 +83,14 @@ html[data-native='true'][data-fundo='vidro'] body {
   background: color-mix(in srgb, var(--base) var(--opacidade, 0%), transparent);
 }
 
+/* O Windows só desenha o acrílico enquanto a janela está ATIVA. Assim que ela
+   perde o foco, o material some e o sistema deixa um cinza chapado no lugar —
+   com um corpo translúcido por cima, o app fica ilegível. Enquanto o foco está
+   fora, pintamos o nosso próprio fundo. Vidro de verdade não sofre disso. */
+html[data-native='true'][data-theme='acrilico'][data-fundo='acrilico'][data-foco='nao'] body {
+  background: var(--base);
+}
+
 button {
   border: 0;
   background: none;

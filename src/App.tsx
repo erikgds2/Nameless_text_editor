@@ -10,7 +10,14 @@ import type { Bloco } from './canvas';
 import { matchesQuery } from './search';
 import { fixadasEmOrdem, proximaOrdem, reordenarFixadas } from './ordenacao';
 import { construirIndice } from './links';
-import { aoAtualizar, instalarAtualizacao, trocarModoDeFundo, type Atualizacao } from './janela';
+import {
+  acompanharFoco,
+  aoAtualizar,
+  instalarAtualizacao,
+  modoDeFundoDaJanela,
+  trocarModoDeFundo,
+  type Atualizacao,
+} from './janela';
 import { TAMANHOS, TEMAS, carregarAjustes, salvarAjustes, type Ajustes as AjustesTipo } from './ajustes';
 import type { Comando } from './comandos';
 
@@ -71,6 +78,19 @@ export default function App() {
     if (navigator.userAgent.includes('Electron')) {
       document.documentElement.dataset.native = 'true';
     }
+  }, []);
+
+  // O Windows apaga o acrílico da janela inativa; sem saber disso o app fica
+  // ilegível toda vez que você clica em outra coisa.
+  useEffect(() => acompanharFoco(), []);
+
+  // Quem manda sobre o material é a janela, não a memória dele.
+  useEffect(() => {
+    modoDeFundoDaJanela()
+      .then((modo) => {
+        if (modo) setAjustes((prev) => (prev.fundo === modo ? prev : { ...prev, fundo: modo }));
+      })
+      .catch((err) => console.error('Não foi possível ler o modo da janela:', err));
   }, []);
 
   // A permissão dada numa sessão anterior é retomada sozinha; pedir uma nova
@@ -290,7 +310,11 @@ export default function App() {
   async function handleTrocarFundo(fundo: 'acrilico' | 'vidro') {
     if (fundo === ajustes.fundo) return;
     const opacidade = fundo === 'vidro' && ajustes.opacidade < 20 ? 45 : ajustes.opacidade;
-    setAjustes((prev) => ({ ...prev, fundo, opacidade }));
+    const proximos = { ...ajustes, fundo, opacidade };
+    setAjustes(proximos);
+    // Gravar AQUI, e não deixar para o efeito: a troca destrói esta janela, e o
+    // efeito não chega a rodar. Era assim que a escolha se perdia toda vez.
+    salvarAjustes(proximos);
     await trocarModoDeFundo(fundo);
   }
 

@@ -149,6 +149,18 @@ O fundo tem dois modos, e a diferença é grande:
 Nos dois casos `--opacidade` é o `background` do `body`, via `color-mix` — nunca
 `setOpacity` da janela, que deixaria o texto transparente junto com o fundo.
 
+**A opacidade começa em 100%.** Quem abre o app pela primeira vez precisa
+enxergá-lo; ver através da janela é uma escolha, e escolha se faz depois de
+conseguir ler o que está na tela. O padrão anterior era 0% e abria uma janela
+quase invisível.
+
+**O acrílico só existe enquanto a janela está ativa.** O Windows desenha o
+material na janela em foco e, assim que ela perde o foco, troca tudo por um
+cinza chapado do sistema — está fotografado em `.agent/fumaca-foco.cjs`. Não há
+como impedir; o que se pode é não depender dele: com `data-foco='nao'` no
+documento, o `body` volta a pintar `--base`. Assim a janela inativa fica na cor
+do tema, e não no cinza do Windows.
+
 Fora do Electron o `body` recebe `var(--base)` sólido, porque navegador não tem
 acrílico e um fundo transparente ficaria branco.
 

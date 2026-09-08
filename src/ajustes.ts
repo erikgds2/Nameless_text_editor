@@ -50,12 +50,15 @@ export const PADRAO: Ajustes = {
   preview: true,
   corpo: 15,
   acento: '#d8934a',
-  opacidade: 0,
+  // Quem abre pela primeira vez precisa enxergar. A janela nasce solida e a
+  // transparencia vira escolha, nao heranca.
+  opacidade: 100,
   fundo: 'acrilico',
   divisoria: 50,
 };
 
-const CHAVE = 'ardosia:ajustes:v1';
+const CHAVE = 'ardosia:ajustes:v2';
+const CHAVE_V1 = 'ardosia:ajustes:v1';
 const CHAVE_ANTIGA = 'editor-sem-nome:tema';
 
 function ehTema(valor: unknown): valor is TemaId {
@@ -67,13 +70,31 @@ function migrarNome(valor: string): string {
   return valor === 'tinta' ? 'carvao' : valor;
 }
 
+/**
+ * A v1 nascia com opacidade 0. Zero no acrilico e uma janela que quase nao se
+ * enxerga, e quem tem zero guardado provavelmente nunca escolheu — era so o
+ * padrao de fabrica passando adiante. Na migracao ele vira solido; o resto do
+ * que a pessoa ajustou atravessa intacto.
+ */
+function migrarDaV1(guardado: Partial<Ajustes>): Ajustes {
+  const ajustes = completar(guardado);
+  return ajustes.opacidade === 0 ? { ...ajustes, opacidade: PADRAO.opacidade } : ajustes;
+}
+
+function lerObjeto(chave: string): Partial<Ajustes> | null {
+  const bruto = localStorage.getItem(chave);
+  if (!bruto) return null;
+  const guardado: unknown = JSON.parse(bruto);
+  return guardado && typeof guardado === 'object' ? (guardado as Partial<Ajustes>) : null;
+}
+
 export function carregarAjustes(): Ajustes {
   try {
-    const bruto = localStorage.getItem(CHAVE);
-    if (bruto) {
-      const guardado: unknown = JSON.parse(bruto);
-      if (guardado && typeof guardado === 'object') return completar(guardado as Partial<Ajustes>);
-    }
+    const atual = lerObjeto(CHAVE);
+    if (atual) return completar(atual);
+
+    const daV1 = lerObjeto(CHAVE_V1);
+    if (daV1) return migrarDaV1(daV1);
 
     const temaAntigo = localStorage.getItem(CHAVE_ANTIGA);
     if (temaAntigo) return completar({ tema: migrarNome(temaAntigo) as TemaId });
