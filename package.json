@@ -45,10 +45,7 @@
   },
   "productName": "Ardósia",
   "description": "Caderno de estudo local-first: escreva em qualquer ponto da tela.",
-  "author": {
-    "name": "Erik",
-    "email": "erikgds@gmail.com"
-  },
+  "author": "Erik",
   "build": {
     "appId": "com.erikgds.ardosia",
     "productName": "Ardósia",
