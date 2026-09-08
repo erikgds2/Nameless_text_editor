@@ -1,5 +1,5 @@
-import '@fontsource/literata/400.css';
-import '@fontsource/literata/600.css';
+// Cascadia Mono e Segoe UI vêm do Windows; a IBM Plex Mono fica empacotada
+// como reserva para quando o app rodar fora dele.
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import { StrictMode } from 'react';

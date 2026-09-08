@@ -7,6 +7,7 @@ function nota(parcial: Partial<Note> = {}): Note {
   return {
     id: 'nota-de-teste',
     blocos: [{ ...criarBloco(48, 48), texto: 'Primeira linha' }],
+    tipo: 'markdown',
     createdAt: Date.UTC(2026, 8, 7, 22, 3, 11),
     updatedAt: Date.UTC(2026, 8, 7, 22, 40, 0),
     pinned: false,
@@ -141,6 +142,27 @@ describe('desserializar', () => {
   });
 });
 
+describe('tipo do documento', () => {
+  it('grava o tipo no frontmatter', () => {
+    expect(serializar(nota({ tipo: 'texto' }))).toContain('tipo: texto');
+    expect(serializar(nota({ tipo: 'markdown' }))).toContain('tipo: markdown');
+  });
+
+  it('le o tipo de volta', () => {
+    expect(desserializar('---\ntipo: texto\n---\ncorpo\n', 'x').tipo).toBe('texto');
+    expect(desserializar('---\ntipo: markdown\n---\ncorpo\n', 'x').tipo).toBe('markdown');
+  });
+
+  it('um .md sem tipo declarado e tratado como Markdown', () => {
+    expect(desserializar('# so o corpo\n', 'x').tipo).toBe('markdown');
+    expect(desserializar('---\nardosia: 1\n---\ncorpo\n', 'x').tipo).toBe('markdown');
+  });
+
+  it('tipo desconhecido no arquivo nao vira um tipo invalido', () => {
+    expect(desserializar('---\ntipo: planilha\n---\ncorpo\n', 'x').tipo).toBe('markdown');
+  });
+});
+
 describe('ida e volta', () => {
   it('preserva a nota inteira', () => {
     const original = nota({
@@ -154,6 +176,7 @@ describe('ida e volta', () => {
     expect(voltou.createdAt).toBe(original.createdAt);
     expect(voltou.updatedAt).toBe(original.updatedAt);
     expect(voltou.pinned).toBe(original.pinned);
+    expect(voltou.tipo).toBe(original.tipo);
     expect(voltou.blocos.map(({ id, ...resto }) => resto)).toEqual(
       original.blocos.map(({ id, ...resto }) => resto),
     );

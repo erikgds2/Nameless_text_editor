@@ -1,9 +1,12 @@
-import { useRef, useState } from 'react';
-import type { MouseEvent, PointerEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { MouseEvent, PointerEvent, UIEvent } from 'react';
 import { ALTURA_MINIMA, LARGURA_MINIMA, criarBloco, type Bloco } from '../canvas';
+import { realcar } from '../markdown';
+import type { TipoDoc } from '../notes';
 
 type Props = {
   blocos: Bloco[];
+  tipo: TipoDoc;
   onChange: (blocos: Bloco[]) => void;
 };
 
@@ -11,11 +14,15 @@ type Arraste =
   | { tipo: 'mover'; id: string; offsetX: number; offsetY: number }
   | { tipo: 'redimensionar'; id: string; inicioX: number; inicioY: number; larguraInicial: number; alturaInicial: number };
 
-export default function Canvas({ blocos, onChange }: Props) {
+export default function Canvas({ blocos, tipo, onChange }: Props) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [ativoId, setAtivoId] = useState<string | null>(null);
   const [criadoRecentemente, setCriadoRecentemente] = useState<string | null>(null);
   const [arraste, setArraste] = useState<Arraste | null>(null);
+
+  // Abrir uma nota em branco já deixa o cursor pronto: capturar uma ideia não
+  // pode custar um clique a mais. (O Canvas remonta a cada nota, via key.)
+  const notaEmBranco = blocos.length === 1 && blocos[0].texto === '';
 
   function handleDuploClique(event: MouseEvent<HTMLDivElement>) {
     if (event.target !== canvasRef.current || !canvasRef.current) return;
@@ -34,6 +41,16 @@ export default function Canvas({ blocos, onChange }: Props) {
 
   function handleChangeTexto(id: string, texto: string) {
     onChange(blocos.map((bloco) => (bloco.id === id ? { ...bloco, texto } : bloco)));
+  }
+
+  // O bloco acompanha o texto para baixo, como no papel. Encolher fica a cargo
+  // do canto de redimensionar: ninguém quer o bloco pulando enquanto apaga.
+  function handleAltura(id: string, altura: number) {
+    onChange(
+      blocos.map((bloco) =>
+        bloco.id === id && altura > bloco.altura ? { ...bloco, altura } : bloco,
+      ),
+    );
   }
 
   function handleBlurTexto(bloco: Bloco) {
@@ -92,7 +109,13 @@ export default function Canvas({ blocos, onChange }: Props) {
       {blocos.map((bloco) => (
         <div
           key={bloco.id}
-          className={bloco.id === ativoId ? 'bloco bloco--ativo' : 'bloco'}
+          className={[
+            'bloco',
+            bloco.id === ativoId ? 'bloco--ativo' : '',
+            tipo === 'texto' ? 'bloco--puro' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
           style={{ left: bloco.x, top: bloco.y, width: bloco.largura, height: bloco.altura }}
         >
           <div
@@ -101,13 +124,13 @@ export default function Canvas({ blocos, onChange }: Props) {
             onPointerMove={handlePointerMoveAlca}
             onPointerUp={handlePointerUp}
           />
-          <textarea
-            className="bloco__texto"
-            value={bloco.texto}
-            spellCheck={false}
-            autoFocus={bloco.id === criadoRecentemente}
+          <Escrita
+            bloco={bloco}
+            realce={tipo === 'markdown'}
+            autoFocus={bloco.id === criadoRecentemente || notaEmBranco}
             onFocus={() => setAtivoId(bloco.id)}
-            onChange={(event) => handleChangeTexto(bloco.id, event.target.value)}
+            onChange={(texto) => handleChangeTexto(bloco.id, texto)}
+            onAltura={(altura) => handleAltura(bloco.id, altura)}
             onBlur={() => handleBlurTexto(bloco)}
           />
           <div
@@ -120,4 +143,68 @@ export default function Canvas({ blocos, onChange }: Props) {
       ))}
     </div>
   );
+}
+
+type EscritaProps = {
+  bloco: Bloco;
+  realce: boolean;
+  autoFocus: boolean;
+  onFocus: () => void;
+  onChange: (texto: string) => void;
+  onAltura: (altura: number) => void;
+  onBlur: () => void;
+};
+
+/**
+ * O texto é digitado num textarea transparente; o que se vê é a camada de
+ * realce atrás dele, com a mesma métrica. É o que permite negrito e título
+ * coloridos sem perder o cursor, o desfazer e a acentuação nativos do sistema.
+ */
+function Escrita({ bloco, realce, autoFocus, onFocus, onChange, onAltura, onBlur }: EscritaProps) {
+  const espelhoRef = useRef<HTMLDivElement | null>(null);
+  const areaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const area = areaRef.current;
+    if (area && area.scrollHeight > bloco.altura) onAltura(area.scrollHeight);
+    // onAltura vem do render atual; incluí-lo aqui repetiria o efeito à toa
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bloco.texto, bloco.altura, bloco.largura]);
+
+  function acompanharRolagem(event: UIEvent<HTMLTextAreaElement>) {
+    if (!espelhoRef.current) return;
+    espelhoRef.current.scrollTop = event.currentTarget.scrollTop;
+    espelhoRef.current.scrollLeft = event.currentTarget.scrollLeft;
+  }
+
+  return (
+    <>
+      {realce && (
+        <div
+          className="bloco__espelho"
+          ref={espelhoRef}
+          aria-hidden="true"
+          // o texto vem de realcar(), que escapa tudo que o usuário digitou
+          dangerouslySetInnerHTML={{ __html: paraEspelho(bloco.texto) }}
+        />
+      )}
+      <textarea
+        className="bloco__texto"
+        ref={areaRef}
+        value={bloco.texto}
+        spellCheck={false}
+        autoFocus={autoFocus}
+        onFocus={onFocus}
+        onScroll={acompanharRolagem}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={onBlur}
+      />
+    </>
+  );
+}
+
+// Uma quebra de linha final não gera linha visível numa div: sem o espaço, o
+// espelho fica uma linha mais curto que o textarea e o texto sai do lugar.
+function paraEspelho(texto: string): string {
+  return realcar(texto) + (texto.endsWith('\n') ? ' ' : '');
 }

@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react';
-import { deriveTitle, textoDaNota, type Note } from '../notes';
+import { useEffect, useMemo, useState } from 'react';
+import { deriveTitle, textoDaNota, type Note, type TipoDoc } from '../notes';
 import type { Bloco } from '../canvas';
+import { renderizar } from '../markdown';
 import Canvas from './Canvas';
 
 type Props = {
   note: Note | null;
+  preview: boolean;
   onChange: (blocos: Bloco[]) => void;
   onDelete: (id: string) => void;
+  onMudarTipo: (tipo: TipoDoc) => void;
+  onAlternarPreview: () => void;
 };
 
 const timeFormat = new Intl.DateTimeFormat('pt-BR', {
@@ -21,7 +25,14 @@ function countWords(texto: string): number {
   return words ? words.length : 0;
 }
 
-export default function Editor({ note, onChange, onDelete }: Props) {
+export default function Editor({
+  note,
+  preview,
+  onChange,
+  onDelete,
+  onMudarTipo,
+  onAlternarPreview,
+}: Props) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => setConfirmingDelete(false), [note?.id]);
@@ -31,6 +42,16 @@ export default function Editor({ note, onChange, onDelete }: Props) {
     const timer = setTimeout(() => setConfirmingDelete(false), 3000);
     return () => clearTimeout(timer);
   }, [confirmingDelete]);
+
+  const texto = note ? textoDaNota(note.blocos) : '';
+  const ehMarkdown = note?.tipo === 'markdown';
+  const mostrandoPreview = ehMarkdown && preview;
+
+  // renderizar a cada tecla custa caro em nota grande; só refaz quando muda
+  const html = useMemo(
+    () => (mostrandoPreview ? renderizar(texto) : ''),
+    [mostrandoPreview, texto],
+  );
 
   if (!note) {
     return (
@@ -43,8 +64,6 @@ export default function Editor({ note, onChange, onDelete }: Props) {
     );
   }
 
-  const texto = textoDaNota(note.blocos);
-
   return (
     <main className="editor">
       <header className="editor__header">
@@ -52,6 +71,47 @@ export default function Editor({ note, onChange, onDelete }: Props) {
           <h1 className="editor__title">{deriveTitle(texto)}</h1>
           <span className="editor__time">Editado em {timeFormat.format(note.updatedAt)}</span>
         </div>
+
+        <div className="opcoes">
+          <button
+            className={`opcao${note.tipo === 'markdown' ? ' opcao--on' : ''}`}
+            onClick={() => onMudarTipo('markdown')}
+            title="Tratar esta nota como Markdown"
+          >
+            Markdown
+          </button>
+          <button
+            className={`opcao${note.tipo === 'texto' ? ' opcao--on' : ''}`}
+            onClick={() => onMudarTipo('texto')}
+            title="Tratar esta nota como texto puro"
+          >
+            Texto
+          </button>
+        </div>
+
+        {ehMarkdown && (
+          <button
+            className={`icone${preview ? ' icone--ativo' : ''}`}
+            onClick={onAlternarPreview}
+            title="Pré-visualização (Ctrl + E)"
+            aria-label="Alternar pré-visualização"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <rect
+                x="1.5"
+                y="3"
+                width="13"
+                height="10"
+                rx="1.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.2"
+              />
+              <path d="M8 3v10" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+          </button>
+        )}
+
         <button
           className={`btn btn--danger${confirmingDelete ? ' btn--armed' : ''}`}
           onClick={() => (confirmingDelete ? onDelete(note.id) : setConfirmingDelete(true))}
@@ -60,7 +120,18 @@ export default function Editor({ note, onChange, onDelete }: Props) {
         </button>
       </header>
 
-      <Canvas key={note.id} blocos={note.blocos} onChange={onChange} />
+      <div className={`editor__corpo${mostrandoPreview ? ' editor__corpo--dividido' : ''}`}>
+        <Canvas key={note.id} blocos={note.blocos} tipo={note.tipo} onChange={onChange} />
+        {mostrandoPreview &&
+          (texto.trim() ? (
+            // o html vem de renderizar(), que escapa todo o texto do usuário
+            <div className="preview" dangerouslySetInnerHTML={{ __html: html }} />
+          ) : (
+            <div className="preview">
+              <p className="preview__vazio">A pré-visualização aparece aqui conforme você escreve.</p>
+            </div>
+          ))}
+      </div>
 
       <footer className="editor__footer">
         <span>{countWords(texto)} palavras</span>

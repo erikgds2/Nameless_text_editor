@@ -13,6 +13,24 @@ describe('deriveTitle', () => {
   it('cai no rotulo padrao quando so ha espaco em branco', () => {
     expect(deriveTitle('   \n\n ')).toBe('Nota sem título');
   });
+
+  it('tira a marcacao do Markdown: o titulo e o texto, nao os sinais', () => {
+    expect(deriveTitle('# Revisão de Cálculo I')).toBe('Revisão de Cálculo I');
+    expect(deriveTitle('### Terceiro nível')).toBe('Terceiro nível');
+    expect(deriveTitle('- item de lista')).toBe('item de lista');
+    expect(deriveTitle('1. primeiro')).toBe('primeiro');
+    expect(deriveTitle('> citação')).toBe('citação');
+    expect(deriveTitle('**tudo em negrito**')).toBe('tudo em negrito');
+    expect(deriveTitle('`código`')).toBe('código');
+  });
+
+  it('preserva sublinhado, que e caractere legitimo de nome', () => {
+    expect(deriveTitle('meu_arquivo importante')).toBe('meu_arquivo importante');
+  });
+
+  it('nao devolve titulo vazio quando a linha era so marcacao', () => {
+    expect(deriveTitle('***')).toBe('Nota sem título');
+  });
 });
 
 describe('persistencia', () => {

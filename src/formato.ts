@@ -1,6 +1,6 @@
 import { criarBloco, LARGURA_PADRAO, ALTURA_PADRAO, LARGURA_MINIMA, ALTURA_MINIMA } from './canvas';
 import type { Bloco } from './canvas';
-import type { Note } from './notes';
+import type { Note, TipoDoc } from './notes';
 
 const MARCADOR = /<!--\s*ardosia:bloco([^>]*)-->/g;
 
@@ -8,6 +8,7 @@ export function serializar(nota: Note): string {
   const frontmatter = [
     '---',
     'ardosia: 1',
+    `tipo: ${nota.tipo}`,
     `criada: ${new Date(nota.createdAt).toISOString()}`,
     `atualizada: ${new Date(nota.updatedAt).toISOString()}`,
     `fixada: ${nota.pinned}`,
@@ -26,11 +27,12 @@ export function serializar(nota: Note): string {
 }
 
 export function desserializar(texto: string, id: string): Note {
-  const { createdAt, updatedAt, pinned, corpo } = extrairFrontmatter(normalizar(texto));
+  const { createdAt, updatedAt, pinned, tipo, corpo } = extrairFrontmatter(normalizar(texto));
   const blocos = extrairBlocos(corpo);
   return {
     id,
     blocos: blocos.length > 0 ? blocos : [criarBloco(48, 48)],
+    tipo,
     createdAt,
     updatedAt,
     pinned,
@@ -45,13 +47,20 @@ function normalizar(texto: string): string {
   return texto.replace(/^\ufeff/, '').replace(/\r\n/g, '\n');
 }
 
-type Frontmatter = { createdAt: number; updatedAt: number; pinned: boolean; corpo: string };
+type Frontmatter = {
+  createdAt: number;
+  updatedAt: number;
+  pinned: boolean;
+  tipo: TipoDoc;
+  corpo: string;
+};
 
 function extrairFrontmatter(texto: string): Frontmatter {
   const agora = Date.now();
   const match = texto.match(/^---\n([\s\S]*?)\n---\n?/);
   if (!match) {
-    return { createdAt: agora, updatedAt: agora, pinned: false, corpo: texto };
+    // um .md solto na pasta é Markdown até que se diga o contrário
+    return { createdAt: agora, updatedAt: agora, pinned: false, tipo: 'markdown', corpo: texto };
   }
 
   const campos: Record<string, string> = {};
@@ -67,6 +76,7 @@ function extrairFrontmatter(texto: string): Frontmatter {
     createdAt: Number.isFinite(criada) ? criada : agora,
     updatedAt: Number.isFinite(atualizada) ? atualizada : agora,
     pinned: campos.fixada === 'true',
+    tipo: campos.tipo === 'texto' ? 'texto' : 'markdown',
     corpo: texto.slice(match[0].length),
   };
 }

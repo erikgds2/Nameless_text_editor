@@ -1,6 +1,6 @@
 // Onde as notas moram. No desktop, um .md por nota numa pasta sua; no navegador,
 // o localStorage de sempre. O resto do app fala so com esta interface.
-import { createNote, deriveTitle, loadNotes, saveNotes, textoDaNota, type Note } from './notes';
+import { createNote, deriveTitle, loadNotes, saveNotes, textoDaNota, type Note, type TipoDoc } from './notes';
 import { desserializar, serializar } from './formato';
 import { nomeDisponivel, slugDeTitulo } from './nomes';
 
@@ -22,7 +22,7 @@ declare global {
 
 export type Deposito = {
   emDisco: boolean;
-  criar(): Note;
+  criar(tipo: TipoDoc): Note;
   listar(): Promise<Note[]>;
   salvar(nota: Note): Promise<Note>;
   apagar(id: string): Promise<void>;
@@ -71,7 +71,7 @@ async function migrar(ponte: PonteDisco): Promise<void> {
 export function depositoEmDisco(ponte: PonteDisco): Deposito {
   return {
     emDisco: true,
-    criar: () => ({ ...createNote(), id: idProvisorio() }),
+    criar: (tipo) => ({ ...createNote(tipo), id: idProvisorio() }),
 
     async listar() {
       await migrar(ponte);
