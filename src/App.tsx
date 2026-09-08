@@ -385,6 +385,8 @@ export default function App() {
           onMudarTipo={handleMudarTipo}
           onColarImagem={handleColarImagem}
           recado={recado}
+          divisoria={ajustes.divisoria}
+          onMudarDivisoria={(divisoria) => setAjustes((prev) => ({ ...prev, divisoria }))}
           temaEscuro={ajustes.tema !== 'papel'}
           onAlternarPreview={() => setAjustes((prev) => ({ ...prev, preview: !prev.preview }))}
         />

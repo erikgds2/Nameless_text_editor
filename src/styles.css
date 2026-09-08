@@ -389,8 +389,21 @@ button {
   min-height: 0;
 }
 
+/* A divisória é uma coluna de verdade, não um enfeite sobre a borda: assim o
+   canvas e a pré-visualização nunca ficam por baixo dela. */
 .editor__corpo--dividido {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: var(--divisoria, 50%) 6px 1fr;
+}
+
+.divisoria {
+  cursor: col-resize;
+  background: var(--rule);
+  transition: background-color var(--rapido);
+}
+
+.divisoria:hover,
+.divisoria:active {
+  background: var(--accent);
 }
 
 .editor__footer {

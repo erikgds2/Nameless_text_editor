@@ -56,7 +56,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 
 | # | | Item |
 | --- | --- | --- |
-| 31 | `[ ]` **P1** | Busca dentro da nota aberta, com realce das ocorrências |
+| 31 | `[x]` **P1** | Busca dentro da nota aberta, com realce das ocorrências |
 | 32 | `[x]` **P1** | Paleta de comandos (`Ctrl+K`): abrir nota, trocar tema, tudo sem mouse |
 | 33 | `[x]` **P1** | Busca mostra o trecho onde o termo apareceu, não só o começo da nota |
 | 34 | `[ ]` **P2** | Tags `#assunto` no texto viram filtro na barra lateral |
@@ -118,8 +118,8 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 
 | # | | Item |
 | --- | --- | --- |
-| 73 | `[ ]` **P1** | Blocos fora da área visível quando a pré-visualização abre: reposicionar ou avisar |
-| 74 | `[ ]` **P1** | Divisória arrastável entre editor e pré-visualização |
+| 73 | `[x]` **P1** | Blocos fora da área visível quando a pré-visualização abre: reposicionar ou avisar |
+| 74 | `[x]` **P1** | Divisória arrastável entre editor e pré-visualização |
 | 75 | `[ ]` **P2** | Barra lateral recolhível (`Ctrl+\`) |
 | 76 | `[ ]` **P2** | Escolher a fonte do corpo entre as monoespaçadas instaladas |
 | 77 | `[ ]` **P2** | Acompanhar o tema claro/escuro do Windows automaticamente |

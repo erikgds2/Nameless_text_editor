@@ -20,6 +20,8 @@ function montar(overrides: Partial<Parameters<typeof Editor>[0]> = {}) {
     onAlternarPreview: vi.fn(),
     onColarImagem: vi.fn(async () => 'imagem.png'),
     temaEscuro: true,
+    divisoria: 50,
+    onMudarDivisoria: vi.fn(),
     ...overrides,
   };
   render(<Editor {...props} />);

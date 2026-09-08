@@ -13,6 +13,8 @@ export type Ajustes = {
   acento: string;
   /** Quanto do fundo é sólido, de 0 (só o acrílico) a 100 (opaco). */
   opacidade: number;
+  /** Quanto da largura fica com o editor quando há pré-visualização, em %. */
+  divisoria: number;
 };
 
 export const TEMAS: { id: TemaId; rotulo: string }[] = [
@@ -43,6 +45,7 @@ export const PADRAO: Ajustes = {
   corpo: 15,
   acento: '#d8934a',
   opacidade: 0,
+  divisoria: 50,
 };
 
 const CHAVE = 'ardosia:ajustes:v1';
@@ -88,6 +91,10 @@ function completar(parcial: Partial<Ajustes>): Ajustes {
     opacidade: typeof parcial.opacidade === 'number' && Number.isFinite(parcial.opacidade)
       ? Math.min(100, Math.max(0, Math.round(parcial.opacidade)))
       : PADRAO.opacidade,
+    // nem tudo para um lado: abaixo de 20% nao sobra onde escrever nem onde ler
+    divisoria: typeof parcial.divisoria === 'number' && Number.isFinite(parcial.divisoria)
+      ? Math.min(80, Math.max(20, Math.round(parcial.divisoria)))
+      : PADRAO.divisoria,
   };
 }
 

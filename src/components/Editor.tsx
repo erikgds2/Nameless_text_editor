@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react';
 import { deriveTitle, textoDaNota, type Note, type TipoDoc } from '../notes';
 import type { Bloco } from '../canvas';
 import { renderizar } from '../markdown';
@@ -24,6 +25,8 @@ type Props = {
   onColarImagem: (bytes: Uint8Array, tipo: string) => Promise<string | null>;
   temaEscuro: boolean;
   recado?: string | null;
+  divisoria: number;
+  onMudarDivisoria: (por_cento: number) => void;
 };
 
 const timeFormat = new Intl.DateTimeFormat('pt-BR', {
@@ -58,9 +61,12 @@ export default function Editor({
   onColarImagem,
   temaEscuro,
   recado,
+  divisoria,
+  onMudarDivisoria,
 }: Props) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  const corpoRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => setConfirmingDelete(false), [note?.id]);
 
@@ -93,6 +99,36 @@ export default function Editor({
     }, 300);
     return () => clearTimeout(timer);
   }, [html, temaEscuro]);
+
+  /**
+   * Arrastar a divisória escreve direto no style, sem passar pelo React: a cada
+   * pixel o estado subiria até o App e mandaria a nota inteira e a
+   * pré-visualização renderizarem de novo. O valor só vira preferência quando
+   * o botão é solto.
+   */
+  function arrastarDivisoria(event: ReactPointerEvent<HTMLDivElement>) {
+    const corpo = corpoRef.current;
+    if (!corpo) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    const caixa = corpo.getBoundingClientRect();
+    let ultima = divisoria;
+
+    function mover(movimento: PointerEvent) {
+      const bruto = ((movimento.clientX - caixa.left) / caixa.width) * 100;
+      ultima = Math.min(80, Math.max(20, Math.round(bruto)));
+      corpo?.style.setProperty('--divisoria', `${ultima}%`);
+    }
+
+    function soltar() {
+      window.removeEventListener('pointermove', mover);
+      window.removeEventListener('pointerup', soltar);
+      onMudarDivisoria(ultima);
+    }
+
+    window.addEventListener('pointermove', mover);
+    window.addEventListener('pointerup', soltar);
+  }
 
   if (!note) {
     return (
@@ -161,7 +197,11 @@ export default function Editor({
         </button>
       </header>
 
-      <div className={`editor__corpo${mostrandoPreview ? ' editor__corpo--dividido' : ''}`}>
+      <div
+        className={`editor__corpo${mostrandoPreview ? ' editor__corpo--dividido' : ''}`}
+        ref={corpoRef}
+        style={{ '--divisoria': `${divisoria}%` } as CSSProperties}
+      >
         <Canvas
           key={note.id}
           blocos={note.blocos}
@@ -169,6 +209,14 @@ export default function Editor({
           onChange={onChange}
           onColarImagem={onColarImagem}
         />
+        {mostrandoPreview && (
+          <div
+            className="divisoria"
+            role="separator"
+            aria-label="Ajustar a divisão entre escrita e pré-visualização"
+            onPointerDown={arrastarDivisoria}
+          />
+        )}
         {mostrandoPreview &&
           (texto.trim() ? (
             // o html vem de renderizar(), que escapa todo o texto do usuário

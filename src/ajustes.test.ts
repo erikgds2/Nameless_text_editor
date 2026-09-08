@@ -103,3 +103,21 @@ describe('acento e opacidade', () => {
     expect(carregarAjustes().opacidade).toBe(43);
   });
 });
+
+describe('divisória entre editor e pré-visualização', () => {
+  it('começa no meio', () => {
+    expect(carregarAjustes().divisoria).toBe(50);
+  });
+
+  it('não deixa um dos lados sumir', () => {
+    localStorage.setItem('ardosia:ajustes:v1', JSON.stringify({ divisoria: 5 }));
+    expect(carregarAjustes().divisoria).toBe(20);
+    localStorage.setItem('ardosia:ajustes:v1', JSON.stringify({ divisoria: 99 }));
+    expect(carregarAjustes().divisoria).toBe(80);
+  });
+
+  it('lembra a proporção escolhida', () => {
+    salvarAjustes({ ...PADRAO, divisoria: 65 });
+    expect(carregarAjustes().divisoria).toBe(65);
+  });
+});
