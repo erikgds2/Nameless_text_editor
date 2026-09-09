@@ -217,3 +217,54 @@ describe('navegadorTemPasta', () => {
     expect(navegadorTemPasta()).toBe(false);
   });
 });
+
+describe('a extensão é o tipo da nota', () => {
+  it('lista .txt como nota de texto puro, e diz a extensão de cada uma', async () => {
+    const { raiz, arquivos } = duploNovo();
+    arquivos.set('anotacao.txt', { texto: 'sem marcação nenhuma', modificadoEm: 0 });
+    arquivos.set('aula.md', { texto: '# Aula', modificadoEm: 0 });
+
+    const listados = await arquivosDaPasta(raiz).listar();
+    expect(listados.map((item) => [item.id, item.extensao]).sort()).toEqual([
+      ['anotacao', '.txt'],
+      ['aula', '.md'],
+    ]);
+  });
+
+  it('a nota de texto puro chega ao depósito como texto, e não como Markdown', async () => {
+    const { raiz, arquivos } = duploNovo();
+    arquivos.set('anotacao.txt', { texto: 'lista de compras', modificadoEm: 0 });
+
+    const [nota] = await depositoEmArquivos(arquivosDaPasta(raiz)).listar();
+    expect(nota.tipo).toBe('texto');
+  });
+
+  it('trocar o tipo renomeia o arquivo e não deixa o antigo para trás', async () => {
+    const { raiz, arquivos } = duploNovo();
+    const deposito = depositoEmArquivos(arquivosDaPasta(raiz));
+
+    await arquivosDaPasta(raiz).escrever('aula', 'conteúdo', '.md');
+    expect([...arquivos.keys()]).toEqual(['aula.md']);
+
+    await arquivosDaPasta(raiz).escrever('aula', 'conteúdo', '.txt');
+    expect([...arquivos.keys()]).toEqual(['aula.txt']);
+
+    expect(await deposito.listar()).toHaveLength(1);
+  });
+
+  it('renomear preserva a extensão que a nota tem', async () => {
+    const { raiz, arquivos } = duploNovo();
+    arquivos.set('velho.txt', { texto: 'corpo', modificadoEm: 0 });
+
+    await arquivosDaPasta(raiz).renomear('velho', 'novo');
+    expect([...arquivos.keys()]).toEqual(['novo.txt']);
+  });
+
+  it('apagar leva a nota seja qual for a extensão dela', async () => {
+    const { raiz, arquivos } = duploNovo();
+    arquivos.set('some.txt', { texto: 'corpo', modificadoEm: 0 });
+
+    await arquivosDaPasta(raiz).apagar('some');
+    expect([...arquivos.keys()]).toEqual([]);
+  });
+});

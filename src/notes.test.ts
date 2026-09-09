@@ -3,7 +3,9 @@ import {
   createNote,
   deriveTitle,
   duplicarNota,
+  extensaoDoTipo,
   loadNotes,
+  tipoDoArquivo,
   saveNotes,
   textoDaNota,
   tituloDoDia,
@@ -207,5 +209,24 @@ describe('título de nota que começa com figura', () => {
 
   it('texto que menciona uma imagem no meio continua sendo título', () => {
     expect(deriveTitle('veja ![](anexos/abc.png) aqui')).toBe('veja ![](anexos/abc.png) aqui');
+  });
+});
+
+describe('a extensão é o tipo', () => {
+  it('cada tipo tem a sua extensão', () => {
+    expect(extensaoDoTipo('markdown')).toBe('.md');
+    expect(extensaoDoTipo('texto')).toBe('.txt');
+  });
+
+  it('o nome do arquivo diz o tipo, inclusive em maiúsculas', () => {
+    expect(tipoDoArquivo('aula.md')).toBe('markdown');
+    expect(tipoDoArquivo('AULA.MD')).toBe('markdown');
+    expect(tipoDoArquivo('lista.txt')).toBe('texto');
+    expect(tipoDoArquivo('.txt')).toBe('texto');
+  });
+
+  it('o que não é nota não vira tipo nenhum', () => {
+    expect(tipoDoArquivo('imagem.png')).toBeNull();
+    expect(tipoDoArquivo('sem-extensao')).toBeNull();
   });
 });

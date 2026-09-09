@@ -991,3 +991,168 @@ describe('escrever na seção que tem foto', () => {
     expect(screen.getByRole('textbox')).toHaveFocus();
   });
 });
+
+describe('a caneta e a letra da seção', () => {
+  it('escolher uma caneta guarda a escolha na seção, e só nela', async () => {
+    const alvo = bloco('escrito à mão');
+    const outro = bloco('intocado', 200);
+    const { onChange } = montar([alvo, outro]);
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Caneta e letra desta seção' })[0]);
+    await userEvent.click(screen.getByRole('button', { name: 'Azul' }));
+
+    expect(onChange).toHaveBeenCalledWith([{ ...alvo, caneta: 'azul' }, outro]);
+  });
+
+  it('escolher a letra não apaga a caneta já escolhida', async () => {
+    const alvo = { ...bloco('texto'), caneta: 'verde' as const };
+    const { onChange } = montar([alvo]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Caneta e letra desta seção' }));
+    await userEvent.click(screen.getByRole('button', { name: 'De mão' }));
+
+    expect(onChange).toHaveBeenCalledWith([{ ...alvo, letra: 'mao' }]);
+  });
+
+  it('voltar ao grafite apaga a escolha em vez de gravá-la', async () => {
+    const alvo = { ...bloco('texto'), caneta: 'ocre' as const };
+    const { onChange } = montar([alvo]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Caneta e letra desta seção' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Grafite' }));
+
+    const [[blocos]] = onChange.mock.calls;
+    expect(blocos[0]).not.toHaveProperty('caneta');
+    expect(blocos[0].texto).toBe('texto');
+  });
+
+  it('a seção veste a caneta e a letra que tem', () => {
+    montar([{ ...bloco('pintado'), caneta: 'terracota', letra: 'leitura' }]);
+    const secao = document.querySelector('.bloco');
+    expect(secao?.className).toContain('bloco--caneta-terracota');
+    expect(secao?.className).toContain('bloco--letra-leitura');
+    expect(secao?.className).toContain('bloco--tinta');
+  });
+
+  it('seção sem escolha não recebe classe nenhuma de aspecto', () => {
+    montar([bloco('comum')]);
+    expect(document.querySelector('.bloco')?.className).not.toContain('bloco--caneta');
+  });
+
+  it('escolher a caneta não tira o foco do texto: a seção vazia não pode sumir', async () => {
+    const vazia = bloco('');
+    const outra = bloco('outra', 200);
+    const { onChange } = montar([vazia, outra]);
+
+    const campo = screen.getAllByRole('textbox')[0];
+    campo.focus();
+    await userEvent.click(screen.getAllByRole('button', { name: 'Caneta e letra desta seção' })[0]);
+
+    expect(document.activeElement).toBe(campo);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('o estojo fecha com Esc', async () => {
+    montar([bloco('texto')]);
+    await userEvent.click(screen.getByRole('button', { name: 'Caneta e letra desta seção' }));
+    expect(screen.getByRole('button', { name: 'Azul' })).toBeInTheDocument();
+
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('button', { name: 'Azul' })).toBeNull();
+  });
+});
+
+describe('a seção como post-it', () => {
+  it('escolher um papel guarda o fundo na seção', async () => {
+    const alvo = bloco('lembrete');
+    const { onChange } = montar([alvo]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Caneta e letra desta seção' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Papel ocre' }));
+
+    expect(onChange).toHaveBeenCalledWith([{ ...alvo, fundo: 'ocre' }]);
+  });
+
+  it('a seção veste o papel que tem', () => {
+    montar([{ ...bloco('amarelado'), fundo: 'ocre' }]);
+    expect(document.querySelector('.bloco')?.className).toContain('bloco--papel-ocre');
+  });
+
+  it('voltar a "sem papel" apaga a escolha em vez de gravá-la', async () => {
+    const { onChange } = montar([{ ...bloco('texto'), fundo: 'verde' as const }]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Caneta e letra desta seção' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sem papel' }));
+
+    const [[blocos]] = onChange.mock.calls;
+    expect(blocos[0]).not.toHaveProperty('fundo');
+  });
+
+  it('o papel não apaga a caneta nem a letra da seção', async () => {
+    const alvo = { ...bloco('texto'), caneta: 'azul' as const, letra: 'mao' as const };
+    const { onChange } = montar([alvo]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Caneta e letra desta seção' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Papel verde' }));
+
+    expect(onChange).toHaveBeenCalledWith([{ ...alvo, fundo: 'verde' }]);
+  });
+});
+
+describe('arrastar a figura de uma seção para outra', () => {
+  function comDuasSecoes() {
+    const origem = {
+      ...bloco('com foto'),
+      id: 'origem',
+      altura: 300,
+      imagem: { src: 'anexos/a.png', altura: 200 },
+    };
+    const destino = { ...bloco('sem foto', 400), id: 'destino', altura: 120 };
+    const onChange = vi.fn();
+    render(
+      <Canvas
+        blocos={[origem, destino]}
+        tipo="texto"
+        onChange={onChange}
+        onColarImagem={vi.fn(async () => 'x.png')}
+        titulos={[]}
+        trechos={{}}
+        achados={[]}
+        achadoAtual={null}
+        onSair={vi.fn()}
+        onRecado={vi.fn()}
+      />,
+    );
+    return { onChange, origem, destino };
+  }
+
+  it('pegar a foto numa seção e soltar na outra muda a foto de dono', () => {
+    const { onChange } = comDuasSecoes();
+
+    fireEvent.pointerDown(screen.getByRole('img', { name: 'Imagem colada na nota' }));
+    fireEvent.pointerUp(document.querySelector('[data-bloco="destino"]') as Element);
+
+    const [[blocos]] = onChange.mock.calls;
+    expect(blocos[0].imagem).toBeUndefined();
+    expect(blocos[1].imagem).toEqual({ src: 'anexos/a.png', altura: 200 });
+  });
+
+  it('soltar na mesma seção não mexe na nota', () => {
+    const { onChange } = comDuasSecoes();
+
+    fireEvent.pointerDown(screen.getByRole('img', { name: 'Imagem colada na nota' }));
+    fireEvent.pointerUp(document.querySelector('[data-bloco="origem"]') as Element);
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('soltar no vazio da página deixa a foto onde estava', () => {
+    const { onChange } = comDuasSecoes();
+
+    fireEvent.pointerDown(screen.getByRole('img', { name: 'Imagem colada na nota' }));
+    fireEvent.pointerUp(document.querySelector('.canvas') as Element);
+    fireEvent.pointerUp(document.querySelector('[data-bloco="destino"]') as Element);
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});

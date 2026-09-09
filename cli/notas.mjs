@@ -69,15 +69,39 @@ export async function definirPasta(destino) {
   return absoluto;
 }
 
+// A extensão do arquivo é o tipo da nota, como no app: `.md` é Markdown e
+// `.txt` é texto puro. A CLI lê as duas e grava na que a nota já tem.
+const EXTENSOES_DE_NOTA = ['.md', '.txt'];
+const EXTENSAO_PADRAO = EXTENSOES_DE_NOTA[0];
+
+/** A extensão de nota deste nome de arquivo, ou null quando não é nota. */
+function extensaoDoNome(nome) {
+  const baixo = nome.toLowerCase();
+  return EXTENSOES_DE_NOTA.find((extensao) => baixo.endsWith(extensao)) ?? null;
+}
+
+/** A extensão com que esta nota está no disco hoje, ou a padrão. */
+async function extensaoAtual(base, id) {
+  for (const extensao of EXTENSOES_DE_NOTA) {
+    try {
+      await fs.access(path.resolve(base, `${id}${extensao}`));
+      return extensao;
+    } catch {
+      // segue para a próxima
+    }
+  }
+  return EXTENSAO_PADRAO;
+}
+
 /** A mesma defesa do app: o id é nome de arquivo puro, e não sai da pasta. */
-function caminhoDe(base, id) {
+function caminhoDe(base, id, extensao = EXTENSAO_PADRAO) {
   if (typeof id !== 'string' || id.length === 0 || id.length > 120) {
     throw new ErroDaCli(`id de nota inválido: ${id}`);
   }
   if (path.win32.basename(id) !== id || PROIBIDOS.test(id) || id === '.' || id === '..') {
     throw new ErroDaCli(`id de nota inválido: ${id}`);
   }
-  const destino = path.resolve(base, `${id}.md`);
+  const destino = path.resolve(base, `${id}${extensao}`);
   if (!destino.startsWith(path.resolve(base) + path.sep)) {
     throw new ErroDaCli(`id de nota inválido: ${id}`);
   }
@@ -90,13 +114,14 @@ export async function listar() {
 
   const notas = [];
   for (const entrada of entradas) {
-    if (!entrada.isFile() || !entrada.name.toLowerCase().endsWith('.md')) continue;
+    const extensao = extensaoDoNome(entrada.name);
+    if (!entrada.isFile() || !extensao) continue;
     const completo = path.join(base, entrada.name);
     try {
       const [bruto, info] = await Promise.all([fs.readFile(completo, 'utf8'), fs.stat(completo)]);
       const nota = lerNota(bruto);
       notas.push({
-        id: entrada.name.slice(0, -3),
+        id: entrada.name.slice(0, -extensao.length),
         titulo: tituloDaNota(textoDaNota(nota.blocos)),
         tipo: nota.tipo,
         fixada: nota.fixada,
@@ -113,7 +138,7 @@ export async function listar() {
 export async function ler(id) {
   const base = await pastaDasNotas();
   try {
-    return lerNota(await fs.readFile(caminhoDe(base, id), 'utf8'));
+    return lerNota(await fs.readFile(caminhoDe(base, id, await extensaoAtual(base, id)), 'utf8'));
   } catch (err) {
     if (err instanceof ErroDaCli) throw err;
     throw new ErroDaCli(`nota não encontrada: ${id}`);
@@ -123,7 +148,8 @@ export async function ler(id) {
 /** Grava pelo temporário e só então troca: o vigia nunca vê nota pela metade. */
 export async function gravar(id, nota) {
   const base = await pastaDasNotas();
-  const destino = caminhoDe(base, id);
+  // grava onde a nota já está: a CLI acrescenta conteúdo, não muda o tipo dela
+  const destino = caminhoDe(base, id, await extensaoAtual(base, id));
   const temporario = `${destino}.escrevendo`;
   await fs.writeFile(temporario, escreverNota({ ...nota, atualizada: Date.now() }), 'utf8');
   await fs.rename(temporario, destino);

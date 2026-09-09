@@ -39,7 +39,7 @@ const AJUDA = `ardosia — escrever no caderno pela linha de comando
   ardosia anexar <nota> <arquivo> [--fonte <url>] [--json]
   ardosia pasta [--definir <caminho>] [--json]
 
-<nota> é o id (o nome do arquivo, sem .md) ou o título por extenso.
+<nota> é o id (o nome do arquivo, sem a extensão) ou o título por extenso.
 Sem <texto>, "escrever" lê da entrada padrão — é como um agente manda
 um parágrafo inteiro sem se preocupar com aspas.
 

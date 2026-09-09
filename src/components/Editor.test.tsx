@@ -74,9 +74,16 @@ describe('Editor', () => {
     const nota = comTexto(createNote('markdown'), 'Nota');
     const props = montar({ note: nota });
 
-    await user.click(screen.getByRole('button', { name: 'Texto' }));
+    // o botão diz a extensão junto: o que se escolhe é o arquivo, não um modo
+    await user.click(screen.getByRole('button', { name: 'Texto .txt' }));
 
     expect(props.onMudarTipo).toHaveBeenCalledWith('texto');
+  });
+
+  it('mostra o nome do arquivo com a extensão do tipo', () => {
+    const nota = { ...comTexto(createNote('texto'), 'Lista'), id: 'lista-de-compras' };
+    montar({ note: nota });
+    expect(screen.getByText('lista-de-compras.txt')).toBeInTheDocument();
   });
 
   it('o botão Excluir só apaga no segundo clique', async () => {

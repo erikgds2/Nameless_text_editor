@@ -89,7 +89,16 @@ export function escreverNota(nota) {
           (bloco.imagem.altura ? ` imgh=${bloco.imagem.altura}` : '') +
           (bloco.imagem.fonte ? ` fonte=${bloco.imagem.fonte}` : '')
         : '';
-      const marcador = `<!-- ardosia:bloco x=${bloco.x} y=${bloco.y} w=${bloco.largura} h=${bloco.altura}${figura} -->`;
+      // A CLI nao pinta nada, mas tampouco pode apagar: a caneta e a letra da
+      // secao atravessam a ida e volta como vieram. Quem valida o valor e o
+      // app, ao abrir. Sem isto, `ardosia escrever` numa nota colorida a
+      // devolveria em grafite.
+      const aspecto =
+        (bloco.caneta ? ` cor=${bloco.caneta}` : '') +
+        (bloco.letra ? ` letra=${bloco.letra}` : '') +
+        (bloco.fundo ? ` papel=${bloco.fundo}` : '') +
+        (bloco.anexo ? ` arq=${bloco.anexo.src}` : '');
+      const marcador = `<!-- ardosia:bloco x=${bloco.x} y=${bloco.y} w=${bloco.largura} h=${bloco.altura}${figura}${aspecto} -->`;
       return bloco.texto ? `${marcador}\n${bloco.texto}` : marcador;
     })
     .join('\n\n');
@@ -165,6 +174,10 @@ function extrairBlocos(corpo) {
         altura: tamanho(atributos.h, ALTURA_PADRAO, ALTURA_MINIMA),
         texto: corpo.slice(inicio, fim).trim(),
         ...imagemDoAtributo(atributos.img, atributos.fonte, atributos.imgh),
+        ...(atributos.cor ? { caneta: atributos.cor } : {}),
+        ...(atributos.letra ? { letra: atributos.letra } : {}),
+        ...(atributos.papel ? { fundo: atributos.papel } : {}),
+        ...(atributos.arq ? { anexo: { src: atributos.arq } } : {}),
       }),
     );
   });

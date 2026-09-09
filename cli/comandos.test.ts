@@ -266,3 +266,32 @@ describe('gravação segura', () => {
     }
   });
 });
+
+describe('a caneta da seção sobrevive à CLI', () => {
+  it('escrever um bloco novo não devolve a nota em grafite', () => {
+    const arquivo = path.join(pasta, 'colorida.md');
+    writeFileSync(
+      arquivo,
+      [
+        '---',
+        'ardosia: 1',
+        'tipo: markdown',
+        'criada: 2026-09-09T12:00:00.000Z',
+        'atualizada: 2026-09-09T12:00:00.000Z',
+        'fixada: false',
+        '---',
+        '',
+        '<!-- ardosia:bloco x=0 y=0 w=320 h=120 cor=azul letra=mao -->',
+        'escrito de azul',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+
+    expect(rodar(['escrever', 'colorida', 'da linha de comando']).codigo).toBe(0);
+
+    const depois = readFileSync(arquivo, 'utf8');
+    expect(depois).toContain('cor=azul letra=mao');
+    expect(depois).toContain('da linha de comando');
+  });
+});

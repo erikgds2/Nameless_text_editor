@@ -46,8 +46,9 @@ function pastaFalsa(inicial: Record<string, Note> = {}) {
         arquivos.delete(id);
       },
       aoMudarPasta: () => () => {},
-      salvarAnexo: async (bytes: Uint8Array, tipo: string) => {
-        const nome = `${anexos.size + 1}${tipo === 'image/png' ? '.png' : '.jpg'}`;
+      salvarAnexo: async (bytes: Uint8Array, tipo: string, pedido?: string) => {
+        // imagem se chama pelo conteúdo; anexo conserva o nome que tinha
+        const nome = pedido ?? `${anexos.size + 1}${tipo === 'image/png' ? '.png' : '.jpg'}`;
         anexos.set(nome, bytes);
         return nome;
       },
@@ -56,6 +57,7 @@ function pastaFalsa(inicial: Record<string, Note> = {}) {
       trocarModoDeFundo: async () => {},
       versao: async () => '0.0.0-teste',
       mostrarNaPasta: async () => {},
+      mostrarAnexo: async () => {},
       registrarErro: async () => {},
       instalarAtualizacao: async () => {},
       aoAtualizar: () => () => {},
@@ -268,5 +270,60 @@ describe('abrir uma nota que já tem figura', () => {
     await screen.findByDisplayValue('# Fase 2 no disco');
 
     expect(screen.getByRole('img', { name: 'Imagem colada na nota' })).toBeInTheDocument();
+  });
+});
+
+describe('colar um arquivo que não é imagem', () => {
+  function colarArquivo(campo: HTMLElement, nome = 'Prova de Anatomia.pdf') {
+    const arquivo = new File([new Uint8Array(8)], nome, { type: 'application/pdf' });
+    fireEvent.paste(campo, {
+      clipboardData: {
+        items: [{ kind: 'file', type: 'application/pdf', getAsFile: () => arquivo }],
+        getData: () => '',
+      },
+    });
+  }
+
+  it('o arquivo é grampeado na seção, com o nome à mostra, e vai para o marcador', async () => {
+    const { ponte, arquivos, anexos } = pastaFalsa({
+      'aula': nota('aula', 'Material da aula', 'markdown'),
+    });
+    vi.stubGlobal('ardosia', ponte);
+    render(<App />);
+
+    const campo = await screen.findByDisplayValue('Material da aula');
+    colarArquivo(campo);
+
+    // o nome aparece na seção, limpo de acento e de espaço
+    expect(await screen.findByText('prova-de-anatomia.pdf')).toBeInTheDocument();
+    expect(anexos.has('prova-de-anatomia.pdf')).toBe(true);
+
+    await waitFor(() => expect(arquivos.get('aula')).toContain('arq=anexos/prova-de-anatomia.pdf'));
+
+    const salva = desserializar(arquivos.get('aula')!, 'aula');
+    expect(salva.blocos[0].anexo).toEqual({ src: 'anexos/prova-de-anatomia.pdf' });
+    // o texto que já estava lá continua intacto: o anexo é da seção, não do texto
+    expect(salva.blocos[0].texto).toBe('Material da aula');
+  });
+
+  it('o segundo arquivo não passa por cima do primeiro: abre a própria seção', async () => {
+    const { ponte, arquivos } = pastaFalsa({ 'aula': nota('aula', 'Material', 'markdown') });
+    vi.stubGlobal('ardosia', ponte);
+    render(<App />);
+
+    const campo = await screen.findByDisplayValue('Material');
+    colarArquivo(campo, 'primeiro.pdf');
+    await screen.findByText('primeiro.pdf');
+
+    colarArquivo(campo, 'segundo.pdf');
+    await screen.findByText('segundo.pdf');
+
+    await waitFor(() => {
+      const salva = desserializar(arquivos.get('aula')!, 'aula');
+      expect(salva.blocos.map((bloco) => bloco.anexo?.src)).toEqual([
+        'anexos/primeiro.pdf',
+        'anexos/segundo.pdf',
+      ]);
+    });
   });
 });

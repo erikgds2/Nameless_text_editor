@@ -7,6 +7,17 @@ const fsSync = require('node:fs');
 const crypto = require('node:crypto');
 const path = require('node:path');
 
+// A extensao do arquivo E o tipo da nota (item 116): `.md` e Markdown, `.txt` e
+// texto puro. A ordem importa — a primeira e a padrao de quem nao disse nada.
+const EXTENSOES_DE_NOTA = ['.md', '.txt'];
+const EXTENSAO_PADRAO = EXTENSOES_DE_NOTA[0];
+
+/** A extensao de nota que este nome de arquivo tem, ou null se nao for nota. */
+function extensaoDoNome(nome) {
+  const baixo = nome.toLowerCase();
+  return EXTENSOES_DE_NOTA.find((extensao) => baixo.endsWith(extensao)) ?? null;
+}
+
 const ARQUIVO_CONFIG = () => path.join(app.getPath('userData'), 'config.json');
 const PROIBIDOS = /[<>:"|?*\u0000-\u001f]/;
 
@@ -64,7 +75,8 @@ async function gravarJanela(bounds) {
 
 /** Abre o Explorer com o arquivo da nota selecionado. */
 async function mostrarNaPasta(id) {
-  shell.showItemInFolder(caminhoDe(await pasta(), id));
+  const base = await pasta();
+  shell.showItemInFolder(caminhoDe(base, id, await extensaoAtual(base, id)));
 }
 
 async function escolherPasta(janela) {
@@ -84,31 +96,66 @@ async function escolherPasta(janela) {
  * nome de arquivo puro — sem separador nem caractere que o Windows recusa — e o
  * caminho final tem de cair dentro da pasta, o que barra o que passar da primeira.
  */
-function caminhoDe(base, id) {
+function caminhoDe(base, id, extensao = EXTENSAO_PADRAO) {
   if (typeof id !== 'string' || id.length === 0 || id.length > 120) {
     throw new Error('id de nota invalido');
   }
   if (path.win32.basename(id) !== id || PROIBIDOS.test(id) || id === '.' || id === '..') {
     throw new Error('id de nota invalido');
   }
-  const destino = path.resolve(base, `${id}.md`);
+  if (!EXTENSOES_DE_NOTA.includes(extensao)) throw new Error('extensao de nota invalida');
+  const destino = path.resolve(base, `${id}${extensao}`);
   if (!destino.startsWith(path.resolve(base) + path.sep)) {
     throw new Error('id de nota invalido');
   }
   return destino;
 }
 
+/** A extensao do arquivo que existe hoje para este id, ou a padrao. */
+async function extensaoAtual(base, id) {
+  for (const extensao of EXTENSOES_DE_NOTA) {
+    try {
+      await fs.access(path.resolve(base, `${id}${extensao}`));
+      return extensao;
+    } catch {
+      // segue para a proxima
+    }
+  }
+  return EXTENSAO_PADRAO;
+}
+
 async function listar() {
   const base = await pasta();
-  const arquivos = (await fs.readdir(base, { withFileTypes: true }))
-    .filter((entrada) => entrada.isFile() && entrada.name.toLowerCase().endsWith('.md'));
+  const arquivos = (await fs.readdir(base, { withFileTypes: true })).filter(
+    (entrada) => entrada.isFile() && extensaoDoNome(entrada.name) !== null,
+  );
 
   const notas = [];
+  const porId = new Map();
   for (const arquivo of arquivos) {
     const completo = path.join(base, arquivo.name);
     try {
       const [texto, info] = await Promise.all([fs.readFile(completo, 'utf8'), fs.stat(completo)]);
-      notas.push({ id: arquivo.name.slice(0, -3), texto, atualizadoEm: info.mtimeMs });
+      const extensao = extensaoDoNome(arquivo.name);
+      const id = arquivo.name.slice(0, -extensao.length);
+
+      // `aula.md` e `aula.txt` na mesma pasta sao dois arquivos com o mesmo id.
+      // O app trata a extensao como o TIPO da nota, entao os dois nao podem
+      // coexistir na lista: fica o mais recente, que e o que alguem editou por
+      // ultimo, e o outro e ignorado com o motivo dito em voz alta.
+      const anterior = porId.get(id);
+      if (anterior && anterior.atualizadoEm >= info.mtimeMs) {
+        console.error(`Duas notas com o id ${id}: ${arquivo.name} foi ignorada, e a mais recente ficou.`);
+        continue;
+      }
+      if (anterior) {
+        console.error(`Duas notas com o id ${id}: a mais antiga foi ignorada, e ${arquivo.name} ficou.`);
+        notas.splice(notas.indexOf(anterior), 1);
+      }
+
+      const nota = { id, texto, atualizadoEm: info.mtimeMs, extensao };
+      porId.set(id, nota);
+      notas.push(nota);
     } catch (err) {
       // uma nota ilegivel nao pode derrubar a lista inteira
       console.error(`Não foi possível ler ${arquivo.name}:`, err);
@@ -117,22 +164,36 @@ async function listar() {
   return notas;
 }
 
-/** Grava pelo temporario e so entao troca: uma queda no meio nao trunca a nota. */
-async function escrever(id, texto) {
+/**
+ * Grava pelo temporario e so entao troca: uma queda no meio nao trunca a nota.
+ *
+ * A extensao vem de fora porque ela E o tipo da nota. Trocar de Markdown para
+ * texto puro grava com o nome novo e apaga o antigo — o arquivo mudou de nome,
+ * como no "Salvar como" de qualquer editor, e nao virou dois.
+ */
+async function escrever(id, texto, extensao = EXTENSAO_PADRAO) {
   const base = await pasta();
-  const destino = caminhoDe(base, id);
+  const destino = caminhoDe(base, id, extensao);
   const temporario = `${destino}.escrevendo`;
   digitaisGravadas.set(id, digital(texto));
   await fs.writeFile(temporario, texto, 'utf8');
   await fs.rename(temporario, destino);
+
+  for (const outra of EXTENSOES_DE_NOTA) {
+    if (outra !== extensao) await fs.rm(caminhoDe(base, id, outra), { force: true });
+  }
 }
 
-/** Renomeia so quando o novo nome esta livre; se estiver ocupado, mantem o atual. */
+/**
+ * Renomeia so quando o novo nome esta livre; se estiver ocupado, mantem o atual.
+ * O tipo nao muda no caminho: o arquivo troca de nome, e nao de extensao.
+ */
 async function renomear(de, para) {
   if (de === para) return de;
   const base = await pasta();
-  const origem = caminhoDe(base, de);
-  const destino = caminhoDe(base, para);
+  const extensao = await extensaoAtual(base, de);
+  const origem = caminhoDe(base, de, extensao);
+  const destino = caminhoDe(base, para, extensao);
   try {
     await fs.access(destino);
     return de;
@@ -142,9 +203,12 @@ async function renomear(de, para) {
   }
 }
 
+/** Apaga a nota, seja qual for a extensao com que ela esteja no disco. */
 async function apagar(id) {
   const base = await pasta();
-  await fs.rm(caminhoDe(base, id), { force: true });
+  for (const extensao of EXTENSOES_DE_NOTA) {
+    await fs.rm(caminhoDe(base, id, extensao), { force: true });
+  }
 }
 
 async function abrirPasta() {
@@ -158,17 +222,49 @@ async function abrirPasta() {
 const EXTENSOES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp' };
 
 /** O nome vem do conteudo: colar a mesma imagem duas vezes nao gera dois arquivos. */
-async function salvarAnexo(bytes, tipo) {
-  const extensao = EXTENSOES[tipo];
-  if (!extensao) throw new Error(`tipo de imagem nao suportado: ${tipo}`);
-
+async function salvarAnexo(bytes, tipo, nomePedido) {
   const conteudo = Buffer.from(bytes);
-  const nome = `${crypto.createHash('sha1').update(conteudo).digest('hex').slice(0, 12)}.${extensao}`;
-  const destino = caminhoDoAnexo(await pasta(), nome);
+  const extensao = EXTENSOES[tipo];
+
+  // Imagem se chama pelo conteudo: colar o mesmo print duas vezes nao gera dois
+  // arquivos. Um anexo qualquer conserva o nome que tinha — e chega aqui ja
+  // limpo de acento e espaco — porque e por ele que a pessoa vai reconhece-lo
+  // na seção e na pasta. Nome ocupado ganha sufixo, e nada e sobrescrito.
+  if (!extensao && !nomePedido) throw new Error(`tipo de anexo nao suportado: ${tipo}`);
+  const base = await pasta();
+
+  const nome = extensao
+    ? `${crypto.createHash('sha1').update(conteudo).digest('hex').slice(0, 12)}.${extensao}`
+    : await nomeLivreDeAnexo(base, nomePedido);
+  const destino = caminhoDoAnexo(base, nome);
 
   await fs.mkdir(path.dirname(destino), { recursive: true });
   await fs.writeFile(destino, conteudo);
   return nome;
+}
+
+/** `prova.pdf`, `prova-2.pdf`, `prova-3.pdf`: nunca por cima do que ja existe. */
+async function nomeLivreDeAnexo(base, nome) {
+  const ponto = nome.lastIndexOf('.');
+  const corpo = ponto > 0 ? nome.slice(0, ponto) : nome;
+  const fim = ponto > 0 ? nome.slice(ponto) : '';
+
+  for (let tentativa = 1; tentativa < 1000; tentativa++) {
+    const candidato = tentativa === 1 ? nome : `${corpo}-${tentativa}${fim}`;
+    try {
+      await fs.access(caminhoDoAnexo(base, candidato));
+    } catch {
+      return candidato;
+    }
+  }
+  throw new Error('nao ha nome livre para este anexo');
+}
+
+/** Abre o Explorer com o anexo selecionado. Mostrar, e nao executar. */
+async function mostrarAnexo(src) {
+  const base = await pasta();
+  const nome = typeof src === 'string' ? src.replace(/^anexos\//, '') : '';
+  shell.showItemInFolder(caminhoDoAnexo(base, nome));
 }
 
 /** Mesma defesa do caminho das notas, um andar abaixo. */
@@ -237,7 +333,7 @@ function pararDeVigiar() {
 /** Verdadeiro se o arquivo em disco nao e o que este app gravou por ultimo. */
 async function mudouPorFora(base, id) {
   try {
-    const texto = await fs.readFile(caminhoDe(base, id), 'utf8');
+    const texto = await fs.readFile(caminhoDe(base, id, await extensaoAtual(base, id)), 'utf8');
     return digitaisGravadas.get(id) !== digital(texto);
   } catch {
     // sumiu ou ficou ilegivel: se conheciamos o arquivo, alguem mexeu nele
@@ -251,8 +347,10 @@ async function vigiar(janela) {
   const base = await pasta();
 
   vigia = fsSync.watch(base, { persistent: false }, (_evento, arquivo) => {
-    if (typeof arquivo !== 'string' || !arquivo.toLowerCase().endsWith('.md')) return;
-    mudados.add(arquivo.slice(0, -3));
+    if (typeof arquivo !== 'string') return;
+    const extensao = extensaoDoNome(arquivo);
+    if (!extensao) return;
+    mudados.add(arquivo.slice(0, -extensao.length));
 
     // o sistema dispara varios eventos por salvamento; um aviso basta
     if (aviso) clearTimeout(aviso);
@@ -278,6 +376,7 @@ module.exports = {
   modoDeFundo,
   gravarModoDeFundo,
   salvarAnexo,
+  mostrarAnexo,
   anexoDaUrl,
   escolherPasta,
   listar,

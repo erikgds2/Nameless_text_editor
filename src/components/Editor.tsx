@@ -4,7 +4,7 @@ import type {
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
 } from 'react';
-import { deriveTitle, textoDaNota, type Note, type TipoDoc } from '../notes';
+import { deriveTitle, extensaoDoTipo, textoDaNota, type Note, type TipoDoc } from '../notes';
 import type { Bloco } from '../canvas';
 import { renderizar } from '../markdown';
 import { acharNaNota } from '../busca';
@@ -28,7 +28,8 @@ type Props = {
   onDelete: (id: string) => void;
   onMudarTipo: (tipo: TipoDoc) => void;
   onAlternarPreview: () => void;
-  onColarImagem: (bytes: Uint8Array, tipo: string) => Promise<string | null>;
+  onColarImagem: (bytes: Uint8Array, tipo: string, nome?: string) => Promise<string | null>;
+  onMostrarAnexo?: (src: string) => void;
   temaEscuro: boolean;
   acento: string;
   recado?: string | null;
@@ -85,6 +86,7 @@ export default function Editor({
   onMudarTipo,
   onAlternarPreview,
   onColarImagem,
+  onMostrarAnexo,
   temaEscuro,
   acento,
   recado,
@@ -321,23 +323,33 @@ export default function Editor({
               onBlur={confirmarNome}
             />
           )}
-          <span className="editor__time">Editado em {timeFormat.format(note.updatedAt)}</span>
+          <span className="editor__time">
+            Editado em {timeFormat.format(note.updatedAt)}
+            {/* o nome do arquivo na pasta, com a extensão que diz o tipo: aqui
+                ela deixa de ser um campo escondido no frontmatter */}
+            <span className="editor__arquivo">
+              {note.id}
+              {extensaoDoTipo(note.tipo)}
+            </span>
+          </span>
         </div>
 
         <div className="opcoes">
           <button
             className={`opcao${note.tipo === 'markdown' ? ' opcao--on' : ''}`}
             onClick={() => onMudarTipo('markdown')}
-            title="Tratar esta nota como Markdown"
+            title="Salvar como .md — com realce e pré-visualização"
           >
-            Markdown
+            Markdown{' '}
+            <span className="opcao__extensao">.md</span>
           </button>
           <button
             className={`opcao${note.tipo === 'texto' ? ' opcao--on' : ''}`}
             onClick={() => onMudarTipo('texto')}
-            title="Tratar esta nota como texto puro"
+            title="Salvar como .txt — texto puro, sem realce"
           >
-            Texto
+            Texto{' '}
+            <span className="opcao__extensao">.txt</span>
           </button>
         </div>
 
@@ -408,6 +420,7 @@ export default function Editor({
           tipo={note.tipo}
           onChange={onChange}
           onColarImagem={onColarImagem}
+          onMostrarAnexo={onMostrarAnexo}
           titulos={titulos}
           trechos={trechos}
           achados={achados}

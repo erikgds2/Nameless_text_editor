@@ -3,9 +3,11 @@
 Caderno de estudo local-first. Escreva em qualquer ponto da página: cada trecho
 é um bloco que você move e redimensiona, como numa folha de rascunho.
 
-Cada nota é um arquivo `.md` numa pasta sua — em `Documentos\Ardósia`, até você
-escolher outra. Dá para editar no Bloco de Notas, versionar no git ou fazer
-backup como qualquer outro arquivo de texto.
+Cada nota é um arquivo numa pasta sua — em `Documentos\Ardósia`, até você
+escolher outra. A extensão é o tipo: `.md` tem realce e pré-visualização, `.txt`
+é texto puro, e trocar de um para o outro renomeia o arquivo, como no VS Code.
+Dá para editar no Bloco de Notas, versionar no git ou fazer backup como qualquer
+outro arquivo de texto.
 
 App desktop (Electron, com o material acrílico do Windows 11) rodando o mesmo
 código no navegador.
@@ -61,7 +63,7 @@ ardosia anexar <nota> <arquivo> [--fonte <url>]
 ardosia pasta [--definir <caminho>]
 ```
 
-`<nota>` é o id (o nome do arquivo, sem `.md`) ou o título por extenso. Sem
+`<nota>` é o id (o nome do arquivo, sem a extensão) ou o título por extenso. Sem
 `[texto]`, `escrever` lê da entrada padrão — é assim que um agente manda um
 parágrafo inteiro sem se preocupar com aspas:
 

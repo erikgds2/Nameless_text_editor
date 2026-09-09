@@ -92,6 +92,56 @@ texto quase branco vibra na borda das letras. O conforto mora entre 7:1 e 11:1.
 Faixa de contraste do corpo, verificada por `.agent/check-design.mjs`:
 **7:1 a 11:1 no escuro**, **10:1 a 16:1 no claro**.
 
+## Canetas — a tinta do conteúdo
+
+Uma folha de caderno tem trechos escritos com canetas diferentes. Isso é
+**conteúdo**, não interface, e por isso não cai na regra do acento único: o
+acento continua sendo um só, o ocre, e continua mandando na interface inteira.
+O estojo é fechado — cinco canetas, e são estas:
+
+```css
+/* escuro */
+--ink            grafite    9,5:1   (padrão: seção sem escolha)
+--accent         ocre       7,0:1
+--alert          terracota  6,6:1
+--caneta-azul:   #86A7C4;   7,1:1
+--caneta-verde:  #97B487;   7,8:1
+
+/* claro */
+--caneta-azul:   #2A5470;   7,0:1
+--caneta-verde:  #385F3B;   6,4:1
+```
+
+Regras que as canetas herdam do resto do documento:
+
+- Nenhuma cor livre. Um seletor de milhões de tons produziria, no primeiro dia
+  de uso, uma nota ilegível no tema em que ela não foi escrita.
+- Faixa verificada por código: **4,5:1 a 11:1 nos dois temas** — o piso é o AA
+  de texto normal, o teto é o mesmo halation que derrubou a serifa clara.
+  É a faixa em que o ocre e o terracota já viviam.
+- Todas dessaturadas. Azul-acinzentado e verde-sálvia, não azul de caneta Bic.
+- A escolha nunca é só cor: o botão tem nome, `aria-label` e `aria-pressed`.
+
+## A letra de cada seção
+
+O corpo da nota continua sendo **monoespaçado** — é o padrão, e é o que abre
+quando ninguém escolheu nada. Mas a letra, como a cor, é de cada seção da folha,
+e quem escreve escolhe entre três:
+
+| Escolha | Token | O que é |
+| --- | --- | --- |
+| De sempre | `--mono` | a monoespaçada do projeto (padrão) |
+| De leitura | `--letra-leitura` | a sans da interface, para texto corrido longo |
+| De mão | `--letra-mao` | Ink Free → Segoe Script, a caneta do Windows |
+
+A proibição de serifa no corpo **continua valendo**: nenhuma das três tem serifa.
+As três já vêm instaladas no Windows — nada é baixado, e nada falta na máquina de
+quem abrir a nota.
+
+As três camadas do bloco (texto, espelho do realce e camada dos achados) leem a
+mesma variável `--letra-secao`. Se uma delas divergisse, o texto digitado
+deixaria de casar pixel a pixel com o realce que está atrás.
+
 ## Tipografia
 
 | Papel | Família | Uso |
@@ -186,8 +236,9 @@ acrílico está atrás de tudo, uma vez só, e vem do SO.
 
 `node .agent/check-design.mjs` falha se encontrar: gradiente, blur, sombra fora
 dos tokens, raio acima de 6px, tamanho de fonte fora da escala, cor literal fora
-da lista de tokens, transição em propriedade proibida ou acima de 250ms, e
-contraste de corpo fora da faixa de cada tema.
+da lista de tokens, transição em propriedade proibida ou acima de 250ms,
+contraste de corpo fora da faixa de cada tema, e **caneta fora de 4,5:1 a 11:1**
+em qualquer um dos dois temas.
 
 Regra que pode virar código de verificação vira código. O que só pode ser dito em
 prosa vira instrução escrita. Só o que sobra chega à revisão humana.

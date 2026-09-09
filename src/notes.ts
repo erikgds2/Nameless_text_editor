@@ -3,6 +3,26 @@ import { criarBloco, textoDaNota, type Bloco } from './canvas';
 /** Markdown ganha realce enquanto se escreve e pré-visualização; texto, não. */
 export type TipoDoc = 'markdown' | 'texto';
 
+/**
+ * O tipo da nota é a EXTENSÃO do arquivo, como em qualquer editor de verdade:
+ * `.md` é Markdown, `.txt` é texto puro. Trocar o tipo renomeia o arquivo, e
+ * renomear o arquivo por fora troca o tipo — não há um campo escondido dizendo
+ * uma coisa enquanto o nome diz outra.
+ */
+export const EXTENSOES = { markdown: '.md', texto: '.txt' } as const;
+
+export function extensaoDoTipo(tipo: TipoDoc): string {
+  return EXTENSOES[tipo];
+}
+
+/** O tipo que o nome do arquivo declara. `null` quando não é nota nenhuma. */
+export function tipoDoArquivo(nome: string): TipoDoc | null {
+  const baixo = nome.toLowerCase();
+  if (baixo.endsWith(EXTENSOES.markdown)) return 'markdown';
+  if (baixo.endsWith(EXTENSOES.texto)) return 'texto';
+  return null;
+}
+
 export type Note = {
   id: string;
   blocos: Bloco[];

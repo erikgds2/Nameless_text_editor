@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   ALTURA_MINIMA_DA_FIGURA,
   alturaDaFigura,
+  ehAnexoAceito,
   enderecoDaImagem,
+  nomeDeAnexoLimpo,
+  primeiroAnexo,
   figurasDoBloco,
   textoSemFiguras,
   imagemDoBloco,
@@ -244,5 +247,40 @@ describe('alturaDaFigura', () => {
   it('dimensão desconhecida não vira NaN na altura da seção', () => {
     expect(alturaDaFigura(320, 0, 0)).toBe(ALTURA_MINIMA_DA_FIGURA);
     expect(alturaDaFigura(320, Number.NaN, 100)).toBe(ALTURA_MINIMA_DA_FIGURA);
+  });
+});
+
+describe('arquivo que não é imagem', () => {
+  const arquivo = (nome: string, tipo: string, tamanho = 10) =>
+    new File([new Uint8Array(tamanho)], nome, { type: tipo });
+
+  it('escolhe o primeiro que não é imagem', () => {
+    const pdf = arquivo('prova.pdf', 'application/pdf');
+    expect(primeiroAnexo([arquivo('print.png', 'image/png'), pdf])).toBe(pdf);
+  });
+
+  it('imagem nenhuma vira anexo', () => {
+    expect(primeiroAnexo([arquivo('print.png', 'image/png')])).toBeNull();
+  });
+
+  it('arquivo vazio não vira anexo', () => {
+    expect(primeiroAnexo([arquivo('vazio.pdf', 'application/pdf', 0)])).toBeNull();
+  });
+
+  it('o nome perde acento e espaço, e mantém a extensão', () => {
+    expect(nomeDeAnexoLimpo('Prova de Anatomia — 2ª chamada.pdf')).toBe(
+      'prova-de-anatomia-2-chamada.pdf',
+    );
+  });
+
+  it('nome sem extensão continua sendo nome', () => {
+    expect(nomeDeAnexoLimpo('LEIA-ME')).toBe('leia-me');
+  });
+
+  it('só é anexo o que está dentro de anexos/', () => {
+    expect(ehAnexoAceito('anexos/prova.pdf')).toBe(true);
+    expect(ehAnexoAceito('../fora.pdf')).toBe(false);
+    expect(ehAnexoAceito('anexos/com espaco.pdf')).toBe(false);
+    expect(ehAnexoAceito('https://exemplo.org/x.pdf')).toBe(false);
   });
 });

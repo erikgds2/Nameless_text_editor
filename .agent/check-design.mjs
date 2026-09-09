@@ -130,6 +130,47 @@ if (tokens.claro.base && tokens.claro.ink) {
   }
 }
 
+// As canetas da secao (item 114): sao tinta de CONTEUDO, e nao do corpo, entao
+// nao valem a faixa do --ink. Valem a faixa em que o ocre e o terracota ja
+// vivem: AA de texto normal como piso, e o teto do halation no escuro. Sem esta
+// medida, "canetas dessaturadas" volta a ser sugestao no prompt.
+const CANETA_MINIMA = 4.5;
+const CANETA_MAXIMA = 11;
+
+// So o que e literal hexadecimal da para medir aqui: no tema claro o acento e
+// um color-mix, que so o navegador resolve.
+const valoresDoTema = (abertura) => {
+  const valores = {};
+  const inicio = linhas.findIndex((l) => abertura.test(l.trim()));
+  if (inicio === -1) return valores;
+  for (let i = inicio; i < linhas.length; i++) {
+    const atual = linhas[i].trim();
+    if (atual === '}') break;
+    const match = atual.match(/^(--[a-z-]+)\s*:\s*[^;]*?(#[0-9a-f]{6})\b/i);
+    if (match) valores[match[1]] = match[2];
+  }
+  return valores;
+};
+
+for (const [tema, abertura, fundo] of [
+  ['escuro', /^:root,$/, tokens.escuro.base],
+  ['claro', /\[data-theme='papel'\]/, tokens.claro.base],
+]) {
+  if (!fundo) continue;
+  const valores = valoresDoTema(abertura);
+  for (const token of ['--accent', '--alert', '--caneta-azul', '--caneta-verde']) {
+    const cor = valores[token];
+    if (!cor) continue;
+    const contraste = calcularContraste(cor, fundo);
+    if (contraste !== null && (contraste < CANETA_MINIMA || contraste > CANETA_MAXIMA)) {
+      erros.push(
+        `styles.css  caneta ${token} no tema ${tema}: ${contraste.toFixed(1)}:1 ` +
+          `(esperado ${CANETA_MINIMA}:1 a ${CANETA_MAXIMA}:1)`,
+      );
+    }
+  }
+}
+
 // Constantes de validacao
 const ESCALA_FONTES = new Set([11, 12, 13, 15, 17, 21, 28]);
 const PROPS_TRANSICAO_OK = new Set(['color', 'background-color', 'border-color', 'opacity', 'box-shadow', 'transform', 'none', 'all']);

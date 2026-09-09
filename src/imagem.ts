@@ -12,6 +12,7 @@
  * Aberta no Obsidian ou no Bloco de Notas, a nota continua fazendo sentido.
  */
 import { ALTURA_MINIMA, LARGURA_MINIMA } from './canvas';
+import { slugDeTitulo } from './nomes';
 
 /** Um bloco de imagem não passa disto; maior que a tela não ajuda ninguém. */
 export const LADO_MAXIMO = 480;
@@ -118,6 +119,36 @@ export function melhorImagem(arquivos: File[]): File | null {
   const imagens = arquivos.filter((arquivo) => arquivo.type.startsWith('image/') && arquivo.size > 0);
   if (imagens.length === 0) return null;
   return imagens.reduce((maior, atual) => (atual.size > maior.size ? atual : maior));
+}
+
+/**
+ * O arquivo colado que NÃO é imagem — o primeiro deles. Colar um PDF numa nota
+ * de estudo é grampear o material na folha; ele não vira figura, vira anexo.
+ */
+export function primeiroAnexo(arquivos: File[]): File | null {
+  return arquivos.find((arquivo) => !arquivo.type.startsWith('image/') && arquivo.size > 0) ?? null;
+}
+
+/**
+ * O nome com que o arquivo colado entra na pasta: sem acento, sem espaço e sem
+ * nada que o marcador do bloco não saiba reler. O nome é a única identificação
+ * do anexo, e por isso precisa sobreviver à ida e à volta do disco.
+ */
+export function nomeDeAnexoLimpo(nome: string): string {
+  const ponto = nome.lastIndexOf('.');
+  const corpo = ponto > 0 ? nome.slice(0, ponto) : nome;
+  const extensao = ponto > 0 ? nome.slice(ponto + 1) : '';
+
+  // a mesma régua que batiza as notas: o que serve para o nome de um arquivo
+  // de nota serve para o nome de um anexo
+  const base = slugDeTitulo(corpo);
+  const fim = extensao ? slugDeTitulo(extensao).slice(0, 12) : '';
+  return fim ? `${base}.${fim}` : base;
+}
+
+/** O caminho de anexo que a nota pode guardar: dentro de `anexos/`, e só. */
+export function ehAnexoAceito(src: string): boolean {
+  return RE_ANEXO.test(src) && !src.includes(' ');
 }
 
 /**

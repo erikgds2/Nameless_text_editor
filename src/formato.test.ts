@@ -292,3 +292,150 @@ describe('a figura é da seção, e não do texto', () => {
     });
   });
 });
+
+describe('a caneta e a letra são da seção', () => {
+  it('a escolha vai para o marcador e volta de lá', () => {
+    const texto = serializar(
+      nota({
+        blocos: [
+          { ...criarBloco(48, 48), texto: 'Escrito de azul', caneta: 'azul', letra: 'mao' },
+        ],
+      }),
+    );
+    expect(texto).toContain('cor=azul');
+    expect(texto).toContain('letra=mao');
+
+    const [bloco] = desserializar(texto, 'x').blocos;
+    expect(bloco.caneta).toBe('azul');
+    expect(bloco.letra).toBe('mao');
+  });
+
+  it('seção sem escolha não escreve o padrão no arquivo', () => {
+    const texto = serializar(nota());
+    expect(texto).not.toContain('cor=');
+    expect(texto).not.toContain('letra=');
+  });
+
+  it('funciona em nota de texto puro: a cor não é marcação de Markdown', () => {
+    const texto = serializar(
+      nota({ tipo: 'texto', blocos: [{ ...criarBloco(0, 0), texto: 'sem markdown', caneta: 'verde' }] }),
+    );
+    const [bloco] = desserializar(texto, 'x').blocos;
+    expect(bloco.caneta).toBe('verde');
+    expect(bloco.texto).toBe('sem markdown');
+  });
+
+  it('caneta ou letra desconhecida no arquivo cai no padrão em vez de vazar', () => {
+    const estranha = [
+      '---',
+      'ardosia: 1',
+      'tipo: markdown',
+      'criada: 2026-09-09T12:00:00.000Z',
+      'atualizada: 2026-09-09T12:00:00.000Z',
+      'fixada: false',
+      '---',
+      '',
+      '<!-- ardosia:bloco x=0 y=0 w=320 h=120 cor=roxo-neon letra=comic -->',
+      'texto',
+      '',
+    ].join('\n');
+
+    const [bloco] = desserializar(estranha, 'x').blocos;
+    expect(bloco.caneta).toBeUndefined();
+    expect(bloco.letra).toBeUndefined();
+    expect(bloco.texto).toBe('texto');
+  });
+
+  it('a caneta convive com a figura no mesmo marcador', () => {
+    const texto = serializar(
+      nota({
+        blocos: [
+          {
+            ...criarBloco(0, 0),
+            texto: 'legenda',
+            imagem: { src: 'anexos/abc.png', altura: 200 },
+            caneta: 'ocre',
+          },
+        ],
+      }),
+    );
+
+    const [bloco] = desserializar(texto, 'x').blocos;
+    expect(bloco.imagem).toEqual({ src: 'anexos/abc.png', altura: 200 });
+    expect(bloco.caneta).toBe('ocre');
+  });
+});
+
+describe('o papel da seção', () => {
+  it('vai para o marcador e volta de lá', () => {
+    const texto = serializar(
+      nota({ blocos: [{ ...criarBloco(0, 0), texto: 'post-it', fundo: 'ocre' }] }),
+    );
+    expect(texto).toContain('papel=ocre');
+    expect(desserializar(texto, 'x').blocos[0].fundo).toBe('ocre');
+  });
+
+  it('"sem papel" não é escrito no arquivo', () => {
+    const texto = serializar(
+      nota({ blocos: [{ ...criarBloco(0, 0), texto: 'comum', fundo: 'nenhum' }] }),
+    );
+    expect(texto).not.toContain('papel=');
+  });
+
+  it('papel desconhecido cai no padrão', () => {
+    const estranha = [
+      '---',
+      'ardosia: 1',
+      'tipo: markdown',
+      'criada: 2026-09-09T12:00:00.000Z',
+      'atualizada: 2026-09-09T12:00:00.000Z',
+      'fixada: false',
+      '---',
+      '',
+      '<!-- ardosia:bloco x=0 y=0 w=320 h=120 papel=neon -->',
+      'texto',
+      '',
+    ].join('\n');
+    expect(desserializar(estranha, 'x').blocos[0].fundo).toBeUndefined();
+  });
+});
+
+describe('o arquivo grampeado na seção', () => {
+  it('vai para o marcador e volta de lá, sem virar texto', () => {
+    const texto = serializar(
+      nota({
+        blocos: [{ ...criarBloco(0, 0), texto: 'material da prova', anexo: { src: 'anexos/prova.pdf' } }],
+      }),
+    );
+    expect(texto).toContain('arq=anexos/prova.pdf');
+
+    const [bloco] = desserializar(texto, 'x').blocos;
+    expect(bloco.anexo).toEqual({ src: 'anexos/prova.pdf' });
+    expect(bloco.texto).toBe('material da prova');
+  });
+
+  it('caminho que sai da pasta não vira anexo', () => {
+    const perigosa = [
+      '---',
+      'ardosia: 1',
+      'tipo: markdown',
+      'criada: 2026-09-09T12:00:00.000Z',
+      'atualizada: 2026-09-09T12:00:00.000Z',
+      'fixada: false',
+      '---',
+      '',
+      '<!-- ardosia:bloco x=0 y=0 w=320 h=120 arq=../../senhas.txt -->',
+      'texto',
+      '',
+    ].join('\n');
+
+    expect(desserializar(perigosa, 'x').blocos[0].anexo).toBeUndefined();
+  });
+
+  it('funciona em nota de texto puro: o grampo é da seção', () => {
+    const texto = serializar(
+      nota({ tipo: 'texto', blocos: [{ ...criarBloco(0, 0), texto: '', anexo: { src: 'anexos/a.pdf' } }] }),
+    );
+    expect(desserializar(texto, 'x').blocos[0].anexo).toEqual({ src: 'anexos/a.pdf' });
+  });
+});

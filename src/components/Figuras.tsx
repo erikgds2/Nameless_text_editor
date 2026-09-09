@@ -13,6 +13,7 @@ export default function Figuras({
   inteira = false,
   onMedida,
   onEscrever,
+  onPegar,
 }: {
   figura: Imagem & { endereco: string };
   inteira?: boolean;
@@ -20,6 +21,8 @@ export default function Figuras({
   onMedida?: (natural: { largura: number; altura: number }) => void;
   /** Clicar na foto escreve na seção: é onde a mão vai, numa folha de papel. */
   onEscrever?: () => void;
+  /** A mão pegou a foto: daqui até soltar, ela pode mudar de seção. */
+  onPegar?: () => void;
 }) {
   const [falhou, setFalhou] = useState(false);
   /**
@@ -55,6 +58,11 @@ export default function Figuras({
     >
       <div
         className="bloco__figura"
+        onPointerDown={(evento) => {
+          // o link da origem não é para arrastar: ele leva a outro lugar
+          if ((evento.target as HTMLElement).closest('.bloco__origem')) return;
+          onPegar?.();
+        }}
         onMouseDown={(evento) => {
           // o link da origem tem clique proprio; o resto da foto escreve
           if ((evento.target as HTMLElement).closest('.bloco__origem')) return;

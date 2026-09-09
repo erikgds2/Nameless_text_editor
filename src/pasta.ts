@@ -44,18 +44,43 @@ function validarId(id: string): void {
   }
 }
 
-function nomeDoArquivo(id: string): string {
+// A extensão do arquivo é o tipo da nota, igual ao aplicativo instalado.
+const EXTENSOES_DE_NOTA = ['.md', '.txt'];
+const EXTENSAO_PADRAO = EXTENSOES_DE_NOTA[0];
+
+function extensaoDoNome(nome: string): string | null {
+  const baixo = nome.toLowerCase();
+  return EXTENSOES_DE_NOTA.find((extensao) => baixo.endsWith(extensao)) ?? null;
+}
+
+function nomeDoArquivo(id: string, extensao: string = EXTENSAO_PADRAO): string {
   validarId(id);
-  return `${id}.md`;
+  return `${id}${extensao}`;
+}
+
+/** A extensão com que esta nota está hoje na pasta, ou a padrão. */
+async function extensaoAtual(raiz: FileSystemDirectoryHandle, id: string): Promise<string> {
+  for (const extensao of EXTENSOES_DE_NOTA) {
+    try {
+      await raiz.getFileHandle(nomeDoArquivo(id, extensao));
+      return extensao;
+    } catch {
+      // segue para a próxima
+    }
+  }
+  return EXTENSAO_PADRAO;
 }
 
 async function existeArquivo(raiz: FileSystemDirectoryHandle, id: string): Promise<boolean> {
-  try {
-    await raiz.getFileHandle(nomeDoArquivo(id));
-    return true;
-  } catch {
-    return false;
+  for (const extensao of EXTENSOES_DE_NOTA) {
+    try {
+      await raiz.getFileHandle(nomeDoArquivo(id, extensao));
+      return true;
+    } catch {
+      // segue para a próxima
+    }
   }
+  return false;
 }
 
 async function escreverArquivo(
@@ -87,13 +112,19 @@ export function arquivosDaPasta(raiz: FileSystemDirectoryHandle): Arquivos {
     },
 
     async listar() {
-      const notas: { id: string; texto: string; atualizadoEm: number }[] = [];
+      const notas: { id: string; texto: string; atualizadoEm: number; extensao: string }[] = [];
       for await (const entrada of raiz.values()) {
-        if (entrada.kind !== 'file' || !entrada.name.endsWith('.md')) continue;
+        const extensao = extensaoDoNome(entrada.name);
+        if (entrada.kind !== 'file' || !extensao) continue;
         try {
           const arquivo = await (entrada as FileSystemFileHandle).getFile();
           const texto = await arquivo.text();
-          notas.push({ id: entrada.name.slice(0, -3), texto, atualizadoEm: arquivo.lastModified });
+          notas.push({
+            id: entrada.name.slice(0, -extensao.length),
+            texto,
+            atualizadoEm: arquivo.lastModified,
+            extensao,
+          });
         } catch (erro) {
           // um arquivo ilegível não pode derrubar a lista inteira
           console.error(`não consegui ler "${entrada.name}"`, erro);
@@ -102,9 +133,20 @@ export function arquivosDaPasta(raiz: FileSystemDirectoryHandle): Arquivos {
       return notas;
     },
 
-    async escrever(id, texto) {
-      const handle = await raiz.getFileHandle(nomeDoArquivo(id), { create: true });
+    async escrever(id, texto, extensao = EXTENSAO_PADRAO) {
+      const handle = await raiz.getFileHandle(nomeDoArquivo(id, extensao), { create: true });
       await escreverArquivo(handle, texto);
+
+      // trocar o tipo renomeia o arquivo: o antigo não pode ficar para trás,
+      // ou a mesma nota apareceria duas vezes na lista
+      for (const outra of EXTENSOES_DE_NOTA) {
+        if (outra === extensao) continue;
+        try {
+          await raiz.removeEntry(nomeDoArquivo(id, outra));
+        } catch {
+          // não existia: nada a fazer
+        }
+      }
     },
 
     async renomear(de, para) {
@@ -116,20 +158,22 @@ export function arquivosDaPasta(raiz: FileSystemDirectoryHandle): Arquivos {
       // Renomear o que não existe é erro, e aqui ele sobe: o depósito grava
       // antes de renomear justamente para isto nunca acontecer. Engolir a falha
       // esconderia, amanhã, uma nota que não chegou a ser escrita.
-      const antigo = await raiz.getFileHandle(nomeDoArquivo(de));
+      const extensao = await extensaoAtual(raiz, de);
+      const antigo = await raiz.getFileHandle(nomeDoArquivo(de, extensao));
       const texto = await (await antigo.getFile()).text();
-      const novo = await raiz.getFileHandle(nomeDoArquivo(para), { create: true });
+      const novo = await raiz.getFileHandle(nomeDoArquivo(para, extensao), { create: true });
       await escreverArquivo(novo, texto);
-      await raiz.removeEntry(nomeDoArquivo(de));
+      await raiz.removeEntry(nomeDoArquivo(de, extensao));
       return para;
     },
 
     async apagar(id) {
-      const nome = nomeDoArquivo(id);
-      try {
-        await raiz.removeEntry(nome);
-      } catch {
-        // já não existia: nada a fazer
+      for (const extensao of EXTENSOES_DE_NOTA) {
+        try {
+          await raiz.removeEntry(nomeDoArquivo(id, extensao));
+        } catch {
+          // já não existia: nada a fazer
+        }
       }
     },
 
@@ -147,10 +191,11 @@ export function arquivosDaPasta(raiz: FileSystemDirectoryHandle): Arquivos {
       return () => {};
     },
 
-    async salvarAnexo(bytes, tipo) {
+    async salvarAnexo(bytes, tipo, nomePedido) {
       const extensao = EXTENSAO_POR_TIPO[tipo];
-      if (!extensao) throw new Error(`tipo de anexo não suportado: ${tipo}`);
-      const nome = `${await digestoCurto(bytes)}.${extensao}`;
+      if (!extensao && !nomePedido) throw new Error(`tipo de anexo não suportado: ${tipo}`);
+      // imagem se chama pelo conteúdo; anexo conserva o nome que tinha
+      const nome = extensao ? `${await digestoCurto(bytes)}.${extensao}` : (nomePedido as string);
       const pastaAnexos = await raiz.getDirectoryHandle('anexos', { create: true });
       const handle = await pastaAnexos.getFileHandle(nome, { create: true });
       await escreverArquivo(handle, bytes);

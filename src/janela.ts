@@ -68,6 +68,11 @@ export async function mostrarNaPasta(id: string): Promise<void> {
   await window.ardosia?.mostrarNaPasta(id);
 }
 
+/** O mesmo, para um anexo: `anexos/prova.pdf`. Mostra o arquivo, não o abre. */
+export async function mostrarAnexo(src: string): Promise<void> {
+  await window.ardosia?.mostrarAnexo(src);
+}
+
 /**
  * Manda o erro para o arquivo de registro do aplicativo. Existe porque ninguém
  * vai abrir o console para contar o que aconteceu — e sem o que aconteceu não

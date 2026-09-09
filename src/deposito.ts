@@ -1,6 +1,16 @@
 // Onde as notas moram. No desktop, um .md por nota numa pasta sua; no navegador,
 // o localStorage de sempre. O resto do app fala so com esta interface.
-import { createNote, deriveTitle, loadNotes, saveNotes, textoDaNota, type Note, type TipoDoc } from './notes';
+import {
+  createNote,
+  deriveTitle,
+  extensaoDoTipo,
+  loadNotes,
+  saveNotes,
+  textoDaNota,
+  tipoDoArquivo,
+  type Note,
+  type TipoDoc,
+} from './notes';
 import { desserializar, serializar } from './formato';
 import { nomeDisponivel, slugDeTitulo } from './nomes';
 
@@ -15,12 +25,14 @@ export type Arquivos = {
   pasta(): Promise<string>;
   escolherPasta(): Promise<string | null>;
   abrirPasta(): Promise<void>;
-  listar(): Promise<{ id: string; texto: string; atualizadoEm: number }[]>;
-  escrever(id: string, texto: string): Promise<void>;
+  /** `extensao` diz o tipo da nota: `.md` é Markdown, `.txt` é texto puro. */
+  listar(): Promise<{ id: string; texto: string; atualizadoEm: number; extensao?: string }[]>;
+  escrever(id: string, texto: string, extensao?: string): Promise<void>;
   renomear(de: string, para: string): Promise<string>;
   apagar(id: string): Promise<void>;
   aoMudarPasta(callback: () => void): () => void;
-  salvarAnexo(bytes: Uint8Array, tipo: string): Promise<string>;
+  /** `nome` só vale para anexo que não é imagem: é por ele que se reconhece. */
+  salvarAnexo(bytes: Uint8Array, tipo: string, nome?: string): Promise<string>;
 };
 
 /** O que só o aplicativo instalado tem, além dos arquivos. */
@@ -30,6 +42,7 @@ export type PonteDisco = Arquivos & {
   trocarModoDeFundo(modo: 'acrilico' | 'vidro'): Promise<void>;
   versao(): Promise<string>;
   mostrarNaPasta(id: string): Promise<void>;
+  mostrarAnexo(src: string): Promise<void>;
   registrarErro(mensagem: string): Promise<void>;
   instalarAtualizacao(): Promise<void>;
   aoAtualizar(callback: (dados: import('./janela').Atualizacao) => void): () => void;
@@ -52,8 +65,8 @@ export type Deposito = {
   abrirPasta(): Promise<void>;
   /** Avisa quando alguém mexeu nos arquivos por fora. Devolve como cancelar. */
   aoMudar(callback: () => void): () => void;
-  /** Guarda a imagem colada e devolve o nome do arquivo; null onde não dá. */
-  salvarAnexo(bytes: Uint8Array, tipo: string): Promise<string | null>;
+  /** Guarda o arquivo colado e devolve o nome dele; null onde não dá. */
+  salvarAnexo(bytes: Uint8Array, tipo: string, nome?: string): Promise<string | null>;
 };
 
 const MARCA_MIGRACAO = 'ardosia:migrado-para-disco';
@@ -87,7 +100,7 @@ async function migrar(ponte: Arquivos): Promise<void> {
     for (const nota of antigas) {
       const id = nomeDisponivel(nomeParaOTitulo(nota) || 'nota', existentes);
       existentes.push(id);
-      await ponte.escrever(id, serializar({ ...nota, id }));
+      await ponte.escrever(id, serializar({ ...nota, id }), extensaoDoTipo(nota.tipo));
     }
   }
   localStorage.setItem(MARCA_MIGRACAO, new Date().toISOString());
@@ -100,7 +113,14 @@ export function depositoEmArquivos(ponte: Arquivos): Deposito {
 
     async listar() {
       await migrar(ponte);
-      return (await ponte.listar()).map((arquivo) => desserializar(arquivo.texto, arquivo.id));
+      return (await ponte.listar()).map((arquivo) => {
+        const nota = desserializar(arquivo.texto, arquivo.id);
+        // O nome do arquivo manda no tipo. Renomear `aula.md` para `aula.txt`
+        // no Explorer troca o tipo da nota, e o frontmatter não contradiz o
+        // que está escrito na porta.
+        const tipo = arquivo.extensao ? tipoDoArquivo(arquivo.extensao) : null;
+        return tipo ? { ...nota, tipo } : nota;
+      });
     },
 
     /**
@@ -113,7 +133,7 @@ export function depositoEmArquivos(ponte: Arquivos): Deposito {
      * arquivo — ele é o nome —, então gravar e depois renomear é seguro.
      */
     async salvar(nota) {
-      await ponte.escrever(nota.id, serializar(nota));
+      await ponte.escrever(nota.id, serializar(nota), extensaoDoTipo(nota.tipo));
 
       const nomeDoTitulo = nomeParaOTitulo(nota);
       if (!nomeDoTitulo || !ehProvisorio(nota.id)) return nota;
@@ -131,7 +151,7 @@ export function depositoEmArquivos(ponte: Arquivos): Deposito {
     escolherPasta: () => ponte.escolherPasta(),
     abrirPasta: () => ponte.abrirPasta(),
     aoMudar: (callback) => ponte.aoMudarPasta(callback),
-    salvarAnexo: (bytes, tipo) => ponte.salvarAnexo(bytes, tipo),
+    salvarAnexo: (bytes, tipo, nome) => ponte.salvarAnexo(bytes, tipo, nome),
   };
 }
 

@@ -43,6 +43,18 @@ export function contratoDeDeposito(nome: string, fabricar: Fabrica): void {
       expect(nota.tipo).toBe('texto');
     });
 
+    it('trocar o tipo não transforma a nota em duas', async () => {
+      const deposito = await abrir();
+      const nota = await comTexto(deposito, 'Anatomia do fêmur');
+
+      await deposito.salvar({ ...nota, tipo: 'texto' });
+
+      const lidas = await deposito.listar();
+      expect(lidas).toHaveLength(1);
+      expect(lidas[0].tipo).toBe('texto');
+      expect(textoDaNota(lidas[0].blocos)).toBe('Anatomia do fêmur');
+    });
+
     it('o que foi salvo volta na listagem', async () => {
       const deposito = await abrir();
       await comTexto(deposito, 'Imperativo categórico');

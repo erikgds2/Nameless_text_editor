@@ -1,6 +1,15 @@
-import { criarBloco, LARGURA_PADRAO, ALTURA_PADRAO, LARGURA_MINIMA, ALTURA_MINIMA } from './canvas';
+import {
+  criarBloco,
+  ehCaneta,
+  ehFundo,
+  ehLetra,
+  LARGURA_PADRAO,
+  ALTURA_PADRAO,
+  LARGURA_MINIMA,
+  ALTURA_MINIMA,
+} from './canvas';
 import type { Bloco, Imagem } from './canvas';
-import { figurasDoBloco, imagemDoBloco, textoSemFiguras } from './imagem';
+import { ehAnexoAceito, figurasDoBloco, imagemDoBloco, textoSemFiguras } from './imagem';
 import type { Note, TipoDoc } from './notes';
 
 const MARCADOR = /<!--\s*ardosia:bloco([^>]*)-->/g;
@@ -25,7 +34,15 @@ export function serializar(nota: Note): string {
           (bloco.imagem.altura ? ` imgh=${bloco.imagem.altura}` : '') +
           (bloco.imagem.fonte ? ` fonte=${bloco.imagem.fonte}` : '')
         : '';
-      const marcador = `<!-- ardosia:bloco x=${bloco.x} y=${bloco.y} w=${bloco.largura} h=${bloco.altura}${figura} -->`;
+      // Caneta e letra só aparecem quando foram escolhidas: uma seção comum
+      // continua tendo o mesmo marcador de sempre, e a nota não engorda por
+      // guardar o padrão em toda seção.
+      const aspecto =
+        (bloco.caneta ? ` cor=${bloco.caneta}` : '') +
+        (bloco.letra ? ` letra=${bloco.letra}` : '') +
+        (bloco.fundo && bloco.fundo !== 'nenhum' ? ` papel=${bloco.fundo}` : '') +
+        (bloco.anexo ? ` arq=${bloco.anexo.src}` : '');
+      const marcador = `<!-- ardosia:bloco x=${bloco.x} y=${bloco.y} w=${bloco.largura} h=${bloco.altura}${figura}${aspecto} -->`;
       return bloco.texto ? `${marcador}\n${bloco.texto}` : marcador;
     })
     .join('\n\n');
@@ -116,6 +133,14 @@ function extrairBlocos(corpo: string): Bloco[] {
         altura: geometriaTamanho(atributos.h, ALTURA_PADRAO, ALTURA_MINIMA),
         texto,
         ...(imagemDoAtributo(atributos.img, atributos.fonte, atributos.imgh) ?? {}),
+        // Caneta e letra desconhecidas caem no padrão: uma nota escrita por uma
+        // versão futura tem de abrir aqui, ainda que sem a cor que não existe.
+        ...(atributos.cor && ehCaneta(atributos.cor) ? { caneta: atributos.cor } : {}),
+        ...(atributos.letra && ehLetra(atributos.letra) ? { letra: atributos.letra } : {}),
+        ...(atributos.papel && ehFundo(atributos.papel) ? { fundo: atributos.papel } : {}),
+        // o anexo é um caminho dentro de `anexos/`, e nada além disso: um
+        // arquivo apontado para fora da pasta não é anexo desta nota
+        ...(atributos.arq && ehAnexoAceito(atributos.arq) ? { anexo: { src: atributos.arq } } : {}),
       }),
     );
   });

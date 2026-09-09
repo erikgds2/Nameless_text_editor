@@ -7,6 +7,9 @@ import { criarBloco } from './canvas';
 /** Uma pasta de mentira, com as mesmas regras da de verdade. */
 function pontefalsa(inicial: Record<string, string> = {}) {
   const arquivos = new Map(Object.entries(inicial));
+  // a extensão do arquivo é o tipo da nota; o disco de verdade a guarda no
+  // próprio nome, e aqui ela anda ao lado para o dublê não mentir sobre isso
+  const extensoes = new Map<string, string>();
   // quem testa dispara isto para simular alguém mexendo nos arquivos por fora
   let avisar: (() => void) | null = null;
   const ponte: Arquivos = {
@@ -14,8 +17,16 @@ function pontefalsa(inicial: Record<string, string> = {}) {
     escolherPasta: async () => null,
     abrirPasta: async () => {},
     listar: async () =>
-      [...arquivos].map(([id, texto]) => ({ id, texto, atualizadoEm: 0 })),
-    escrever: async (id, texto) => void arquivos.set(id, texto),
+      [...arquivos].map(([id, texto]) => ({
+        id,
+        texto,
+        atualizadoEm: 0,
+        extensao: extensoes.get(id) ?? '.md',
+      })),
+    escrever: async (id, texto, extensao = '.md') => {
+      arquivos.set(id, texto);
+      extensoes.set(id, extensao);
+    },
     renomear: async (de, para) => {
       // fiel ao disco de verdade: renomear o que não existe é erro, e foi
       // justamente o `?? ''` complacente daqui que escondeu um bug real
@@ -23,9 +34,15 @@ function pontefalsa(inicial: Record<string, string> = {}) {
       if (de === para || arquivos.has(para)) return de;
       arquivos.set(para, arquivos.get(de) as string);
       arquivos.delete(de);
+      const extensao = extensoes.get(de);
+      extensoes.delete(de);
+      if (extensao) extensoes.set(para, extensao);
       return para;
     },
-    apagar: async (id) => void arquivos.delete(id),
+    apagar: async (id) => {
+      arquivos.delete(id);
+      extensoes.delete(id);
+    },
     salvarAnexo: async () => 'imagem.png',
     aoMudarPasta: (callback) => {
       avisar = callback;
