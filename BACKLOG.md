@@ -56,7 +56,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 
 | # | | Item |
 | --- | --- | --- |
-| 31 | `[ ]` **P1** | Busca dentro da nota aberta, com realce das ocorrências |
+| 31 | `[x]` **P1** | Busca dentro da nota aberta, com realce das ocorrências |
 | 32 | `[x]` **P1** | Paleta de comandos (`Ctrl+K`): abrir nota, trocar tema, tudo sem mouse |
 | 33 | `[x]` **P1** | Busca mostra o trecho onde o termo apareceu, não só o começo da nota |
 | 34 | `[ ]` **P2** | Tags `#assunto` no texto viram filtro na barra lateral |

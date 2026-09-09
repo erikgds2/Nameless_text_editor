@@ -428,7 +428,7 @@ export default function App() {
         id: 'buscar',
         titulo: 'Buscar nas notas',
         secao: 'Notas',
-        atalho: 'Ctrl + F',
+        atalho: 'Ctrl + Shift + F',
         executar: () => searchRef.current?.focus(),
       },
       {
@@ -508,7 +508,9 @@ export default function App() {
         event.preventDefault();
         handleNewNote();
       }
-      if (event.key === 'f') {
+      // Ctrl+F sozinho procura dentro da nota aberta, como em qualquer editor,
+      // e quem cuida dele é o Editor. Aqui fica a busca entre notas.
+      if (event.key.toLowerCase() === 'f' && event.shiftKey) {
         event.preventDefault();
         searchRef.current?.focus();
       }

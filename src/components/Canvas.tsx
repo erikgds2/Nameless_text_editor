@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import type { ClipboardEvent, KeyboardEvent, MouseEvent, PointerEvent, UIEvent } from 'react';
 import { ALTURA_MINIMA, LARGURA_MINIMA, criarBloco, type Bloco } from '../canvas';
 import { realcar } from '../markdown';
+import { achadosDoBloco, realcarAchados, type Ocorrencia } from '../busca';
 import { alternarMarca, aoTeclarEnter, aoTeclarTab, inserirLink } from '../edicao';
 import { completarLigacao, ligacaoSendoEscrita, ordenarCandidatos, type Escrevendo } from '../sugestoes';
 import type { TipoDoc } from '../notes';
@@ -14,6 +15,10 @@ type Props = {
   onColarImagem: (bytes: Uint8Array, tipo: string) => Promise<string | null>;
   /** Títulos das outras notas, para sugerir enquanto se escreve uma ligação. */
   titulos: string[];
+  /** Ocorrências da busca na nota, em ordem de leitura. Vazio quando não há busca. */
+  achados: Ocorrencia[];
+  /** Aquela em que a navegação parou, para destacá-la entre as outras. */
+  achadoAtual: Ocorrencia | null;
 };
 
 /** Margem de tolerância do auto-crescimento do bloco, em pixels. */
@@ -23,7 +28,15 @@ type Arraste =
   | { tipo: 'mover'; id: string; offsetX: number; offsetY: number }
   | { tipo: 'redimensionar'; id: string; inicioX: number; inicioY: number; larguraInicial: number; alturaInicial: number };
 
-export default function Canvas({ blocos, tipo, onChange, onColarImagem, titulos }: Props) {
+export default function Canvas({
+  blocos,
+  tipo,
+  onChange,
+  onColarImagem,
+  titulos,
+  achados,
+  achadoAtual,
+}: Props) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [ativoId, setAtivoId] = useState<string | null>(null);
   const [criadoRecentemente, setCriadoRecentemente] = useState<string | null>(null);
@@ -126,6 +139,7 @@ export default function Canvas({ blocos, tipo, onChange, onColarImagem, titulos 
             .filter(Boolean)
             .join(' ')}
           style={{ left: bloco.x, top: bloco.y, width: bloco.largura, height: bloco.altura }}
+          data-bloco={bloco.id}
         >
           <div
             className="bloco__alca"
@@ -148,6 +162,8 @@ export default function Canvas({ blocos, tipo, onChange, onColarImagem, titulos 
           <Escrita
             bloco={bloco}
             realce={tipo === 'markdown'}
+            achados={achadosDoBloco(achados, bloco.id)}
+            achadoAtual={achadoAtual}
             autoFocus={bloco.id === criadoRecentemente || notaEmBranco}
             onFocus={() => setAtivoId(bloco.id)}
             onChange={(texto) => handleChangeTexto(bloco.id, texto)}
@@ -171,6 +187,8 @@ export default function Canvas({ blocos, tipo, onChange, onColarImagem, titulos 
 type EscritaProps = {
   bloco: Bloco;
   realce: boolean;
+  achados: Ocorrencia[];
+  achadoAtual: Ocorrencia | null;
   autoFocus: boolean;
   onFocus: () => void;
   onChange: (texto: string) => void;
@@ -188,6 +206,8 @@ type EscritaProps = {
 function Escrita({
   bloco,
   realce,
+  achados,
+  achadoAtual,
   autoFocus,
   onFocus,
   onChange,
@@ -223,6 +243,7 @@ function Escrita({
     area.setSelectionRange(cursor, cursor);
   }
   const espelhoRef = useRef<HTMLDivElement | null>(null);
+  const achadosRef = useRef<HTMLDivElement | null>(null);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // A folga não é frescura: sem ela, um scrollHeight que volta um ou dois
@@ -317,14 +338,28 @@ function Escrita({
     requestAnimationFrame(() => area.setSelectionRange(fim, fim));
   }
 
+  // As camadas de baixo têm de rolar junto com o texto, senão o realce
+  // descola das palavras assim que o bloco passa da própria altura.
   function acompanharRolagem(event: UIEvent<HTMLTextAreaElement>) {
-    if (!espelhoRef.current) return;
-    espelhoRef.current.scrollTop = event.currentTarget.scrollTop;
-    espelhoRef.current.scrollLeft = event.currentTarget.scrollLeft;
+    const { scrollTop, scrollLeft } = event.currentTarget;
+    for (const camada of [espelhoRef.current, achadosRef.current]) {
+      if (!camada) continue;
+      camada.scrollTop = scrollTop;
+      camada.scrollLeft = scrollLeft;
+    }
   }
 
   return (
     <>
+      {achados.length > 0 && (
+        <div
+          className="bloco__achados"
+          ref={achadosRef}
+          aria-hidden="true"
+          // vem de realcarAchados(), que escapa tudo que o usuário digitou
+          dangerouslySetInnerHTML={{ __html: realcarAchados(bloco.texto, achados, achadoAtual) }}
+        />
+      )}
       {realce && (
         <div
           className="bloco__espelho"

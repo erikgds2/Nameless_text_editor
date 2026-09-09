@@ -19,6 +19,8 @@ function montar(blocos: Bloco[], tipo: 'markdown' | 'texto' = 'markdown') {
       onChange={onChange}
       onColarImagem={onColarImagem}
       titulos={['Aula de Kant', 'Limites e continuidade']}
+      achados={[]}
+      achadoAtual={null}
     />,
   );
   return { onChange, onColarImagem };
@@ -55,14 +57,30 @@ describe('Canvas', () => {
 
   it('nota em Markdown ganha a camada de realce; nota de texto puro, não', () => {
     const { container } = render(
-      <Canvas blocos={[bloco('# título')]} tipo="markdown" onChange={vi.fn()} onColarImagem={vi.fn()} titulos={[]} />,
+      <Canvas
+        blocos={[bloco('# título')]}
+        tipo="markdown"
+        onChange={vi.fn()}
+        onColarImagem={vi.fn()}
+        titulos={[]}
+        achados={[]}
+        achadoAtual={null}
+      />,
     );
     expect(container.querySelector('.bloco__espelho')).not.toBeNull();
   });
 
   it('nota de texto puro escreve direto, sem espelho', () => {
     const { container } = render(
-      <Canvas blocos={[bloco('# título')]} tipo="texto" onChange={vi.fn()} onColarImagem={vi.fn()} titulos={[]} />,
+      <Canvas
+        blocos={[bloco('# título')]}
+        tipo="texto"
+        onChange={vi.fn()}
+        onColarImagem={vi.fn()}
+        titulos={[]}
+        achados={[]}
+        achadoAtual={null}
+      />,
     );
     expect(container.querySelector('.bloco__espelho')).toBeNull();
     expect(container.querySelector('.bloco--puro')).not.toBeNull();
@@ -93,6 +111,8 @@ function montarVivo(inicial: Bloco[], tipo: 'markdown' | 'texto' = 'markdown') {
         onChange={setBlocos}
         onColarImagem={onColarImagem}
         titulos={['Aula de Kant', 'Limites e continuidade']}
+        achados={[]}
+        achadoAtual={null}
       />
     );
   }

@@ -138,3 +138,98 @@ describe('backlinks', () => {
     expect(props.onAbrirNota).toHaveBeenCalledWith('a');
   });
 });
+
+describe('busca dentro da nota', () => {
+  /** Uma nota com vários blocos, para provar que a busca atravessa a página. */
+  function comBlocos(...textos: string[]): Note {
+    const nota = createNote('markdown');
+    return {
+      ...nota,
+      blocos: textos.map((texto, i) => ({ ...nota.blocos[0], id: `b${i}`, y: i * 200, texto })),
+    };
+  }
+
+  async function abrir(user: ReturnType<typeof userEvent.setup>) {
+    await user.keyboard('{Control>}f{/Control}');
+    return screen.getByRole('searchbox', { name: 'Procurar nesta nota' });
+  }
+
+  it('Ctrl+F abre a barra de busca da nota', async () => {
+    const user = userEvent.setup();
+    montar({ note: comBlocos('Kant e o dever') });
+
+    expect(screen.queryByRole('searchbox', { name: 'Procurar nesta nota' })).toBeNull();
+    expect(await abrir(user)).toHaveFocus();
+  });
+
+  it('sem nota aberta não há o que procurar', async () => {
+    const user = userEvent.setup();
+    montar({ note: null });
+
+    await user.keyboard('{Control>}f{/Control}');
+    expect(screen.queryByRole('searchbox', { name: 'Procurar nesta nota' })).toBeNull();
+  });
+
+  it('conta as ocorrências da nota inteira, não as do bloco', async () => {
+    const user = userEvent.setup();
+    montar({ note: comBlocos('dever e dever', 'outro dever aqui'), preview: false });
+
+    await user.type(await abrir(user), 'dever');
+    expect(screen.getByText('1 de 3')).toBeInTheDocument();
+  });
+
+  it('Enter anda para a próxima e Shift+Enter volta, dando a volta no fim', async () => {
+    const user = userEvent.setup();
+    montar({ note: comBlocos('dever e dever'), preview: false });
+
+    await user.type(await abrir(user), 'dever');
+    await user.keyboard('{Enter}');
+    expect(screen.getByText('2 de 2')).toBeInTheDocument();
+
+    await user.keyboard('{Enter}');
+    expect(screen.getByText('1 de 2')).toBeInTheDocument();
+
+    await user.keyboard('{Shift>}{Enter}{/Shift}');
+    expect(screen.getByText('2 de 2')).toBeInTheDocument();
+  });
+
+  it('termo que não existe na nota diz que não há nada', async () => {
+    const user = userEvent.setup();
+    montar({ note: comBlocos('Kant e o dever'), preview: false });
+
+    await user.type(await abrir(user), 'Hegel');
+    expect(screen.getByText('nada')).toBeInTheDocument();
+  });
+
+  it('a ocorrência visitada fica marcada, e só ela', async () => {
+    const user = userEvent.setup();
+    montar({ note: comBlocos('dever e dever'), preview: false });
+
+    await user.type(await abrir(user), 'dever');
+    expect(document.querySelectorAll('.achado')).toHaveLength(2);
+    expect(document.querySelectorAll('.achado--atual')).toHaveLength(1);
+  });
+
+  it('apagar letras do termo não deixa a navegação apontar para fora da lista', async () => {
+    const user = userEvent.setup();
+    montar({ note: comBlocos('dever e dever', 'deveras'), preview: false });
+
+    const campo = await abrir(user);
+    await user.type(campo, 'dever');
+    await user.keyboard('{Enter}{Enter}');
+    expect(screen.getByText('3 de 3')).toBeInTheDocument();
+
+    // "deveras" continua casando, mas "dever" some do segundo bloco: sobram duas
+    await user.type(campo, 'as');
+    expect(screen.getByText('1 de 1')).toBeInTheDocument();
+  });
+
+  it('Esc fecha a busca', async () => {
+    const user = userEvent.setup();
+    montar({ note: comBlocos('Kant e o dever'), preview: false });
+
+    await user.type(await abrir(user), 'dever');
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('searchbox', { name: 'Procurar nesta nota' })).toBeNull();
+  });
+});

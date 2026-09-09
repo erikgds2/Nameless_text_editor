@@ -7,8 +7,10 @@ import type {
 import { deriveTitle, textoDaNota, type Note, type TipoDoc } from '../notes';
 import type { Bloco } from '../canvas';
 import { renderizar } from '../markdown';
+import { acharNaNota } from '../busca';
 import { desenharDiagramas, esquecerDiagramas, reporDiagramas } from '../diagrama';
 import Canvas from './Canvas';
+import BuscaNaNota from './BuscaNaNota';
 
 export type Salvamento = 'salvo' | 'salvando' | 'erro';
 
@@ -81,10 +83,16 @@ export default function Editor({
   onAbrirNota,
 }: Props) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // `null` é a barra fechada. `atual` é o índice da ocorrência visitada.
+  const [busca, setBusca] = useState<{ termo: string; atual: number } | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const corpoRef = useRef<HTMLDivElement | null>(null);
+  const buscaRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => setConfirmingDelete(false), [note?.id]);
+
+  // Trocar de nota fecha a busca: o termo era daquela página, não desta.
+  useEffect(() => setBusca(null), [note?.id]);
 
   useEffect(() => {
     if (!confirmingDelete) return;
@@ -101,6 +109,48 @@ export default function Editor({
     () => (mostrandoPreview ? comAnexosResolvidos(renderizar(texto)) : ''),
     [mostrandoPreview, texto],
   );
+
+  // A busca percorre os blocos, e não o texto costurado: cada ocorrência tem de
+  // saber em qual bloco caiu para o realce ir parar na camada certa.
+  const achados = useMemo(
+    () => (busca && note ? acharNaNota(note.blocos, busca.termo) : []),
+    [busca?.termo, note],
+  );
+
+  // A posição na lista é derivada, nunca guardada: apagar uma letra do termo
+  // muda quantas ocorrências existem, e um índice velho apontaria para fora.
+  const atual = achados.length === 0 ? 0 : Math.min(busca?.atual ?? 0, achados.length - 1);
+  const achadoAtual = achados[atual] ?? null;
+
+  const temNota = note !== null;
+  useEffect(() => {
+    function aoTeclar(evento: KeyboardEvent) {
+      // Ctrl+Shift+F é a busca entre notas, da barra lateral, e mora no App.
+      if (!temNota || evento.shiftKey) return;
+      if (!(evento.ctrlKey || evento.metaKey) || evento.key.toLowerCase() !== 'f') return;
+      evento.preventDefault();
+      setBusca((prev) => prev ?? { termo: '', atual: 0 });
+      // com a barra já aberta, Ctrl+F volta o foco para o campo e seleciona o
+      // termo antigo — é o que todo editor faz, e poupa apagar antes de digitar
+      buscaRef.current?.select();
+    }
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [temNota]);
+
+  // Andar entre ocorrências tem de trazer o bloco para a tela: numa nota de
+  // uma dúzia de blocos a próxima quase sempre está fora da área visível.
+  useEffect(() => {
+    if (!achadoAtual || !corpoRef.current) return;
+    const alvo = corpoRef.current.querySelector(`[data-bloco="${achadoAtual.blocoId}"]`);
+    if (alvo instanceof HTMLElement) alvo.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [achadoAtual?.blocoId, achadoAtual?.inicio]);
+
+  function andarNaBusca(passo: 1 | -1) {
+    if (achados.length === 0) return;
+    const proxima = (atual + passo + achados.length) % achados.length;
+    setBusca((prev) => (prev ? { ...prev, atual: proxima } : prev));
+  }
 
   // As cores do diagrama ficam assadas dentro do SVG, então trocar de tema ou
   // de cor de destaque exige refazê-lo. Este efeito vem antes do que desenha
@@ -251,6 +301,17 @@ export default function Editor({
         ref={corpoRef}
         style={{ '--divisoria': `${divisoria}%` } as CSSProperties}
       >
+        {busca && (
+          <BuscaNaNota
+            campoRef={buscaRef}
+            termo={busca.termo}
+            onTermo={(termo) => setBusca({ termo, atual: 0 })}
+            total={achados.length}
+            atual={atual}
+            onAndar={andarNaBusca}
+            onFechar={() => setBusca(null)}
+          />
+        )}
         <Canvas
           key={note.id}
           blocos={note.blocos}
@@ -258,6 +319,8 @@ export default function Editor({
           onChange={onChange}
           onColarImagem={onColarImagem}
           titulos={titulos}
+          achados={achados}
+          achadoAtual={achadoAtual}
         />
         {mostrandoPreview && (
           <div

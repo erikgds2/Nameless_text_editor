@@ -394,6 +394,7 @@ button {
 }
 
 .editor__corpo {
+  position: relative;
   flex: 1;
   display: grid;
   grid-template-columns: 1fr;
@@ -404,6 +405,77 @@ button {
    canvas e a pré-visualização nunca ficam por baixo dela. */
 .editor__corpo--dividido {
   grid-template-columns: var(--divisoria, 50%) 6px 1fr;
+}
+
+/* ------------------------------------------------ busca dentro da nota */
+
+.busca-nota {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px 4px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--base);
+  box-shadow: var(--sombra);
+  animation: entrar var(--entrada);
+}
+
+/* Com a pré-visualização aberta, a barra acompanha a coluna da escrita: é lá
+   que estão os blocos que ela realça, e não do lado do texto renderizado. */
+.editor__corpo--dividido .busca-nota {
+  right: calc(100% - var(--divisoria, 50%) + 12px);
+}
+
+.busca-nota__campo {
+  width: 160px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 13px;
+  outline: none;
+}
+
+.busca-nota__campo::placeholder {
+  color: var(--ink-faint);
+}
+
+.busca-nota__conta {
+  min-width: 52px;
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-align: right;
+}
+
+.busca-nota__conta--nada {
+  color: var(--alert);
+}
+
+.busca-nota__botao {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background-color var(--rapido), color var(--rapido);
+}
+
+.busca-nota__botao:hover:not(:disabled) {
+  background: var(--surface-alt);
+  color: var(--ink-strong);
+}
+
+.busca-nota__botao:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .divisoria {
@@ -463,7 +535,10 @@ button {
 }
 
 /* O espelho e o textarea precisam ocupar a mesma caixa, com a mesma métrica:
-   o texto do espelho fica exatamente atrás do texto transparente digitado. */
+   o texto do espelho fica exatamente atrás do texto transparente digitado.
+   A camada dos achados entra na mesma conta: ela existe para pintar o fundo
+   das ocorrências, e só acerta a palavra se quebrar a linha no mesmo lugar. */
+.bloco__achados,
 .bloco__espelho,
 .bloco__texto {
   position: absolute;
@@ -482,6 +557,24 @@ button {
 .bloco__espelho {
   pointer-events: none;
   color: var(--ink);
+}
+
+/* Só o fundo das marcas aparece: o texto desta camada tem de ficar invisível,
+   senão ele dobra o do espelho e tudo fica borrado. */
+.bloco__achados {
+  pointer-events: none;
+  color: transparent;
+}
+
+.achado {
+  border-radius: 2px;
+  background: var(--marker);
+}
+
+/* A ocorrência em que a navegação parou: mesma tinta, contorno próprio. É o que
+   diz qual delas o Enter vai visitar em seguida. */
+.achado--atual {
+  outline: 1px solid var(--accent);
 }
 
 .bloco__texto {
