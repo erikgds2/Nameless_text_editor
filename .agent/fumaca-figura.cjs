@@ -28,12 +28,12 @@ const PAGINA = (css) => `<!doctype html>
 <body>
   <div class="canvas">
     <!-- o caso que o usuario relatou: colou no quadrado que ja tinha texto -->
-    <div class="bloco bloco--ativo" id="misto" style="left:40px;top:24px;width:360px;height:300px">
+    <div class="bloco bloco--puro bloco--ativo" id="misto" class2="bloco--puro" style="left:40px;top:24px;width:360px;height:320px">
       <div class="bloco__alca"></div>
       <button class="bloco__excluir" style="opacity:1"></button>
-      <div class="bloco__espelho">Anatomia do f&ecirc;mur<br>![](anexos/icone.png)</div>
-      <textarea class="bloco__texto" style="bottom:180px">Anatomia do fêmur
-![](anexos/icone.png)</textarea>
+            <textarea class="bloco__texto" style="bottom:180px">Fase 2 no disco
+
+Nota de texto puro — sem Markdown nenhum.</textarea>
       <div class="bloco__figuras">
         <div class="bloco__figura">
           <img class="bloco__imagem" src="ardosia://anexos/icone.png" alt="">

@@ -1,5 +1,6 @@
 import { criarBloco, LARGURA_PADRAO, ALTURA_PADRAO, LARGURA_MINIMA, ALTURA_MINIMA } from './canvas';
-import type { Bloco } from './canvas';
+import type { Bloco, Imagem } from './canvas';
+import { figurasDoBloco, imagemDoBloco, textoSemFiguras } from './imagem';
 import type { Note, TipoDoc } from './notes';
 
 const MARCADOR = /<!--\s*ardosia:bloco([^>]*)-->/g;
@@ -19,7 +20,10 @@ export function serializar(nota: Note): string {
   const corpo = [...nota.blocos]
     .sort((a, b) => a.y - b.y || a.x - b.x)
     .map((bloco) => {
-      const marcador = `<!-- ardosia:bloco x=${bloco.x} y=${bloco.y} w=${bloco.largura} h=${bloco.altura} -->`;
+      const figura = bloco.imagem
+        ? ` img=${bloco.imagem.src}${bloco.imagem.fonte ? ` fonte=${bloco.imagem.fonte}` : ''}`
+        : '';
+      const marcador = `<!-- ardosia:bloco x=${bloco.x} y=${bloco.y} w=${bloco.largura} h=${bloco.altura}${figura} -->`;
       return bloco.texto ? `${marcador}\n${bloco.texto}` : marcador;
     })
     .join('\n\n');
@@ -101,21 +105,54 @@ function extrairBlocos(corpo: string): Bloco[] {
     const fim = i + 1 < marcas.length ? marcas[i + 1].index : corpo.length;
     const texto = corpo.slice(inicio, fim).trim();
     const atributos = parseAtributos(marca[1]);
-    blocos.push({
-      id: crypto.randomUUID(),
-      x: geometriaPosicao(atributos.x),
-      y: geometriaPosicao(atributos.y),
-      largura: geometriaTamanho(atributos.w, LARGURA_PADRAO, LARGURA_MINIMA),
-      altura: geometriaTamanho(atributos.h, ALTURA_PADRAO, ALTURA_MINIMA),
-      texto,
-    });
+    blocos.push(
+      comFiguraMigrada({
+        id: crypto.randomUUID(),
+        x: geometriaPosicao(atributos.x),
+        y: geometriaPosicao(atributos.y),
+        largura: geometriaTamanho(atributos.w, LARGURA_PADRAO, LARGURA_MINIMA),
+        altura: geometriaTamanho(atributos.h, ALTURA_PADRAO, ALTURA_MINIMA),
+        texto,
+        ...(imagemDoAtributo(atributos.img, atributos.fonte) ?? {}),
+      }),
+    );
   });
 
   return blocos;
 }
 
 function blocoComTexto(x: number, y: number, texto: string): Bloco {
-  return { ...criarBloco(x, y), texto };
+  return comFiguraMigrada({ ...criarBloco(x, y), texto });
+}
+
+/** `img=anexos/abc.png` no marcador, validado como qualquer caminho de anexo. */
+function imagemDoAtributo(src?: string, fonte?: string): { imagem: Imagem } | null {
+  const figura = src ? imagemDoBloco(`![](${src})`) : null;
+  if (!figura) return null;
+  return { imagem: { src: figura.src, ...(fonte && ehFonteValida(fonte) ? { fonte } : {}) } };
+}
+
+function ehFonteValida(fonte: string): boolean {
+  return imagemDoBloco(`[![](anexos/x.png)](${fonte})`) !== null;
+}
+
+/**
+ * Nota escrita antes de a figura ser propriedade da seção: a imagem morava
+ * numa linha de Markdown dentro do texto. Ao abrir, ela sobe para a seção — a
+ * nota antiga continua abrindo, e a partir daí a foto não depende mais de o
+ * arquivo ser `.md`. A linha some do texto para não haver duas verdades.
+ */
+function comFiguraMigrada(bloco: Bloco): Bloco {
+  if (bloco.imagem) return bloco;
+
+  const [primeira] = figurasDoBloco(bloco.texto);
+  if (!primeira) return bloco;
+
+  return {
+    ...bloco,
+    texto: textoSemFiguras(bloco.texto).trim(),
+    imagem: { src: primeira.src, ...(primeira.fonte ? { fonte: primeira.fonte } : {}) },
+  };
 }
 
 function parseAtributos(bruto: string): Record<string, string> {

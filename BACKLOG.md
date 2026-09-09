@@ -1,4 +1,4 @@
-# BACKLOG — 112 melhorias
+# BACKLOG — 120 melhorias
 
 Itens agrupados por tema e ordenados por valor dentro de cada
 grupo. Marcados assim:
@@ -177,6 +177,23 @@ precisar recarregar. Nada de servidor, nada de API: o disco é a interface.
 | 108 | `[x]` **P2** | `ardosia pasta` mostra onde as notas ficam, e `--definir` muda — a mesma config do app |
 | 109 | `[x]` **P3** | `ardosia anexar <nota> <arquivo>` põe uma imagem na nota como figura |
 | 110 | `[x]` **P3** | `ardosia ajuda` com exemplos prontos de uso por um agente |
+
+## L. A folha de caderno (113–120)
+
+Do princípio nº 7 do `PROJETO.md`. A seção da página guarda o que ela é; o
+Markdown é opção de leitura, e não a condição para o conteúdo existir. O item
+113 já está pronto e é o que tornou o resto possível.
+
+| # | | Item |
+| --- | --- | --- |
+| 113 | `[x]` **P1** | A figura é propriedade da seção, no marcador do bloco — aparece em nota de texto puro também |
+| 114 | `[ ]` **P1** | Cor do texto por seção, escolhida entre os tokens do tema |
+| 115 | `[ ]` **P1** | Fonte por seção: a monoespaçada de sempre, uma de leitura e uma de mão |
+| 116 | `[ ]` **P1** | Escolher a extensão do arquivo (`.md`, `.txt`) como se escolhe no VS Code — o tipo deixa de ser só um campo do frontmatter |
+| 117 | `[ ]` **P2** | Grifar um trecho com marca-texto, sem que isso vire marcação no texto |
+| 118 | `[ ]` **P2** | Arrastar a figura de uma seção para outra |
+| 119 | `[ ]` **P2** | Colar arquivo que não é imagem: vira anexo com nome e ícone na seção |
+| 120 | `[ ]` **P3** | Seção com cor de fundo própria, como um post-it na folha |
 
 ## K. Dívidas declaradas (111–112)
 

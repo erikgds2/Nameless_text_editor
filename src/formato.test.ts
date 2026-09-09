@@ -187,3 +187,108 @@ describe('ida e volta', () => {
     expect(desserializar(serializar(original), original.id).blocos).toHaveLength(1);
   });
 });
+
+describe('a figura é da seção, e não do texto', () => {
+  it('a imagem do bloco vai para o marcador e volta de lá', () => {
+    const comFoto = nota({
+      tipo: 'texto',
+      blocos: [{ ...criarBloco(48, 48), texto: 'Anatomia', imagem: { src: 'anexos/abc.png' } }],
+    });
+
+    const arquivo = serializar(comFoto);
+    expect(arquivo).toContain('img=anexos/abc.png');
+
+    const devolta = desserializar(arquivo, 'x');
+    expect(devolta.blocos[0].imagem).toEqual({ src: 'anexos/abc.png' });
+    expect(devolta.blocos[0].texto).toBe('Anatomia');
+  });
+
+  it('a origem do print viaja junto', () => {
+    const comFonte = nota({
+      blocos: [
+        {
+          ...criarBloco(48, 48),
+          texto: 'Anatomia',
+          imagem: { src: 'anexos/abc.png', fonte: 'https://exemplo.org/femur' },
+        },
+      ],
+    });
+
+    const devolta = desserializar(serializar(comFonte), 'x');
+    expect(devolta.blocos[0].imagem).toEqual({
+      src: 'anexos/abc.png',
+      fonte: 'https://exemplo.org/femur',
+    });
+  });
+
+  it('funciona em nota de texto puro: é aí que a versão anterior falhava', () => {
+    const comFoto = nota({
+      tipo: 'texto',
+      blocos: [{ ...criarBloco(48, 48), texto: 'só texto', imagem: { src: 'anexos/abc.png' } }],
+    });
+
+    const devolta = desserializar(serializar(comFoto), 'x');
+    expect(devolta.tipo).toBe('texto');
+    expect(devolta.blocos[0].imagem?.src).toBe('anexos/abc.png');
+  });
+
+  it('caminho de imagem inválido no arquivo é ignorado, e não vira figura', () => {
+    const arquivo = [
+      '---',
+      'ardosia: 1',
+      'tipo: markdown',
+      'criada: 2026-09-09T12:00:00.000Z',
+      'atualizada: 2026-09-09T12:00:00.000Z',
+      'fixada: false',
+      '---',
+      '',
+      '<!-- ardosia:bloco x=0 y=0 w=320 h=120 img=../../segredo.txt -->',
+      'texto',
+      '',
+    ].join('\n');
+
+    expect(desserializar(arquivo, 'x').blocos[0].imagem).toBeUndefined();
+  });
+
+  it('nota antiga, com a imagem escrita no texto, migra ao abrir', () => {
+    const antiga = [
+      '---',
+      'ardosia: 1',
+      'tipo: markdown',
+      'criada: 2026-09-09T12:00:00.000Z',
+      'atualizada: 2026-09-09T12:00:00.000Z',
+      'fixada: false',
+      '---',
+      '',
+      '<!-- ardosia:bloco x=6 y=252 w=253 h=60 -->',
+      'Anatomia',
+      '![](anexos/5f9a2ee16114.png)',
+      '',
+    ].join('\n');
+
+    const bloco = desserializar(antiga, 'x').blocos[0];
+    expect(bloco.imagem).toEqual({ src: 'anexos/5f9a2ee16114.png' });
+    expect(bloco.texto).toBe('Anatomia');
+  });
+
+  it('nota antiga com a imagem e a origem também migra', () => {
+    const antiga = [
+      '---',
+      'ardosia: 1',
+      'tipo: markdown',
+      'criada: 2026-09-09T12:00:00.000Z',
+      'atualizada: 2026-09-09T12:00:00.000Z',
+      'fixada: false',
+      '---',
+      '',
+      '<!-- ardosia:bloco x=0 y=0 w=320 h=120 -->',
+      '[![](anexos/abc.png)](https://exemplo.org/femur)',
+      '',
+    ].join('\n');
+
+    expect(desserializar(antiga, 'x').blocos[0].imagem).toEqual({
+      src: 'anexos/abc.png',
+      fonte: 'https://exemplo.org/femur',
+    });
+  });
+});

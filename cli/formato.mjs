@@ -84,7 +84,10 @@ export function escreverNota(nota) {
 
   const corpo = emOrdemDeLeitura(nota.blocos)
     .map((bloco) => {
-      const marcador = `<!-- ardosia:bloco x=${bloco.x} y=${bloco.y} w=${bloco.largura} h=${bloco.altura} -->`;
+      const figura = bloco.imagem
+        ? ` img=${bloco.imagem.src}${bloco.imagem.fonte ? ` fonte=${bloco.imagem.fonte}` : ''}`
+        : '';
+      const marcador = `<!-- ardosia:bloco x=${bloco.x} y=${bloco.y} w=${bloco.largura} h=${bloco.altura}${figura} -->`;
       return bloco.texto ? `${marcador}\n${bloco.texto}` : marcador;
     })
     .join('\n\n');
@@ -95,9 +98,16 @@ export function escreverNota(nota) {
 /** O texto da nota inteira, na ordem em que se lê a página. */
 export function textoDaNota(blocos) {
   return emOrdemDeLeitura(blocos)
-    .filter((bloco) => bloco.texto.trim().length > 0)
-    .map((bloco) => bloco.texto)
+    .map((bloco) => [bloco.texto.trim(), marcacaoDaImagem(bloco)].filter(Boolean).join('\n'))
+    .filter((texto) => texto.length > 0)
     .join('\n');
+}
+
+/** A figura da secao sai como marcacao: e o que quem le a nota como texto ve. */
+function marcacaoDaImagem(bloco) {
+  if (!bloco.imagem) return '';
+  const marca = `![](${bloco.imagem.src})`;
+  return bloco.imagem.fonte ? `[${marca}](${bloco.imagem.fonte})` : marca;
 }
 
 /** O título é sempre a primeira linha com conteúdo — não há campo separado. */
@@ -140,20 +150,70 @@ function extrairBlocos(corpo) {
     const inicio = (marca.index ?? 0) + marca[0].length;
     const fim = i + 1 < marcas.length ? marcas[i + 1].index : corpo.length;
     const atributos = parseAtributos(marca[1]);
-    blocos.push({
-      x: posicao(atributos.x),
-      y: posicao(atributos.y),
-      largura: tamanho(atributos.w, LARGURA_PADRAO, LARGURA_MINIMA),
-      altura: tamanho(atributos.h, ALTURA_PADRAO, ALTURA_MINIMA),
-      texto: corpo.slice(inicio, fim).trim(),
-    });
+    blocos.push(
+      comFiguraMigrada({
+        x: posicao(atributos.x),
+        y: posicao(atributos.y),
+        largura: tamanho(atributos.w, LARGURA_PADRAO, LARGURA_MINIMA),
+        altura: tamanho(atributos.h, ALTURA_PADRAO, ALTURA_MINIMA),
+        texto: corpo.slice(inicio, fim).trim(),
+        ...imagemDoAtributo(atributos.img, atributos.fonte),
+      }),
+    );
   });
 
   return blocos;
 }
 
 function blocoComTexto(x, y, texto) {
-  return { x, y, largura: LARGURA_PADRAO, altura: ALTURA_PADRAO, texto };
+  return comFiguraMigrada({ x, y, largura: LARGURA_PADRAO, altura: ALTURA_PADRAO, texto });
+}
+
+/**
+ * A figura e propriedade da secao, e nao do texto: e o que a faz existir numa
+ * nota que nao e Markdown. As regras de caminho aceito sao as mesmas do app —
+ * so `anexos/<arquivo>` e endereco http(s) —, e formato.test.ts prova.
+ */
+const SO_ANEXO = /^anexos\/[^/\\]+$/;
+const SO_EXTERNA = /^https?:\/\/\S+$/i;
+const LINHA_DE_IMAGEM = /^!\[[^\]]*\]\(([^()\s]+)\)$/;
+const LINHA_COM_FONTE = /^\[!\[[^\]]*\]\(([^()\s]+)\)\]\(([^()\s]+)\)$/;
+
+function ehSrcAceita(src) {
+  return SO_ANEXO.test(src) || SO_EXTERNA.test(src);
+}
+
+function imagemDoAtributo(src, fonte) {
+  if (!src || !ehSrcAceita(src)) return {};
+  return { imagem: { src, ...(fonte && SO_EXTERNA.test(fonte) ? { fonte } : {}) } };
+}
+
+/** A imagem de uma linha que e SO uma imagem, como as notas antigas guardavam. */
+function figuraDaLinha(linha) {
+  const limpa = linha.trim();
+
+  const comFonte = limpa.match(LINHA_COM_FONTE);
+  if (comFonte && ehSrcAceita(comFonte[1]) && SO_EXTERNA.test(comFonte[2])) {
+    return { src: comFonte[1], fonte: comFonte[2] };
+  }
+
+  const sozinha = limpa.match(LINHA_DE_IMAGEM);
+  return sozinha && ehSrcAceita(sozinha[1]) ? { src: sozinha[1] } : null;
+}
+
+/** Nota escrita antes disso: a imagem morava no texto e sobe para a secao. */
+function comFiguraMigrada(bloco) {
+  if (bloco.imagem) return bloco;
+
+  const linhas = bloco.texto.split('\n');
+  const primeira = linhas.map(figuraDaLinha).find(Boolean);
+  if (!primeira) return bloco;
+
+  return {
+    ...bloco,
+    texto: linhas.filter((linha) => figuraDaLinha(linha) === null).join('\n').trim(),
+    imagem: primeira,
+  };
 }
 
 function parseAtributos(bruto) {

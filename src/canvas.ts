@@ -1,3 +1,11 @@
+/**
+ * Uma seção da página — o que numa folha de caderno seria um trecho escrito
+ * num canto, um recorte colado no outro.
+ *
+ * A imagem é propriedade DA SEÇÃO, e não uma marcação dentro do texto. Foi
+ * assim que ela deixou de depender de a nota ser Markdown: um caderno tem foto
+ * colada na página, e a página pode ser de texto puro.
+ */
 export type Bloco = {
   id: string;
   x: number;
@@ -5,6 +13,15 @@ export type Bloco = {
   largura: number;
   altura: number;
   texto: string;
+  /** A figura colada nesta seção, quando há uma. */
+  imagem?: Imagem;
+};
+
+export type Imagem = {
+  /** Caminho relativo na pasta da nota, como `anexos/abc123.png`. */
+  src: string;
+  /** De onde o print veio, quando a área de transferência soube dizer. */
+  fonte?: string;
 };
 
 export const LARGURA_PADRAO = 320;
@@ -23,12 +40,26 @@ export function criarBloco(x: number, y: number): Bloco {
   };
 }
 
+/**
+ * O texto da nota inteira, na ordem em que se lê a página.
+ *
+ * A figura de uma seção sai daqui como marcação de imagem do Markdown: é o que
+ * a pré-visualização desenha e o que a linha de comando entrega a quem pede a
+ * nota. No arquivo ela mora no marcador do bloco, e não no texto — mas quem lê
+ * a nota como texto precisa ver que há uma foto ali.
+ */
 export function textoDaNota(blocos: Bloco[]): string {
   return [...blocos]
     .sort((a, b) => a.y - b.y || a.x - b.x)
-    .filter((bloco) => bloco.texto.trim().length > 0)
-    .map((bloco) => bloco.texto)
+    .map((bloco) => [bloco.texto.trim(), marcacaoDaImagem(bloco)].filter(Boolean).join('\n'))
+    .filter((texto) => texto.length > 0)
     .join('\n');
+}
+
+function marcacaoDaImagem(bloco: Bloco): string {
+  if (!bloco.imagem) return '';
+  const marca = `![](${bloco.imagem.src})`;
+  return bloco.imagem.fonte ? `[${marca}](${bloco.imagem.fonte})` : marca;
 }
 
 /** Margem de tolerância do auto-ajuste de altura, em pixels. */

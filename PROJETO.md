@@ -26,6 +26,12 @@ Cada um destes veio de uma reclamação recorrente nas comunidades, não de intu
    um cemitério de notas. É isso que separa este projeto de mais um app de notas.
 6. **Sem bloat.** Toda feature nova precisa justificar seu peso na interface.
    Bloat é o que empurra as pessoas para fora dos apps, não a falta de recursos.
+7. **A página é uma folha de caderno, não um documento Markdown.** Numa folha
+   de verdade escreve-se num canto, cola-se um recorte no outro, muda-se de cor.
+   Cada seção da página guarda o que ela é — texto, figura, mais adiante cor e
+   fonte —, e isso vale mesmo quando a nota não é Markdown. O Markdown é **uma
+   opção de leitura**, como escolher a extensão do arquivo no VS Code: útil quando
+   se quer, e nunca a condição para o conteúdo existir.
 
 ## Arquitetura
 

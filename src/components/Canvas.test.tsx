@@ -254,7 +254,7 @@ describe('figura colada na página', () => {
     return { onChange, onColarImagem };
   }
 
-  it('colada num bloco vazio, a figura ocupa esse bloco', async () => {
+  it('colada numa seção vazia, a figura ocupa essa seção', async () => {
     const vazio = bloco('');
     const { onChange, onColarImagem } = montarComEspiao([vazio]);
 
@@ -263,9 +263,12 @@ describe('figura colada na página', () => {
     await waitFor(() => expect(onColarImagem).toHaveBeenCalled());
     await waitFor(() =>
       expect(onChange).toHaveBeenCalledWith([
-        expect.objectContaining({ id: vazio.id, texto: '![](anexos/abc123.png)' }),
+        expect.objectContaining({ id: vazio.id, imagem: { src: 'anexos/abc123.png' } }),
       ]),
     );
+    // a figura é da seção: o texto dela não é usado para guardar a foto
+    const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
+    expect(depois[0].texto).toBe('');
   });
 
   it('colada num bloco com texto, a figura fica NESSE bloco, e não num quadrado novo', async () => {
@@ -279,20 +282,30 @@ describe('figura colada na página', () => {
 
     expect(depois).toHaveLength(1);
     expect(depois[0].id).toBe(escrito.id);
-    expect(depois[0].texto).toBe('Anatomia do fêmur\n![](anexos/abc123.png)');
-    // o bloco cresce para a foto caber sem empurrar o que estava escrito
+    expect(depois[0].imagem).toEqual({ src: 'anexos/abc123.png' });
+    // o texto que já estava lá fica intacto
+    expect(depois[0].texto).toBe('Anatomia do fêmur');
+    // e o bloco cresce para a foto caber sem empurrar o que estava escrito
     expect(depois[0].altura).toBeGreaterThan(escrito.altura);
   });
 
-  it('a segunda figura no mesmo bloco não faz o bloco crescer de novo', async () => {
-    const comFigura = { ...bloco('Anatomia\n![](anexos/ja-tinha.png)'), altura: 300 };
+  it('seção que já tem foto: a segunda vira outra seção, logo abaixo', async () => {
+    const comFigura = {
+      ...bloco('Anatomia'),
+      altura: 300,
+      imagem: { src: 'anexos/ja-tinha.png' },
+    };
     const { onChange } = montarComEspiao([comFigura]);
 
     fireEvent.paste(screen.getByRole('textbox'), { clipboardData: areaDeTransferencia(png()) });
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
-    expect(depois[0].altura).toBe(300);
+
+    expect(depois).toHaveLength(2);
+    expect(depois[0].imagem).toEqual({ src: 'anexos/ja-tinha.png' });
+    expect(depois[1].imagem).toEqual({ src: 'anexos/abc123.png' });
+    expect(depois[1].y).toBeGreaterThan(comFigura.y + comFigura.altura);
   });
 
   it('a origem do print, quando existe, entra na marcação', async () => {
@@ -304,7 +317,10 @@ describe('figura colada na página', () => {
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
-    expect(depois[0].texto).toBe('[![](anexos/abc123.png)](https://exemplo.org/femur.png)');
+    expect(depois[0].imagem).toEqual({
+      src: 'anexos/abc123.png',
+      fonte: 'https://exemplo.org/femur.png',
+    });
   });
 
   it('colagem sem imagem nenhuma não mexe na nota', async () => {
@@ -316,28 +332,40 @@ describe('figura colada na página', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('o bloco que é só uma imagem aparece como figura, e não como texto', () => {
-    montarComEspiao([bloco('![](anexos/abc123.png)')]);
+  it('a seção que é só uma figura aparece como figura, e não como texto', () => {
+    montarComEspiao([{ ...bloco(''), imagem: { src: 'anexos/abc123.png' } }]);
 
     const figura = screen.getByRole('img', { name: 'Imagem colada na nota' });
     expect(figura).toHaveAttribute('src', 'ardosia://anexos/abc123.png');
     expect(screen.queryByRole('textbox')).toBeNull();
   });
 
+  it('a figura aparece TAMBÉM em nota de texto puro — era aí que ela sumia', () => {
+    montarComEspiao([{ ...bloco('anotação'), imagem: { src: 'anexos/abc123.png' } }], 'texto');
+
+    expect(screen.getByRole('img', { name: 'Imagem colada na nota' })).toHaveAttribute(
+      'src',
+      'ardosia://anexos/abc123.png',
+    );
+    expect(screen.getByRole('textbox')).toHaveValue('anotação');
+  });
+
   it('com origem guardada, a figura oferece o caminho de volta', () => {
-    montarComEspiao([bloco('[![](anexos/abc123.png)](https://exemplo.org/femur)')]);
+    montarComEspiao([
+      { ...bloco(''), imagem: { src: 'anexos/abc123.png', fonte: 'https://exemplo.org/femur' } },
+    ]);
 
     const origem = screen.getByRole('link', { name: 'Abrir a origem da imagem' });
     expect(origem).toHaveAttribute('href', 'https://exemplo.org/femur');
   });
 
   it('sem origem, não há link nenhum para abrir', () => {
-    montarComEspiao([bloco('![](anexos/abc123.png)')]);
+    montarComEspiao([{ ...bloco(''), imagem: { src: 'anexos/abc123.png' } }]);
     expect(screen.queryByRole('link')).toBeNull();
   });
 
-  it('em nota de texto puro, a marcação não vira figura', () => {
-    montarComEspiao([bloco('![](anexos/abc123.png)')], 'texto');
+  it('marcação escrita à mão no texto continua sendo texto, e não vira figura', () => {
+    montarComEspiao([bloco('![](anexos/abc123.png)')]);
 
     expect(screen.queryByRole('img')).toBeNull();
     expect(screen.getByDisplayValue('![](anexos/abc123.png)')).toBeInTheDocument();

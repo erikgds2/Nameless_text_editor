@@ -210,9 +210,12 @@ export async function anexar(id, arquivo, origem = null) {
   await fs.mkdir(path.join(base, 'anexos'), { recursive: true });
   await fs.writeFile(path.join(base, 'anexos', nome), conteudo);
 
-  const marca = `![](anexos/${nome})`;
-  const { caminho } = await escrever(id, origem ? `[${marca}](${origem})` : marca);
-  return { nome, caminho };
+  // a figura entra como propriedade da secao nova, e nao como texto: e o que a
+  // faz aparecer tambem numa nota que nao e Markdown
+  const nota = await ler(id);
+  const bloco = blocoNoFim(nota.blocos, '');
+  nota.blocos.push({ ...bloco, imagem: { src: `anexos/${nome}`, ...(origem ? { fonte: origem } : {}) } });
+  return { nome, caminho: await gravar(id, nota) };
 }
 
 function normalizar(texto) {
