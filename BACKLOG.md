@@ -1,6 +1,6 @@
-# BACKLOG — 100 melhorias
+# BACKLOG — 110 melhorias
 
-Cem itens, agrupados por tema e ordenados por valor dentro de cada
+Itens agrupados por tema e ordenados por valor dentro de cada
 grupo. Marcados assim:
 
 - `[ ]` a fazer · `[~]` em andamento · `[x]` pronto
@@ -156,6 +156,26 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 98 | `[ ]` **P3** | Atualização automática do app instalado |
 | 99 | `[ ]` **P3** | Registro de erros em arquivo, para diagnosticar sem console aberto |
 | 100 | `[ ]` **P3** | Publicar a versão web, que a arquitetura já dá de graça |
+
+## J. Linha de comando: escrever no caderno sem abrir o caderno (101–110)
+
+Um comando `ardosia` que lê e escreve as mesmas notas do aplicativo, para que
+outro programa — uma IA, um script, um atalho — possa escrever aqui dentro. A
+pasta é a mesma, o formato é o mesmo, e o app aberto mostra o que chegou sem
+precisar recarregar. Nada de servidor, nada de API: o disco é a interface.
+
+| # | | Item |
+| --- | --- | --- |
+| 101 | `[x]` **P1** | `ardosia listar` mostra as notas da pasta: id, título e quando mudou |
+| 102 | `[x]` **P1** | `ardosia ler <nota>` imprime a nota em Markdown limpo, sem os marcadores de posição |
+| 103 | `[x]` **P1** | `ardosia criar <título>` cria a nota e imprime o id que ela recebeu |
+| 104 | `[x]` **P1** | `ardosia escrever <nota>` acrescenta um bloco ao fim, lendo do argumento ou da entrada padrão |
+| 105 | `[x]` **P2** | `ardosia buscar <termo>` procura em todas as notas e mostra o trecho onde apareceu |
+| 106 | `[x]` **P2** | A CLI grava pelo arquivo temporário, como o app: o vigia da pasta nunca lê nota pela metade |
+| 107 | `[x]` **P2** | `--json` em toda saída e código de saída ≠ 0 no erro, para orquestrar sem adivinhar |
+| 108 | `[x]` **P2** | `ardosia pasta` mostra onde as notas ficam, e `--definir` muda — a mesma config do app |
+| 109 | `[x]` **P3** | `ardosia anexar <nota> <arquivo>` põe uma imagem na nota como figura |
+| 110 | `[x]` **P3** | `ardosia ajuda` com exemplos prontos de uso por um agente |
 
 ---
 
