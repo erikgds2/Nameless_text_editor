@@ -21,6 +21,7 @@ function montar(blocos: Bloco[], tipo: 'markdown' | 'texto' = 'markdown') {
       titulos={['Aula de Kant', 'Limites e continuidade']}
       achados={[]}
       achadoAtual={null}
+      onSair={vi.fn()}
     />,
   );
   return { onChange, onColarImagem };
@@ -65,6 +66,7 @@ describe('Canvas', () => {
         titulos={[]}
         achados={[]}
         achadoAtual={null}
+        onSair={vi.fn()}
       />,
     );
     expect(container.querySelector('.bloco__espelho')).not.toBeNull();
@@ -80,6 +82,7 @@ describe('Canvas', () => {
         titulos={[]}
         achados={[]}
         achadoAtual={null}
+        onSair={vi.fn()}
       />,
     );
     expect(container.querySelector('.bloco__espelho')).toBeNull();
@@ -113,6 +116,7 @@ function montarVivo(inicial: Bloco[], tipo: 'markdown' | 'texto' = 'markdown') {
         titulos={['Aula de Kant', 'Limites e continuidade']}
         achados={[]}
         achadoAtual={null}
+        onSair={vi.fn()}
       />
     );
   }
@@ -234,6 +238,7 @@ describe('figura colada na página', () => {
         titulos={[]}
         achados={[]}
         achadoAtual={null}
+        onSair={vi.fn()}
       />,
     );
     return { onChange, onColarImagem };
@@ -346,6 +351,7 @@ describe('tamanho da figura colada', () => {
         titulos={[]}
         achados={[]}
         achadoAtual={null}
+        onSair={vi.fn()}
       />,
     );
 
@@ -355,5 +361,106 @@ describe('tamanho da figura colada', () => {
     const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
     expect(depois[0]).toMatchObject({ largura: 480, altura: 270 });
     vi.unstubAllGlobals();
+  });
+});
+
+describe('colar endereço sobre a seleção', () => {
+  function areaComTexto(texto: string) {
+    return {
+      items: [{ kind: 'string', type: 'text/plain', getAsFile: () => null }],
+      getData: (tipo: string) => (tipo === 'text/plain' ? texto : ''),
+    };
+  }
+
+  it('o trecho selecionado vira o texto do link', async () => {
+    montarVivo([bloco('leia o manual do fêmur')]);
+    const campo = screen.getByRole('textbox') as HTMLTextAreaElement;
+    campo.setSelectionRange(7, 22);
+
+    fireEvent.paste(campo, { clipboardData: areaComTexto('https://exemplo.org/femur') });
+
+    expect(campo).toHaveValue('leia o [manual do fêmur](https://exemplo.org/femur)');
+  });
+
+  it('sem seleção, colar um endereço continua colando o endereço', () => {
+    const { onChange } = montarComEspiaoSimples([bloco('nada selecionado')]);
+    const campo = screen.getByRole('textbox') as HTMLTextAreaElement;
+    campo.setSelectionRange(4, 4);
+
+    fireEvent.paste(campo, { clipboardData: areaComTexto('https://exemplo.org') });
+
+    // o navegador faz a colagem normal; o componente não interfere
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('texto que não é endereço não vira link', () => {
+    const { onChange } = montarComEspiaoSimples([bloco('uma frase inteira')]);
+    const campo = screen.getByRole('textbox') as HTMLTextAreaElement;
+    campo.setSelectionRange(0, 3);
+
+    fireEvent.paste(campo, { clipboardData: areaComTexto('veja em https://exemplo.org') });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('em nota de texto puro, endereço colado é só endereço', () => {
+    const { onChange } = montarComEspiaoSimples([bloco('uma frase inteira')], 'texto');
+    const campo = screen.getByRole('textbox') as HTMLTextAreaElement;
+    campo.setSelectionRange(0, 3);
+
+    fireEvent.paste(campo, { clipboardData: areaComTexto('https://exemplo.org') });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+function montarComEspiaoSimples(blocos: Bloco[], tipo: 'markdown' | 'texto' = 'markdown') {
+  const onChange = vi.fn();
+  render(
+    <Canvas
+      blocos={blocos}
+      tipo={tipo}
+      onChange={onChange}
+      onColarImagem={vi.fn(async () => 'x.png')}
+      titulos={[]}
+      achados={[]}
+      achadoAtual={null}
+      onSair={vi.fn()}
+    />,
+  );
+  return { onChange };
+}
+
+describe('sair do bloco pelo teclado', () => {
+  it('Esc devolve o teclado para a lista de notas', async () => {
+    const onSair = vi.fn();
+    render(
+      <Canvas
+        blocos={[bloco('escrevendo')]}
+        tipo="markdown"
+        onChange={vi.fn()}
+        onColarImagem={vi.fn(async () => 'x.png')}
+        titulos={[]}
+        achados={[]}
+        achadoAtual={null}
+        onSair={onSair}
+      />,
+    );
+
+    const campo = screen.getByRole('textbox');
+    campo.focus();
+    await userEvent.keyboard('{Escape}');
+
+    expect(onSair).toHaveBeenCalled();
+    expect(campo).not.toHaveFocus();
+  });
+
+  it('com a lista de ligações aberta, Esc fecha a lista e o cursor fica onde está', async () => {
+    montarVivo([bloco('')]);
+    const campo = screen.getByRole('textbox');
+    await digitar(campo, '[[');
+    await userEvent.type(campo, '{Escape}');
+
+    expect(campo).toHaveFocus();
   });
 });

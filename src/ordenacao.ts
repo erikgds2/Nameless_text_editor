@@ -1,6 +1,6 @@
 // A ordem das notas fixadas é escolhida à mão: fixar é dizer "isto importa", e
 // o que importa raramente segue a ordem em que foi editado pela última vez.
-import type { Note } from './notes';
+import { deriveTitle, textoDaNota, type Note } from './notes';
 
 /** Tira o item da posição `de` e o enfia na posição `para`. Lista nova. */
 export function mover<T>(lista: T[], de: number, para: number): T[] {
@@ -42,4 +42,32 @@ export function reordenarFixadas(notas: Note[], idArrastada: string, idAlvo: str
 export function proximaOrdem(notas: Note[]): number {
   const fixadas = notas.filter((nota) => nota.pinned && typeof nota.ordem === 'number');
   return fixadas.length === 0 ? 0 : Math.max(...fixadas.map((nota) => nota.ordem ?? 0)) + 1;
+}
+
+/** Por que critério a lista das não-fixadas se organiza. */
+export type Criterio = 'edicao' | 'criacao' | 'titulo';
+
+export const CRITERIOS: Record<Criterio, string> = {
+  edicao: 'Edição mais recente',
+  criacao: 'Criação mais recente',
+  titulo: 'Título, de A a Z',
+};
+
+/**
+ * As soltas na ordem escolhida. As fixadas não entram aqui: a ordem delas é a
+ * que foi arrastada à mão, e trocar o critério não pode desmanchá-la.
+ *
+ * O título é comparado com `localeCompare` em pt-BR: sem isso "Ácido" cairia
+ * depois de "Zebra", que é o que acontece quando se ordena por código de
+ * caractere numa língua com acento.
+ */
+export function ordenarSoltas(notas: Note[], criterio: Criterio): Note[] {
+  const soltas = notas.filter((nota) => !nota.pinned);
+  if (criterio === 'titulo') {
+    return soltas.sort((a, b) =>
+      deriveTitle(textoDaNota(a.blocos)).localeCompare(deriveTitle(textoDaNota(b.blocos)), 'pt-BR'),
+    );
+  }
+  if (criterio === 'criacao') return soltas.sort((a, b) => b.createdAt - a.createdAt);
+  return soltas.sort((a, b) => b.updatedAt - a.updatedAt);
 }

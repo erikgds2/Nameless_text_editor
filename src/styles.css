@@ -1418,3 +1418,119 @@ button {
 .titlebar__atualizar + .titlebar__acoes {
   margin-left: 8px;
 }
+
+/* ------------------------------------------------------- conflito de versão */
+
+/* O arquivo mudou por fora enquanto se escrevia aqui. A faixa interrompe de
+   propósito: perder trabalho em silêncio seria pior do que atrapalhar. */
+.conflito {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--alert-wash);
+}
+
+.conflito__aviso {
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.conflito__acao {
+  padding: 4px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color var(--rapido), border-color var(--rapido);
+}
+
+.conflito__acao:hover {
+  border-color: var(--alert);
+  background: var(--surface-alt);
+}
+
+/* ------------------------------------------------------- barra recolhida */
+
+/* Recolher a lateral é dar a largura inteira à página. A barra não é escondida
+   com display:none: ela deixa de ser renderizada, e o grid volta a ter uma
+   coluna só. */
+.workspace--so-editor {
+  grid-template-columns: 1fr;
+}
+
+/* --------------------------------------------------------- ajuda de atalhos */
+
+.atalhos__fundo {
+  position: fixed;
+  inset: 40px 0 0 0;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  padding-top: 10vh;
+  background: var(--surface-alt);
+}
+
+.atalhos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  align-content: start;
+  width: 100%;
+  max-width: 720px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 24px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--base);
+  box-shadow: var(--sombra);
+  animation: entrar var(--entrada);
+}
+
+.atalhos__secao {
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.atalhos__linha {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 3px 0;
+}
+
+.atalhos__tecla {
+  flex-shrink: 0;
+  min-width: 108px;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.atalhos__texto {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+/* O título é o nome do arquivo: clicar nele renomeia a nota. O campo herda a
+   mesma métrica do h1 para o texto não pular de lugar na troca. */
+h1.editor__title {
+  cursor: text;
+}
+
+.editor__title--editando {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--accent);
+  background: none;
+  font-family: var(--ui);
+  outline: none;
+}

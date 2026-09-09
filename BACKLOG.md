@@ -24,9 +24,9 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 6 | `[ ]` **P2** | Arrastar bloco com guias de alinhamento entre blocos vizinhos |
 | 7 | `[ ]` **P2** | Selecionar vários blocos e mover em conjunto |
 | 8 | `[x]` **P2** | Colar imagem da área de transferência: vira figura na página, do tamanho dela, com a origem do print quando houver |
-| 9 | `[ ]` **P2** | Colar URL sobre texto selecionado vira `[texto](url)` |
-| 10 | `[ ]` **P2** | Bloco encolhe sozinho quando se apaga texto (hoje só cresce) |
-| 11 | `[ ]` **P2** | Modo foco: some tudo menos o bloco em edição (`Ctrl+Shift+F`) |
+| 9 | `[x]` **P2** | Colar URL sobre texto selecionado vira `[texto](url)` |
+| 10 | `[x]` **P2** | Bloco encolhe sozinho quando se apaga texto (hoje só cresce) |
+| 11 | `[ ]` **P2** | Modo foco: some tudo menos o bloco em edição (atalho a escolher — `Ctrl+Shift+F` agora é a busca entre notas) |
 | 12 | `[ ]` **P2** | Largura máxima de leitura configurável no bloco (medida em ch) |
 | 13 | `[ ]` **P3** | Grade opcional de alinhamento no canvas, de 8px |
 | 14 | `[ ]` **P3** | Duplicar bloco com `Ctrl+D` |
@@ -60,10 +60,10 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 32 | `[x]` **P1** | Paleta de comandos (`Ctrl+K`): abrir nota, trocar tema, tudo sem mouse |
 | 33 | `[x]` **P1** | Busca mostra o trecho onde o termo apareceu, não só o começo da nota |
 | 34 | `[ ]` **P2** | Tags `#assunto` no texto viram filtro na barra lateral |
-| 35 | `[ ]` **P2** | Ordenar a lista por título, criação ou edição |
+| 35 | `[x]` **P2** | Ordenar a lista por título, criação ou edição |
 | 36 | `[ ]` **P2** | Lixeira: apagar move para `.lixeira/` e dá 30 dias de arrependimento |
-| 37 | `[ ]` **P2** | Duplicar nota |
-| 38 | `[ ]` **P2** | Renomear a nota (e o arquivo) pela interface |
+| 37 | `[x]` **P2** | Duplicar nota |
+| 38 | `[x]` **P2** | Renomear a nota (e o arquivo) pela interface |
 | 39 | `[ ]` **P3** | Subpastas na pasta de notas, refletidas na lista |
 | 40 | `[ ]` **P3** | Busca por operadores: `titulo:`, `criada:>2026-01` |
 | 41 | `[ ]` **P3** | Histórico de versões da nota, lendo o git da pasta se houver |
@@ -77,7 +77,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 44 | `[x]` **P1** | `[[links]]` entre notas, com autocompletar enquanto digita |
 | 45 | `[x]` **P1** | Clicar num `[[link]]` abre a nota; `[[link]]` para nota inexistente a cria |
 | 46 | `[x]` **P1** | Backlinks: "o que aponta para esta nota", no rodapé do editor |
-| 47 | `[ ]` **P2** | Nota do dia, criada sozinha ao abrir o app |
+| 47 | `[x]` **P2** | Nota de hoje (`Ctrl+Shift+D`): abre a do dia, criando se ainda não existe |
 | 48 | `[ ]` **P2** | Autocompletar de `[[` mostra o trecho inicial da nota candidata |
 | 49 | `[ ]` **P3** | Renomear nota atualiza os `[[links]]` que apontam para ela |
 | 50 | `[ ]` **P3** | Notas órfãs: quais não são referenciadas por ninguém |
@@ -102,7 +102,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | # | | Item |
 | --- | --- | --- |
 | 61 | `[x]` **P1** | Recarregar a nota quando o arquivo muda em disco, com o app aberto |
-| 62 | `[ ]` **P1** | Aviso de conflito quando o arquivo mudou por fora e por dentro ao mesmo tempo |
+| 62 | `[x]` **P1** | Aviso de conflito quando o arquivo mudou por fora e por dentro ao mesmo tempo |
 | 63 | `[x]` **P1** | Indicador de "salvo / salvando / erro ao salvar" visível |
 | 64 | `[ ]` **P2** | Backup automático diário da pasta, em zip, com retenção curta |
 | 65 | `[ ]` **P2** | Abrir a nota na pasta pelo Explorer (menu de contexto na lista) |
@@ -120,7 +120,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | --- | --- | --- |
 | 73 | `[x]` **P1** | Blocos fora da área visível quando a pré-visualização abre: reposicionar ou avisar |
 | 74 | `[x]` **P1** | Divisória arrastável entre editor e pré-visualização |
-| 75 | `[ ]` **P2** | Barra lateral recolhível (`Ctrl+\`) |
+| 75 | `[x]` **P2** | Barra lateral recolhível (`Ctrl+\`) |
 | 76 | `[ ]` **P2** | Escolher a fonte do corpo entre as monoespaçadas instaladas |
 | 77 | `[ ]` **P2** | Acompanhar o tema claro/escuro do Windows automaticamente |
 | 78 | `[ ]` **P2** | Estado vazio da primeira abertura que ensine o básico em três linhas |
@@ -138,8 +138,8 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 85 | `[x]` **P1** | Navegar a lista de notas pelo teclado (setas, Enter abre) |
 | 86 | `[ ]` **P2** | Todos os atalhos configuráveis nos Ajustes |
 | 87 | `[ ]` **P2** | Leitor de tela: rótulos e regiões corretas em toda a interface |
-| 88 | `[ ]` **P2** | `Esc` sai do bloco para a lista sem usar o mouse |
-| 89 | `[ ]` **P3** | Ajuda de atalhos sobreposta com `Ctrl+/` |
+| 88 | `[x]` **P2** | `Esc` sai do bloco para a lista sem usar o mouse |
+| 89 | `[x]` **P3** | Ajuda de atalhos sobreposta com `Ctrl+/` |
 | 90 | `[ ]` **P3** | Modo de comando estilo Vim, opcional |
 
 ## I. Qualidade, testes e ferramentas (91–100)

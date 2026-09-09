@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fixadasEmOrdem, mover, proximaOrdem, reordenarFixadas } from './ordenacao';
+import { fixadasEmOrdem, mover, ordenarSoltas, proximaOrdem, reordenarFixadas } from './ordenacao';
 import { createNote, type Note } from './notes';
 
 function nota(id: string, extras: Partial<Note> = {}): Note {
@@ -127,5 +127,47 @@ describe('proximaOrdem', () => {
   it('ignora a ordem de quem nao esta fixada', () => {
     const notas = [nota('velha', { ordem: 99 }), nota('a', { pinned: true, ordem: 1 })];
     expect(proximaOrdem(notas)).toBe(2);
+  });
+});
+
+describe('ordenarSoltas', () => {
+  function comTitulo(id: string, titulo: string, criada: number, editada: number): Note {
+    const base = createNote();
+    return {
+      ...base,
+      id,
+      createdAt: criada,
+      updatedAt: editada,
+      blocos: [{ ...base.blocos[0], texto: titulo }],
+    };
+  }
+
+  const notas = [
+    comTitulo('b', 'Zebra', 100, 300),
+    comTitulo('a', 'Ácido', 200, 100),
+    comTitulo('c', 'Kant', 300, 200),
+  ];
+
+  it('por edição, a mais recente primeiro', () => {
+    expect(ordenarSoltas(notas, 'edicao').map((n) => n.id)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('por criação, a mais nova primeiro', () => {
+    expect(ordenarSoltas(notas, 'criacao').map((n) => n.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('por título, em ordem de dicionário — e acento não joga a palavra para o fim', () => {
+    expect(ordenarSoltas(notas, 'titulo').map((n) => n.id)).toEqual(['a', 'c', 'b']);
+  });
+
+  it('as fixadas ficam de fora: a ordem delas é a que foi arrastada à mão', () => {
+    const comFixada = [...notas, { ...comTitulo('d', 'Fixada', 400, 400), pinned: true }];
+    expect(ordenarSoltas(comFixada, 'edicao').map((n) => n.id)).not.toContain('d');
+  });
+
+  it('não mexe no array que recebeu', () => {
+    const copia = [...notas];
+    ordenarSoltas(notas, 'titulo');
+    expect(notas).toEqual(copia);
   });
 });

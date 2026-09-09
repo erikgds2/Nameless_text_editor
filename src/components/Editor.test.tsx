@@ -28,6 +28,8 @@ function montar(overrides: Partial<Parameters<typeof Editor>[0]> = {}) {
     existeNota: () => true,
     onAbrirLigacao: vi.fn(),
     onAbrirNota: vi.fn(),
+    onSairDoBloco: vi.fn(),
+    onRenomear: vi.fn(),
     ...overrides,
   };
   render(<Editor {...props} />);
@@ -231,5 +233,85 @@ describe('busca dentro da nota', () => {
     await user.type(await abrir(user), 'dever');
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('searchbox', { name: 'Procurar nesta nota' })).toBeNull();
+  });
+});
+
+describe('conflito com o arquivo', () => {
+  it('sem conflito, nenhuma faixa aparece', () => {
+    montar({ note: comTexto(createNote(), 'Uma nota') });
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('com conflito, o aviso interrompe e oferece as duas saídas', () => {
+    montar({ note: comTexto(createNote(), 'Uma nota'), conflito: true });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('mudou por fora');
+    expect(screen.getByRole('button', { name: 'Ficar com o meu' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Usar o do disco' })).toBeInTheDocument();
+  });
+
+  it('cada botão avisa quem cuida da nota', async () => {
+    const props = montar({
+      note: comTexto(createNote(), 'Uma nota'),
+      conflito: true,
+      onManterOMeu: vi.fn(),
+      onUsarODoDisco: vi.fn(),
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ficar com o meu' }));
+    expect(props.onManterOMeu).toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Usar o do disco' }));
+    expect(props.onUsarODoDisco).toHaveBeenCalled();
+  });
+});
+
+describe('renomear a nota', () => {
+  it('clicar no título abre o campo com o nome atual', async () => {
+    montar({ note: comTexto(createNote(), '# Anatomia\ncorpo'), preview: false });
+
+    await userEvent.click(screen.getByRole('heading', { name: 'Anatomia', level: 1 }));
+    expect(screen.getByRole('textbox', { name: 'Título da nota' })).toHaveValue('Anatomia');
+  });
+
+  it('Enter confirma e manda o nome novo', async () => {
+    const props = montar({ note: comTexto(createNote(), '# Anatomia'), preview: false });
+
+    await userEvent.click(screen.getByRole('heading', { level: 1 }));
+    const campo = screen.getByRole('textbox', { name: 'Título da nota' });
+    await userEvent.clear(campo);
+    await userEvent.type(campo, 'Fêmur{Enter}');
+
+    expect(props.onRenomear).toHaveBeenCalledWith('Fêmur');
+  });
+
+  it('Esc desiste sem renomear nada', async () => {
+    const props = montar({ note: comTexto(createNote(), '# Anatomia'), preview: false });
+
+    await userEvent.click(screen.getByRole('heading', { level: 1 }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Título da nota' }), 'outro{Escape}');
+
+    expect(props.onRenomear).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: 'Anatomia', level: 1 })).toBeInTheDocument();
+  });
+
+  it('título em branco não apaga o nome da nota', async () => {
+    const props = montar({ note: comTexto(createNote(), '# Anatomia'), preview: false });
+
+    await userEvent.click(screen.getByRole('heading', { level: 1 }));
+    const campo = screen.getByRole('textbox', { name: 'Título da nota' });
+    await userEvent.clear(campo);
+    await userEvent.type(campo, '   {Enter}');
+
+    expect(props.onRenomear).not.toHaveBeenCalled();
+  });
+
+  it('confirmar o mesmo nome não mexe na nota', async () => {
+    const props = montar({ note: comTexto(createNote(), '# Anatomia'), preview: false });
+
+    await userEvent.click(screen.getByRole('heading', { level: 1 }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Título da nota' }), '{Enter}');
+
+    expect(props.onRenomear).not.toHaveBeenCalled();
   });
 });

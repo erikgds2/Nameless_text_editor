@@ -34,6 +34,14 @@ type Props = {
   recado?: string | null;
   divisoria: number;
   onMudarDivisoria: (por_cento: number) => void;
+  /** O arquivo desta nota mudou por fora enquanto havia edição pendente aqui. */
+  conflito?: boolean;
+  /** Esc dentro de um bloco devolve o teclado para a lista de notas. */
+  onSairDoBloco: () => void;
+  /** Renomear a nota: o texto novo entra na primeira linha. */
+  onRenomear: (titulo: string) => void;
+  onManterOMeu?: () => void;
+  onUsarODoDisco?: () => void;
   backlinks: { id: string; titulo: string }[];
   titulos: string[];
   existeNota: (alvo: string) => boolean;
@@ -76,6 +84,11 @@ export default function Editor({
   recado,
   divisoria,
   onMudarDivisoria,
+  conflito = false,
+  onSairDoBloco,
+  onRenomear,
+  onManterOMeu,
+  onUsarODoDisco,
   backlinks,
   titulos,
   existeNota,
@@ -85,6 +98,8 @@ export default function Editor({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   // `null` é a barra fechada. `atual` é o índice da ocorrência visitada.
   const [busca, setBusca] = useState<{ termo: string; atual: number } | null>(null);
+  /** `null` enquanto o título não está sendo editado. */
+  const [renomeando, setRenomeando] = useState<string | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const corpoRef = useRef<HTMLDivElement | null>(null);
   const buscaRef = useRef<HTMLInputElement | null>(null);
@@ -93,6 +108,18 @@ export default function Editor({
 
   // Trocar de nota fecha a busca: o termo era daquela página, não desta.
   useEffect(() => setBusca(null), [note?.id]);
+  useEffect(() => setRenomeando(null), [note?.id]);
+
+  /**
+   * Renomear é reescrever a primeira linha, porque é dela que sai o título — e,
+   * no salvamento seguinte, o nome do arquivo. Título em branco não vale: a
+   * nota perderia o nome sem que ninguém tivesse pedido isso.
+   */
+  function confirmarNome() {
+    const novo = renomeando?.trim();
+    if (novo && novo !== deriveTitle(texto)) onRenomear(novo);
+    setRenomeando(null);
+  }
 
   useEffect(() => {
     if (!confirmingDelete) return;
@@ -244,7 +271,28 @@ export default function Editor({
     <main className="editor">
       <header className="editor__header">
         <div className="editor__meta">
-          <h1 className="editor__title">{deriveTitle(texto)}</h1>
+          {renomeando === null ? (
+            <h1
+              className="editor__title"
+              title="Clique para renomear"
+              onClick={() => setRenomeando(deriveTitle(texto))}
+            >
+              {deriveTitle(texto)}
+            </h1>
+          ) : (
+            <input
+              className="editor__title editor__title--editando"
+              aria-label="Título da nota"
+              autoFocus
+              value={renomeando}
+              onChange={(evento) => setRenomeando(evento.target.value)}
+              onKeyDown={(evento) => {
+                if (evento.key === 'Enter') confirmarNome();
+                if (evento.key === 'Escape') setRenomeando(null);
+              }}
+              onBlur={confirmarNome}
+            />
+          )}
           <span className="editor__time">Editado em {timeFormat.format(note.updatedAt)}</span>
         </div>
 
@@ -296,6 +344,20 @@ export default function Editor({
         </button>
       </header>
 
+      {conflito && (
+        <div className="conflito" role="alert">
+          <span className="conflito__aviso">
+            Este arquivo mudou por fora enquanto você escrevia aqui.
+          </span>
+          <button className="conflito__acao" onClick={onManterOMeu}>
+            Ficar com o meu
+          </button>
+          <button className="conflito__acao" onClick={onUsarODoDisco}>
+            Usar o do disco
+          </button>
+        </div>
+      )}
+
       <div
         className={`editor__corpo${mostrandoPreview ? ' editor__corpo--dividido' : ''}`}
         ref={corpoRef}
@@ -321,6 +383,7 @@ export default function Editor({
           titulos={titulos}
           achados={achados}
           achadoAtual={achadoAtual}
+          onSair={onSairDoBloco}
         />
         {mostrandoPreview && (
           <div

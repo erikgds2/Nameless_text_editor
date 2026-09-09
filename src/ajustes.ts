@@ -1,6 +1,7 @@
 // Preferências do app. Ficam sempre no navegador/Electron local — não são
 // conteúdo, então não viram arquivo na pasta de notas.
 import type { TipoDoc } from './notes';
+import type { Criterio } from './ordenacao';
 
 export type TemaId = 'acrilico' | 'carvao' | 'papel';
 
@@ -21,6 +22,10 @@ export type Ajustes = {
   fundo: 'acrilico' | 'vidro';
   /** Quanto da largura fica com o editor quando há pré-visualização, em %. */
   divisoria: number;
+  /** Por que critério a lista das notas soltas se organiza. */
+  ordem: Criterio;
+  /** A barra lateral pode ser recolhida para sobrar página. */
+  lateral: boolean;
 };
 
 export const TEMAS: { id: TemaId; rotulo: string }[] = [
@@ -55,6 +60,8 @@ export const PADRAO: Ajustes = {
   opacidade: 100,
   fundo: 'acrilico',
   divisoria: 50,
+  ordem: 'edicao',
+  lateral: true,
 };
 
 const CHAVE = 'ardosia:ajustes:v2';
@@ -124,6 +131,9 @@ function completar(parcial: Partial<Ajustes>): Ajustes {
     divisoria: typeof parcial.divisoria === 'number' && Number.isFinite(parcial.divisoria)
       ? Math.min(80, Math.max(20, Math.round(parcial.divisoria)))
       : PADRAO.divisoria,
+    ordem:
+      parcial.ordem === 'titulo' || parcial.ordem === 'criacao' ? parcial.ordem : PADRAO.ordem,
+    lateral: typeof parcial.lateral === 'boolean' ? parcial.lateral : PADRAO.lateral,
   };
 }
 

@@ -1,5 +1,16 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { createNote, deriveTitle, loadNotes, saveNotes, textoDaNota } from './notes';
+import {
+  createNote,
+  deriveTitle,
+  duplicarNota,
+  loadNotes,
+  saveNotes,
+  textoDaNota,
+  tituloDoDia,
+  trocarTitulo,
+  type Note,
+} from './notes';
+import { criarBloco } from './canvas';
 
 beforeEach(() => localStorage.clear());
 
@@ -85,5 +96,98 @@ describe('migração de notas antigas', () => {
     );
 
     expect(loadNotes()[0].blocos).toEqual(blocos);
+  });
+});
+
+describe('trocarTitulo', () => {
+  function comBlocos(...textos: string[]) {
+    return textos.map((texto, i) => ({ ...criarBloco(48, i * 200), texto }));
+  }
+
+  it('troca a primeira linha com conteúdo', () => {
+    const blocos = trocarTitulo(comBlocos('Anatomia\nresto do corpo'), 'Fêmur');
+    expect(blocos[0].texto).toBe('Fêmur\nresto do corpo');
+  });
+
+  it('a marcação da linha fica de pé', () => {
+    expect(trocarTitulo(comBlocos('# Anatomia'), 'Fêmur')[0].texto).toBe('# Fêmur');
+    expect(trocarTitulo(comBlocos('- Anatomia'), 'Fêmur')[0].texto).toBe('- Fêmur');
+    expect(trocarTitulo(comBlocos('> Anatomia'), 'Fêmur')[0].texto).toBe('> Fêmur');
+  });
+
+  it('o título é o do bloco mais alto na página, não o do primeiro criado', () => {
+    const blocos = [
+      { ...criarBloco(48, 400), texto: 'lá embaixo' },
+      { ...criarBloco(48, 40), texto: 'lá em cima' },
+    ];
+    const trocados = trocarTitulo(blocos, 'Novo');
+    expect(trocados[1].texto).toBe('Novo');
+    expect(trocados[0].texto).toBe('lá embaixo');
+  });
+
+  it('linha em branco antes do texto não vira o título', () => {
+    expect(trocarTitulo(comBlocos('\n\nAnatomia'), 'Fêmur')[0].texto).toBe('\n\nFêmur');
+  });
+
+  it('nota inteiramente vazia continua vazia', () => {
+    const blocos = comBlocos('');
+    expect(trocarTitulo(blocos, 'Fêmur')).toEqual(blocos);
+  });
+
+  it('o título novo é o que deriveTitle passa a devolver', () => {
+    const blocos = trocarTitulo(comBlocos('# Anatomia\ncorpo'), 'Fêmur');
+    expect(deriveTitle(textoDaNota(blocos))).toBe('Fêmur');
+  });
+});
+
+describe('duplicarNota', () => {
+  function nota(texto: string): Note {
+    const base = createNote();
+    return { ...base, pinned: true, blocos: [{ ...base.blocos[0], texto }] };
+  }
+
+  it('a cópia diz que é cópia no título', () => {
+    const copia = duplicarNota(nota('# Anatomia\ncorpo'));
+    expect(deriveTitle(textoDaNota(copia.blocos))).toBe('Anatomia (cópia)');
+  });
+
+  it('o corpo vem inteiro junto', () => {
+    const copia = duplicarNota(nota('Anatomia\nsegunda linha'));
+    expect(textoDaNota(copia.blocos)).toBe('Anatomia (cópia)\nsegunda linha');
+  });
+
+  it('id novo, e blocos com ids novos: duas notas não podem compartilhar bloco', () => {
+    const original = nota('Anatomia');
+    const copia = duplicarNota(original);
+
+    expect(copia.id).not.toBe(original.id);
+    expect(copia.blocos[0].id).not.toBe(original.blocos[0].id);
+  });
+
+  it('a cópia não nasce fixada', () => {
+    expect(duplicarNota(nota('Anatomia')).pinned).toBe(false);
+  });
+
+  it('o original não é tocado', () => {
+    const original = nota('Anatomia');
+    duplicarNota(original);
+    expect(original.blocos[0].texto).toBe('Anatomia');
+  });
+});
+
+describe('tituloDoDia', () => {
+  it('é a data em ISO, com mês e dia de dois dígitos', () => {
+    expect(tituloDoDia(new Date(2026, 8, 9))).toBe('2026-09-09');
+    expect(tituloDoDia(new Date(2026, 11, 31))).toBe('2026-12-31');
+  });
+
+  it('usa o dia local, e não o UTC: quem escreve à noite não pula para amanhã', () => {
+    // 23h do dia 9 em fuso negativo já seria dia 10 em UTC
+    expect(tituloDoDia(new Date(2026, 8, 9, 23, 30))).toBe('2026-09-09');
+  });
+
+  it('serve de título de verdade: deriveTitle devolve ele mesmo', () => {
+    const titulo = tituloDoDia(new Date(2026, 8, 9));
+    expect(deriveTitle(titulo)).toBe(titulo);
   });
 });

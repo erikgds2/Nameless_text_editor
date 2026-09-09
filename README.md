@@ -34,11 +34,15 @@ rode `npm run publicar`.
 
 ## Atalhos
 
-- `Ctrl + N` — nova nota
-- `Ctrl + F` — buscar dentro da nota aberta
-- `Ctrl + Shift + F` — buscar entre as notas
-- `Ctrl + K` — paleta de comandos
+- `Ctrl + N` — nova nota · `Ctrl + Shift + D` — nota de hoje
+- `Ctrl + F` — buscar dentro da nota · `Ctrl + Shift + F` — buscar entre as notas
+- `Ctrl + K` — paleta de comandos · `Ctrl + /` — a lista completa de atalhos
+- `Ctrl + \` — recolher a barra lateral · `Ctrl + E` — pré-visualização
+- `Esc` — sair do bloco e voltar para a lista, sem mouse
 - **Duplo clique** em qualquer ponto vazio da nota — novo bloco de texto ali
+
+Renomear a nota é clicar no título: ele é a primeira linha do texto, e o
+arquivo é renomeado junto no salvamento seguinte.
 
 ## Escrever pela linha de comando
 

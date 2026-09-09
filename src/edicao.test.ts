@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aoTeclarEnter, aoTeclarTab, alternarMarca, inserirLink } from './edicao';
+import { aoTeclarEnter, aoTeclarTab, alternarMarca, inserirLink, urlColada } from './edicao';
 import type { Estado } from './edicao';
 
 /**
@@ -244,5 +244,28 @@ describe('inserirLink', () => {
     const resultado = inserirLink(montar('veja |'), 'https://exemplo.com');
     expect(resultado.texto).toBe('veja [](https://exemplo.com)');
     expect(marcar(resultado)).toBe('veja [|](https://exemplo.com)');
+  });
+});
+
+describe('urlColada', () => {
+  it('endereço sozinho é URL', () => {
+    expect(urlColada('https://exemplo.org/femur')).toBe('https://exemplo.org/femur');
+    expect(urlColada('http://localhost:5173')).toBe('http://localhost:5173');
+  });
+
+  it('espaço em volta não atrapalha', () => {
+    expect(urlColada('  https://exemplo.org  ')).toBe('https://exemplo.org');
+  });
+
+  it('texto que menciona um link continua texto', () => {
+    expect(urlColada('veja em https://exemplo.org')).toBeNull();
+    expect(urlColada('https://a.org https://b.org')).toBeNull();
+  });
+
+  it('o que não é http nem https não vira link', () => {
+    expect(urlColada('javascript:alert(1)')).toBeNull();
+    expect(urlColada('C:\Users\foto.png')).toBeNull();
+    expect(urlColada('exemplo.org')).toBeNull();
+    expect(urlColada('')).toBeNull();
   });
 });

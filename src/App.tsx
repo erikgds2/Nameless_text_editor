@@ -3,13 +3,30 @@ import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
 import Ajustes from './components/Ajustes';
 import Paleta from './components/Paleta';
-import { deriveTitle, textoDaNota, type Note, type TipoDoc } from './notes';
+import Atalhos from './components/Atalhos';
+import {
+  deriveTitle,
+  duplicarNota,
+  textoDaNota,
+  tituloDoDia,
+  trocarTitulo,
+  type Note,
+  type TipoDoc,
+} from './notes';
 import { abrirDeposito, depositoEmArquivos, type Deposito } from './deposito';
 import { arquivosDaPasta, escolherPastaDoNavegador, navegadorTemPasta, pastaLembrada } from './pasta';
 import type { Bloco } from './canvas';
 import { matchesQuery } from './search';
-import { fixadasEmOrdem, proximaOrdem, reordenarFixadas } from './ordenacao';
+import {
+  CRITERIOS,
+  fixadasEmOrdem,
+  ordenarSoltas,
+  proximaOrdem,
+  reordenarFixadas,
+  type Criterio,
+} from './ordenacao';
 import { construirIndice } from './links';
+import { juntarComDisco } from './conflito';
 import {
   acompanharFoco,
   aoAtualizar,
@@ -42,7 +59,10 @@ export default function App() {
   const [ajustes, setAjustes] = useState<AjustesTipo>(carregarAjustes);
   const [mostrandoAjustes, setMostrandoAjustes] = useState(false);
   const [mostrandoPaleta, setMostrandoPaleta] = useState(false);
+  const [mostrandoAtalhos, setMostrandoAtalhos] = useState(false);
   const [salvamento, setSalvamento] = useState<'salvo' | 'salvando' | 'erro'>('salvo');
+  /** Notas cujo arquivo mudou por fora enquanto havia edição pendente aqui. */
+  const [conflitos, setConflitos] = useState<Map<string, Note>>(new Map());
   const [recado, setRecado] = useState<string | null>(null);
   const [atualizacao, setAtualizacao] = useState<Atualizacao | null>(null);
 
@@ -71,6 +91,9 @@ export default function App() {
   const searchRef = useRef<HTMLInputElement | null>(null);
   // notas que mudaram e ainda nao foram para o disco
   const sujas = useRef(new Set<string>());
+  // o valor mais recente das notas para quem lê depois de um await
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
 
   useEffect(() => {
     const raiz = document.documentElement;
@@ -130,16 +153,58 @@ export default function App() {
    */
   const recarregarDoDisco = useCallback(async () => {
     const doDisco = await deposito.listar();
-    setNotes((anteriores) => {
-      const preservadas = anteriores.filter(
-        (nota) => sujas.current.has(nota.id) || textoDaNota(nota.blocos).trim() === '',
-      );
-      const porId = new Map(preservadas.map((nota) => [nota.id, nota]));
-      const juntas = doDisco.map((doArquivo) => porId.get(doArquivo.id) ?? doArquivo);
-      const idsEmDisco = new Set(doDisco.map((nota) => nota.id));
-      return [...preservadas.filter((nota) => !idsEmDisco.has(nota.id)), ...juntas];
-    });
+    // as notas vêm do ref, e não do updater do setNotes: calcular a junção
+    // dentro do updater obrigaria a mexer noutro estado lá dentro, e um
+    // updater tem de ser função pura — o React chama duas vezes em
+    // desenvolvimento justamente para cobrar isso
+    const { notas, conflitos: achados } = juntarComDisco(notesRef.current, doDisco, sujas.current);
+    setNotes(notas);
+
+    // o conflito é da nota, e não da sessão: guardar por id deixa cada um ser
+    // resolvido na hora em que a pessoa chegar naquela nota
+    if (achados.length > 0) {
+      setConflitos((antes) => {
+        const juntos = new Map(antes);
+        for (const conflito of achados) juntos.set(conflito.id, conflito.doDisco);
+        return juntos;
+      });
+    }
   }, [deposito]);
+
+  /**
+   * Devolve o teclado para a lista de notas. O botão da nota aberta é quem
+   * recebe o foco: dali as setas ja navegam, que e o que o Esc promete.
+   */
+  function focarNaLista() {
+    if (!activeId) return;
+    document
+      .querySelector<HTMLButtonElement>(`.notelist [data-nota="${CSS.escape(activeId)}"]`)
+      ?.focus();
+  }
+
+  /** Ficar com o que está na tela: o arquivo será sobrescrito no próximo salvamento. */
+  function manterOMeu(id: string) {
+    setConflitos((antes) => {
+      const juntos = new Map(antes);
+      juntos.delete(id);
+      return juntos;
+    });
+    sujas.current.add(id);
+    setSalvamento('salvando');
+  }
+
+  /** Ficar com o que veio de fora, largando a versão que estava na tela. */
+  function usarODoDisco(id: string) {
+    const doDisco = conflitos.get(id);
+    if (!doDisco) return;
+    sujas.current.delete(id);
+    setNotes((antes) => antes.map((nota) => (nota.id === id ? doDisco : nota)));
+    setConflitos((antes) => {
+      const juntos = new Map(antes);
+      juntos.delete(id);
+      return juntos;
+    });
+  }
 
   // No navegador não há vigia de pasta: a hora natural de reler é quando a
   // janela volta a ficar visível, que é quando você acabou de mexer no outro.
@@ -197,12 +262,13 @@ export default function App() {
 
   // As fixadas seguem a ordem que voce escolheu; o resto, a edicao mais
   // recente. [...notes] e obrigatorio: sort() muta o array, e este e o estado.
-  const visibleNotes = useMemo(() => {
-    const soltas = [...notes].filter((n) => !n.pinned).sort((a, b) => b.updatedAt - a.updatedAt);
-    return [...fixadasEmOrdem(notes), ...soltas].filter((note) =>
-      matchesQuery(textoDaNota(note.blocos), query),
-    );
-  }, [notes, query]);
+  const visibleNotes = useMemo(
+    () =>
+      [...fixadasEmOrdem(notes), ...ordenarSoltas(notes, ajustes.ordem)].filter((note) =>
+        matchesQuery(textoDaNota(note.blocos), query),
+      ),
+    [notes, query, ajustes.ordem],
+  );
 
   const activeNote = notes.find((note) => note.id === activeId) ?? null;
 
@@ -292,6 +358,39 @@ export default function App() {
     const note = deposito.criar(ajustes.tipoPadrao);
     setNotes((prev) => [note, ...prev]);
     setActiveId(note.id);
+    setQuery('');
+  }
+
+  /** A cópia entra ao lado da original e já fica aberta, pronta para ser mudada. */
+  function handleDuplicar(id: string) {
+    const original = notes.find((nota) => nota.id === id);
+    if (!original) return;
+    const copia = duplicarNota(original);
+    setNotes((prev) => [copia, ...prev]);
+    marcar(copia.id);
+    setActiveId(copia.id);
+    setQuery('');
+  }
+
+  /**
+   * A nota de hoje: abre a que já existe, ou cria uma com a data por título.
+   * Não nasce sozinha ao abrir o app de propósito — dia em que não se escreve
+   * nada viraria arquivo vazio na pasta, e a pasta é dele.
+   */
+  function handleNotaDeHoje() {
+    const titulo = tituloDoDia(new Date());
+    const existente = notes.find((nota) => deriveTitle(textoDaNota(nota.blocos)) === titulo);
+    if (existente) {
+      setActiveId(existente.id);
+      setQuery('');
+      return;
+    }
+
+    const nota = deposito.criar(ajustes.tipoPadrao);
+    const comTitulo = { ...nota, blocos: trocarTitulo(nota.blocos, titulo) };
+    setNotes((prev) => [comTitulo, ...prev]);
+    marcar(comTitulo.id);
+    setActiveId(comTitulo.id);
     setQuery('');
   }
 
@@ -438,6 +537,39 @@ export default function App() {
         executar: () => activeId && handleTogglePin(activeId),
       },
       {
+        id: 'hoje',
+        titulo: 'Nota de hoje',
+        secao: 'Notas',
+        atalho: 'Ctrl + Shift + D',
+        executar: handleNotaDeHoje,
+      },
+      {
+        id: 'duplicar',
+        titulo: 'Duplicar esta nota',
+        secao: 'Notas',
+        executar: () => activeId && handleDuplicar(activeId),
+      },
+      ...(Object.entries(CRITERIOS) as [Criterio, string][]).map(([criterio, rotulo]) => ({
+        id: `ordem-${criterio}`,
+        titulo: `Ordenar a lista por ${rotulo.toLowerCase()}`,
+        secao: 'Notas',
+        executar: () => setAjustes((prev) => ({ ...prev, ordem: criterio })),
+      })),
+      {
+        id: 'lateral',
+        titulo: ajustes.lateral ? 'Recolher a barra lateral' : 'Mostrar a barra lateral',
+        secao: 'Aparência',
+        atalho: 'Ctrl + \\',
+        executar: () => setAjustes((prev) => ({ ...prev, lateral: !prev.lateral })),
+      },
+      {
+        id: 'atalhos',
+        titulo: 'Ajuda de atalhos',
+        secao: 'Aparência',
+        atalho: 'Ctrl + /',
+        executar: () => setMostrandoAtalhos((prev) => !prev),
+      },
+      {
         id: 'preview',
         titulo: ajustes.preview ? 'Esconder a pré-visualização' : 'Mostrar a pré-visualização',
         secao: 'Editor',
@@ -512,7 +644,9 @@ export default function App() {
       // e quem cuida dele é o Editor. Aqui fica a busca entre notas.
       if (event.key.toLowerCase() === 'f' && event.shiftKey) {
         event.preventDefault();
-        searchRef.current?.focus();
+        // com a barra recolhida não há campo para focar: ela volta primeiro
+        setAjustes((prev) => (prev.lateral ? prev : { ...prev, lateral: true }));
+        requestAnimationFrame(() => searchRef.current?.focus());
       }
       if (event.key === 'e') {
         event.preventDefault();
@@ -521,6 +655,18 @@ export default function App() {
       if (event.key === ',') {
         event.preventDefault();
         setMostrandoAjustes((prev) => !prev);
+      }
+      if (event.key === '\\') {
+        event.preventDefault();
+        setAjustes((prev) => ({ ...prev, lateral: !prev.lateral }));
+      }
+      if (event.key === '/') {
+        event.preventDefault();
+        setMostrandoAtalhos((prev) => !prev);
+      }
+      if (event.key.toLowerCase() === 'd' && event.shiftKey) {
+        event.preventDefault();
+        handleNotaDeHoje();
       }
       // O desfazer do navegador só enxerga a caixa onde o cursor está; desfazer
       // meio documento é pior que não desfazer, então tomamos a tecla inteira.
@@ -575,7 +721,8 @@ export default function App() {
         </div>
       </header>
 
-      <div className="workspace">
+      <div className={`workspace${ajustes.lateral ? '' : ' workspace--so-editor'}`}>
+        {ajustes.lateral && (
         <Sidebar
           notes={visibleNotes}
           activeId={activeId}
@@ -587,6 +734,7 @@ export default function App() {
           onTogglePin={handleTogglePin}
           onReordenar={handleReordenar}
         />
+        )}
         <Editor
           note={activeNote}
           preview={ajustes.preview}
@@ -596,6 +744,11 @@ export default function App() {
           onMudarTipo={handleMudarTipo}
           onColarImagem={handleColarImagem}
           recado={recado}
+          conflito={activeId !== null && conflitos.has(activeId)}
+          onSairDoBloco={focarNaLista}
+          onRenomear={(titulo) => activeNote && handleChangeBlocos(trocarTitulo(activeNote.blocos, titulo))}
+          onManterOMeu={() => activeId && manterOMeu(activeId)}
+          onUsarODoDisco={() => activeId && usarODoDisco(activeId)}
           backlinks={backlinks}
           titulos={titulos}
           existeNota={(alvo) => indice.resolver(alvo) !== null}
@@ -612,6 +765,8 @@ export default function App() {
       {mostrandoPaleta && (
         <Paleta comandos={comandos} onFechar={() => setMostrandoPaleta(false)} />
       )}
+
+      {mostrandoAtalhos && <Atalhos onFechar={() => setMostrandoAtalhos(false)} />}
 
       {mostrandoAjustes && (
         <Ajustes

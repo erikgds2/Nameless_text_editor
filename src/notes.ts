@@ -104,3 +104,54 @@ export function saveNotes(notes: Note[]): void {
     console.error('Não foi possível salvar as notas:', err);
   }
 }
+
+/**
+ * Troca o título da nota, que é a primeira linha com conteúdo. A marcação
+ * dessa linha fica: renomear "# Anatomia" para "Fêmur" dá "# Fêmur", e não
+ * "Fêmur" solto — quem escreveu um cabeçalho quis um cabeçalho.
+ */
+export function trocarTitulo(blocos: Bloco[], titulo: string): Bloco[] {
+  const alvo = [...blocos]
+    .sort((a, b) => a.y - b.y || a.x - b.x)
+    .find((bloco) => bloco.texto.trim() !== '');
+  if (!alvo) return blocos;
+
+  const linhas = alvo.texto.split('\n');
+  const indice = linhas.findIndex((linha) => linha.trim().length > 0);
+  const prefixo = linhas[indice].match(/^\s*(?:#{1,6}\s+|>\s+|[-*+]\s+|\d+\.\s+)?/)?.[0] ?? '';
+  linhas[indice] = `${prefixo}${titulo}`;
+
+  return blocos.map((bloco) =>
+    bloco.id === alvo.id ? { ...bloco, texto: linhas.join('\n') } : bloco,
+  );
+}
+
+/**
+ * Uma cópia da nota, pronta para virar arquivo próprio: id novo, blocos com
+ * ids novos e o título marcado como cópia. Não nasce fixada — fixar é uma
+ * decisão sobre aquela nota, não sobre o conteúdo dela.
+ */
+export function duplicarNota(nota: Note): Note {
+  const agora = Date.now();
+  const blocos = nota.blocos.map((bloco) => ({ ...bloco, id: crypto.randomUUID() }));
+  const titulo = deriveTitle(textoDaNota(nota.blocos));
+
+  return {
+    id: crypto.randomUUID(),
+    blocos: trocarTitulo(blocos, `${titulo} (cópia)`),
+    tipo: nota.tipo,
+    createdAt: agora,
+    updatedAt: agora,
+    pinned: false,
+  };
+}
+
+/**
+ * O título da nota de hoje. Data ISO de propósito: ordena sozinha na lista,
+ * não muda de forma conforme o idioma do sistema e vira nome de arquivo sem
+ * perder nada — `2026-09-09.md` é legível em qualquer pasta.
+ */
+export function tituloDoDia(quando: Date): string {
+  const doisDigitos = (n: number) => String(n).padStart(2, '0');
+  return `${quando.getFullYear()}-${doisDigitos(quando.getMonth() + 1)}-${doisDigitos(quando.getDate())}`;
+}

@@ -30,3 +30,24 @@ export function textoDaNota(blocos: Bloco[]): string {
     .map((bloco) => bloco.texto)
     .join('\n');
 }
+
+/** Margem de tolerância do auto-ajuste de altura, em pixels. */
+export const FOLGA = 4;
+
+/**
+ * A altura que o bloco deve passar a ter, ou `null` quando a atual já serve.
+ *
+ * `conteudo` é a altura natural do texto, medida com o campo zerado — a única
+ * medida que não depende da altura já aplicada. Depender dela é o que fazia o
+ * efeito se realimentar e travar a aba.
+ *
+ * Crescer é sempre; encolher só quando o texto diminuiu. Quem arrastou o canto
+ * para deixar o bloco maior não quer vê-lo encolher na próxima letra digitada.
+ */
+export function alturaAjustada(altura: number, conteudo: number, encolheu: boolean): number | null {
+  if (conteudo > altura + FOLGA) return conteudo + FOLGA;
+  if (!encolheu) return null;
+
+  const alvo = Math.max(ALTURA_MINIMA, conteudo + FOLGA);
+  return alvo + FOLGA < altura ? alvo : null;
+}

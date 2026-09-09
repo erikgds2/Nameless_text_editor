@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { ClipboardEvent, KeyboardEvent, MouseEvent, PointerEvent, UIEvent } from 'react';
-import { ALTURA_MINIMA, LARGURA_MINIMA, LARGURA_PADRAO, criarBloco, type Bloco } from '../canvas';
+import {
+  ALTURA_MINIMA,
+  LARGURA_MINIMA,
+  LARGURA_PADRAO,
+  alturaAjustada,
+  criarBloco,
+  type Bloco,
+} from '../canvas';
 import { realcar } from '../markdown';
 import { achadosDoBloco, realcarAchados, type Ocorrencia } from '../busca';
 import { enderecoDaImagem, imagemDoBloco, marcarImagem, origemDoHtml, tamanhoDoBloco } from '../imagem';
-import { alternarMarca, aoTeclarEnter, aoTeclarTab, inserirLink } from '../edicao';
+import { alternarMarca, aoTeclarEnter, aoTeclarTab, inserirLink, urlColada } from '../edicao';
 import { completarLigacao, ligacaoSendoEscrita, ordenarCandidatos, type Escrevendo } from '../sugestoes';
 import type { TipoDoc } from '../notes';
 
@@ -20,10 +27,9 @@ type Props = {
   achados: Ocorrencia[];
   /** Aquela em que a navegação parou, para destacá-la entre as outras. */
   achadoAtual: Ocorrencia | null;
+  /** Esc no bloco devolve o teclado para a lista de notas. */
+  onSair: () => void;
 };
-
-/** Margem de tolerância do auto-crescimento do bloco, em pixels. */
-const FOLGA = 4;
 
 /** Respiro entre o bloco onde a imagem foi colada e a figura que nasce abaixo. */
 const ESPACO = 16;
@@ -55,6 +61,7 @@ export default function Canvas({
   titulos,
   achados,
   achadoAtual,
+  onSair,
 }: Props) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [ativoId, setAtivoId] = useState<string | null>(null);
@@ -118,12 +125,13 @@ export default function Canvas({
     setAtivoId(novo.id);
   }
 
-  // O bloco acompanha o texto para baixo, como no papel. Encolher fica a cargo
-  // do canto de redimensionar: ninguém quer o bloco pulando enquanto apaga.
+  // O bloco acompanha o texto, para baixo e de volta. Quem decide se é hora de
+  // encolher é a Escrita, que sabe se o texto diminuiu; aqui só se garante que
+  // nenhum bloco fique menor do que um bloco pode ser.
   function handleAltura(id: string, altura: number) {
     onChange(
       blocos.map((bloco) =>
-        bloco.id === id && altura > bloco.altura ? { ...bloco, altura } : bloco,
+        bloco.id === id ? { ...bloco, altura: Math.max(ALTURA_MINIMA, altura) } : bloco,
       ),
     );
   }
@@ -259,6 +267,7 @@ export default function Canvas({
               onAltura={(altura) => handleAltura(bloco.id, altura)}
               onImagemColada={(arquivo, origem) => handleImagemColada(bloco, arquivo, origem)}
               titulos={titulos}
+              onSair={onSair}
               onBlur={() => handleBlurTexto(bloco)}
             />
           )}
@@ -286,6 +295,7 @@ type EscritaProps = {
   onAltura: (altura: number) => void;
   onImagemColada: (arquivo: File, origem: string | null) => void;
   titulos: string[];
+  onSair: () => void;
   onBlur: () => void;
 };
 
@@ -305,6 +315,7 @@ function Escrita({
   onAltura,
   onImagemColada,
   titulos,
+  onSair,
   onBlur,
 }: EscritaProps) {
   const [escrevendo, setEscrevendo] = useState<Escrevendo | null>(null);
@@ -337,12 +348,23 @@ function Escrita({
   const achadosRef = useRef<HTMLDivElement | null>(null);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // A folga não é frescura: sem ela, um scrollHeight que volta um ou dois
-  // pixels maior que a altura recém-aplicada realimenta o efeito para sempre e
-  // trava a aba. Crescer só quando falta espaço de verdade faz o laço convergir.
+  // Zerar a altura por um instante é o que dá a medida do TEXTO, e não a do
+  // campo: com o bloco maior que o conteúdo, o scrollHeight é só a altura do
+  // próprio campo — e depender dela é o que fazia o efeito se realimentar e
+  // travar a aba. Quem decide o que fazer com a medida é `alturaAjustada`.
+  const textoAnterior = useRef(bloco.texto);
   useEffect(() => {
     const area = areaRef.current;
-    if (area && area.scrollHeight > bloco.altura + FOLGA) onAltura(area.scrollHeight + FOLGA);
+    const encolheu = bloco.texto.length < textoAnterior.current.length;
+    textoAnterior.current = bloco.texto;
+    if (!area) return;
+
+    area.style.height = '0px';
+    const conteudo = area.scrollHeight;
+    area.style.height = '';
+
+    const alvo = alturaAjustada(bloco.altura, conteudo, encolheu);
+    if (alvo !== null) onAltura(alvo);
     // onAltura vem do render atual; incluí-lo aqui repetiria o efeito à toa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bloco.texto, bloco.altura, bloco.largura]);
@@ -380,6 +402,15 @@ function Escrita({
       }
     }
 
+    // Fora de uma lista aberta, Esc é a saída do bloco: o teclado volta para a
+    // lista de notas, e sair do texto deixa de precisar do mouse.
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      area.blur();
+      onSair();
+      return;
+    }
+
     const estado = { texto: area.value, inicio: area.selectionStart, fim: area.selectionEnd };
 
     const novo = (() => {
@@ -413,10 +444,27 @@ function Escrita({
       (candidato) => candidato.kind === 'file' && candidato.type.startsWith('image/'),
     );
     const imagem = item?.getAsFile();
-    if (!imagem) return;
+    if (imagem) {
+      event.preventDefault();
+      onImagemColada(imagem, origemDoHtml(event.clipboardData.getData('text/html')));
+      return;
+    }
+
+    // Endereço colado por cima de um trecho selecionado vira link com aquele
+    // trecho por texto. Sem seleção, colar um endereço é colar um endereço.
+    const area = event.currentTarget;
+    const url = realce ? urlColada(event.clipboardData.getData('text/plain')) : null;
+    if (!url || area.selectionStart === area.selectionEnd) return;
 
     event.preventDefault();
-    onImagemColada(imagem, origemDoHtml(event.clipboardData.getData('text/html')));
+    const novo = inserirLink(
+      { texto: area.value, inicio: area.selectionStart, fim: area.selectionEnd },
+      url,
+    );
+    // flushSync pelo mesmo motivo do teclado: sem ele a seleção seguinte cai
+    // na posição antiga do texto
+    flushSync(() => onChange(novo.texto));
+    area.setSelectionRange(novo.inicio, novo.fim);
   }
 
   // As camadas de baixo têm de rolar junto com o texto, senão o realce

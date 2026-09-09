@@ -189,3 +189,17 @@ export function inserirLink(estado: Estado, url: string): Estado {
   const posicao = inicio + 1;
   return { texto: textoNovo, inicio: posicao, fim: posicao };
 }
+
+/**
+ * A URL de uma colagem, quando o que veio da área de transferência é um
+ * endereço e nada mais. Serve para transformar `texto selecionado` + colar num
+ * link, que é o que todo editor faz e o que ninguém quer digitar à mão.
+ *
+ * Exige endereço inteiro e sozinho: um parágrafo que menciona um link continua
+ * sendo texto, e colar por cima da seleção tem de substituí-la como sempre.
+ */
+export function urlColada(bruto: string): string | null {
+  const limpo = bruto.trim();
+  if (limpo === '' || /\s/.test(limpo)) return null;
+  return /^https?:\/\/[^\s]+$/i.test(limpo) ? limpo : null;
+}
