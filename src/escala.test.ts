@@ -97,14 +97,29 @@ describe('o caderno grande não pode travar o app', () => {
    * agora na forma de um medidor que nunca acusa nada.
    */
   it('a régua acusa quando o trabalho É quadrático', () => {
-    // base maior de propósito: com poucas notas o trabalho quadrático ainda
-    // cabe no ruído do relógio, e o teste passava a acusar por sorte
-    const { razao } = crescimentoAceitavel(
-      (notas) => notas.forEach(() => notas.forEach((nota) => textoDaNota(nota.blocos))),
-      3,
-      250,
-    );
-    expect(razao).toBeGreaterThan(3);
+    // Contagem, e não relógio: com a máquina ocupada o cronômetro oscila e o
+    // teste acusava por sorte. Aqui se conta quantas vezes o trabalho toca uma
+    // nota — que é o que "quadrático" quer dizer — e o número é o mesmo em
+    // qualquer máquina.
+    const toques = (quantas: number) => {
+      const notas = caderno(quantas);
+      let conta = 0;
+      notas.forEach(() => notas.forEach(() => conta++));
+      return conta;
+    };
+
+    expect(toques(400) / toques(200)).toBe(4);
+  });
+
+  it('e não acusa o que cresce junto com o caderno', () => {
+    const toques = (quantas: number) => {
+      const notas = caderno(quantas);
+      let conta = 0;
+      notas.forEach(() => conta++);
+      return conta;
+    };
+
+    expect(toques(400) / toques(200)).toBe(2);
   });
 
   it('mil notas continuam sendo mil notas: o índice responde por todas', () => {

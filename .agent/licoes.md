@@ -44,3 +44,7 @@ próximas tarefas. Gerado pelo run.mjs — pode editar e reescrever à mão.
 - (1x) fumaca que monta o cenario com replace de string pode montar o cenario ERRADO e eu concluir que reproduzi: imprima o insumo (o arquivo, o clipboard) antes de medir o resultado
 - (1x) SendKeys/clique por coordenada acha a janela errada quando ha duas instancias do app: confira o PID da janela antes de mandar tecla, ou escreva na nota de outra pessoa sem querer
 - (1x) capturar a janela com CopyFromScreen pega o que esta ATRAS quando a janela e transparente: use PrintWindow com PW_RENDERFULLCONTENT
+- (1x) o Electron monta o User-Agent com o NOME do app: nome com acento chega corrompido, e ai toda requisicao a um protocolo proprio morre dentro do Electron ao montar o Request — antes do handler, fora de qualquer try, sem log, so ERR_UNEXPECTED na janela. Sanear o userAgentFallback para ASCII
+- (1x) fumaca rodado como script solto (`electron arquivo.cjs`) NAO tem o nome do app: para reproduzir o que o usuario ve, suba o app de verdade (`electron .`), senao a variavel que quebra fica de fora do teste
+- (1x) porta de depuracao remota 9222 costuma estar ocupada por outro Chrome da maquina: o teste conecta na janela errada e mede outro programa. Use porta alta e confira a URL do alvo
+- (1x) teste de complexidade nao pode depender de relogio numa maquina ocupada: conte operacoes, que da o mesmo numero em qualquer lugar

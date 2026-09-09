@@ -148,7 +148,7 @@ interface (princípio nº 6).
 | # | | Item |
 | --- | --- | --- |
 | 91 | `[x]` **P1** | Testes de componente (React Testing Library): hoje só há testes de módulo |
-| 92 | `[ ]` **P1** | Teste de ponta a ponta do Electron: abrir, escrever, fechar, reabrir |
+| 92 | `[x]` **P1** | Teste de ponta a ponta do Electron (`.agent/fumaca-app.cjs`): sobe o app de verdade e cobra User-Agent, protocolo e figura na tela |
 | 93 | `[ ]` **P1** | Teste do IPC: nenhum caminho fora da pasta é aceito, em nenhuma rota |
 | 94 | `[ ]` **P2** | Teste de propriedade no formato: qualquer nota sobrevive à ida e volta |
 | 95 | `[ ]` **P2** | Medir desempenho com 1.000 notas e 10.000 linhas numa nota |

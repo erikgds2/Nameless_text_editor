@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error — módulo CommonJS sem tipos, de propósito: é código do main
-import { boundsVisiveis, cortarLog, linhaDeErro } from './geometria.cjs';
+import { boundsVisiveis, cortarLog, linhaDeErro, sanearUserAgent } from './geometria.cjs';
 
 const MONITOR = { workArea: { x: 0, y: 0, width: 1920, height: 1040 } };
 const SEGUNDO = { workArea: { x: 1920, y: 0, width: 1920, height: 1040 } };
@@ -69,5 +69,36 @@ describe('linhaDeErro', () => {
 
   it('mensagem gigante é cortada: log não é despejo de memória', () => {
     expect(linhaDeErro(new Date(), 'main', 'x'.repeat(5000)).length).toBeLessThan(600);
+  });
+});
+
+describe('sanearUserAgent', () => {
+  const REAL =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Ardósia/0.4.6 Chrome/130.0.6723.191 Electron/33.4.11 Safari/537.36';
+
+  it('tira o acento do nome do app, que é o que quebrava o protocolo', () => {
+    const limpo = sanearUserAgent(REAL);
+    expect(limpo).toContain('Ardsia/0.4.6');
+    expect(limpo).not.toContain('ó');
+  });
+
+  it('o que sobra é ASCII imprimível de ponta a ponta', () => {
+    for (const letra of sanearUserAgent(REAL)) {
+      expect(letra.charCodeAt(0)).toBeGreaterThanOrEqual(0x20);
+      expect(letra.charCodeAt(0)).toBeLessThanOrEqual(0x7e);
+    }
+  });
+
+  it('o caractere de substituição, que é o que o Chromium entrega, também sai', () => {
+    expect(sanearUserAgent('Ard�sia/1.0')).toBe('Ardsia/1.0');
+  });
+
+  it('User-Agent já limpo passa intacto', () => {
+    const limpo = 'Mozilla/5.0 (Windows NT 10.0) Chrome/130.0 Safari/537.36';
+    expect(sanearUserAgent(limpo)).toBe(limpo);
+  });
+
+  it('não quebra com valor ausente', () => {
+    expect(sanearUserAgent(undefined)).toBe('undefined');
   });
 });

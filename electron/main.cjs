@@ -1,9 +1,8 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, net, protocol, screen, shell } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, protocol, screen, shell } = require('electron');
 const path = require('node:path');
-const { pathToFileURL } = require('node:url');
 const notas = require('./notas.cjs');
 const { autoUpdater } = require('electron-updater');
-const { boundsVisiveis, cortarLog, linhaDeErro } = require('./geometria.cjs');
+const { boundsVisiveis, cortarLog, linhaDeErro, sanearUserAgent } = require('./geometria.cjs');
 const fs = require('node:fs');
 
 const isDev = !app.isPackaged;
@@ -17,6 +16,19 @@ function caminhoDoLog() {
   return path.join(app.getPath('userData'), 'erros.log');
 }
 
+const TIPOS_DE_IMAGEM = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+};
+
+/** O tipo vem da extensao, que o proprio anexoDaUrl ja restringiu a imagens. */
+function tipoDaImagem(caminho) {
+  return TIPOS_DE_IMAGEM[path.extname(caminho).toLowerCase()] ?? 'application/octet-stream';
+}
+
 function registrarErro(origem, mensagem) {
   try {
     const arquivo = caminhoDoLog();
@@ -27,6 +39,17 @@ function registrarErro(origem, mensagem) {
     // um erro ao registrar erro nao pode derrubar o app
   }
 }
+
+// O nome do app entra no User-Agent, e o nosso tem acento: "Ardósia". O
+// Chromium entrega esse cabecalho ja corrompido (o "o" vira U+FFFD), e ai
+// QUALQUER requisicao ao protocolo ardosia:// morre dentro do Electron, ao
+// montar o objeto Request — antes de o nosso handler ser chamado, fora de
+// qualquer try nosso. A janela recebe ERR_UNEXPECTED e nada aparece no log:
+// foi o que deixou toda imagem colada quebrada, sem uma pista.
+//
+// So caracteres ASCII no User-Agent, portanto. O nome da janela e do
+// instalador continua com acento; isto aqui e cabecalho de rede.
+app.userAgentFallback = app.userAgentFallback.replace(/[^\x20-\x7e]/g, '');
 
 // O esquema precisa ser declarado antes do app ficar pronto para o Chromium
 // tratar as imagens dos anexos como conteudo de origem normal.
@@ -243,18 +266,23 @@ app.whenReady().then(async () => {
   // ardosia://anexos/<arquivo> serve as imagens coladas. E o unico caminho pelo
   // qual a janela le arquivo do disco, e ele so alcanca a subpasta de anexos.
   protocol.handle('ardosia', async (requisicao) => {
-    // `no-store` nas duas saidas, e a razao e um defeito que ja aconteceu: se o
-    // app pede a imagem antes de o arquivo existir — porque uma versao anterior
-    // gravava o anexo e escrevia na nota fora de ordem —, o Chromium guarda o
-    // 404 e nunca mais pergunta ao disco. A imagem fica quebrada para sempre,
-    // mesmo com o arquivo la, e nenhum reinicio resolve.
+    // Os bytes sao lidos e devolvidos aqui, sem passar por net.fetch. A razao
+    // e um defeito que custou caro: net.fetch de um file:// cujo caminho tem
+    // acento — e a pasta padrao se chama Ardosia, com acento — devolve um
+    // cabecalho com caractere invalido, e o Electron morre montando o Headers
+    // DEPOIS que o handler ja retornou — fora do try, portanto: sem erro no
+    // log, e a janela so recebe ERR_UNEXPECTED. Imagem quebrada, sem pista.
+    //
+    // `no-store` porque um 404 servido uma vez fica no cache do Chromium e a
+    // imagem nunca mais e pedida ao disco.
     const semCache = { 'Cache-Control': 'no-store' };
     try {
       const caminho = await notas.anexoDaUrl(requisicao.url);
-      const resposta = await net.fetch(pathToFileURL(caminho).toString());
-      const cabecalhos = new Headers(resposta.headers);
-      cabecalhos.set('Cache-Control', 'no-store');
-      return new Response(resposta.body, { status: resposta.status, headers: cabecalhos });
+      const bytes = await fs.promises.readFile(caminho);
+      return new Response(bytes, {
+        status: 200,
+        headers: { ...semCache, 'Content-Type': tipoDaImagem(caminho) },
+      });
     } catch (err) {
       registrarErro('anexo', `${requisicao.url}: ${err.message}`);
       return new Response('anexo nao encontrado', { status: 404, headers: semCache });

@@ -46,4 +46,18 @@ function linhaDeErro(quando, origem, mensagem) {
   return `${quando.toISOString()} [${origem}] ${limpa}`;
 }
 
-module.exports = { boundsVisiveis, cortarLog, linhaDeErro, MINIMA };
+/**
+ * O User-Agent so pode ter ASCII imprimivel.
+ *
+ * O Electron monta esse cabecalho com o nome do app, e o nosso tem acento:
+ * "Ardosia" se escreve com o. O Chromium entrega o nome ja corrompido, e ai
+ * QUALQUER requisicao ao protocolo ardosia:// morre dentro do Electron, ao
+ * montar o objeto Request — antes do nosso handler, fora de qualquer try
+ * nosso. A janela recebe ERR_UNEXPECTED e nada aparece no log: foi o que
+ * deixou toda imagem colada quebrada, por dias, sem uma pista.
+ */
+function sanearUserAgent(ua) {
+  return String(ua).replace(/[^\x20-\x7e]/g, '');
+}
+
+module.exports = { boundsVisiveis, cortarLog, linhaDeErro, sanearUserAgent, MINIMA };
