@@ -115,3 +115,14 @@ describe('duplicarBloco', () => {
     expect(original).toEqual(antes);
   });
 });
+
+describe('alturaAjustada com figura no rodapé', () => {
+  it('a faixa da figura entra na conta e o bloco não encolhe por cima dela', () => {
+    // texto de 40px + figura de 180px: o bloco precisa de 220 e não de 44
+    expect(alturaAjustada(400, 40 + 180, true)).toBe(224);
+  });
+
+  it('sem figura, a conta é só do texto', () => {
+    expect(alturaAjustada(400, 100, true)).toBe(104);
+  });
+});

@@ -16,6 +16,13 @@ import { ALTURA_MINIMA, LARGURA_MINIMA } from './canvas';
 /** Um bloco de imagem não passa disto; maior que a tela não ajuda ninguém. */
 export const LADO_MAXIMO = 480;
 
+/**
+ * Altura da faixa de figuras no rodapé de um bloco que também tem texto. É o
+ * espaço que a colagem acrescenta ao bloco, para a foto caber sem empurrar o
+ * que já estava escrito.
+ */
+export const ALTURA_DA_FIGURA = 180;
+
 /** Fora do `anexos/` da própria pasta, só o que veio da web aberta. */
 const RE_ANEXO = /^anexos\/[^/\\]+$/;
 const RE_EXTERNA = /^https?:\/\/\S+$/i;
@@ -49,10 +56,49 @@ export function imagemDoBloco(texto: string): Figura | null {
   return null;
 }
 
+/**
+ * As figuras de um bloco que também tem texto: cada linha que é só uma imagem.
+ *
+ * É o que permite colar um print DENTRO do quadrado onde já se estava
+ * escrevendo, em vez de abrir outro ao lado. O texto continua no campo de
+ * escrita, com a marcação à vista como todo o resto do Markdown deste editor,
+ * e a figura aparece no rodapé do mesmo bloco.
+ */
+export function figurasDoBloco(texto: string): Figura[] {
+  const figuras: Figura[] = [];
+  for (const linha of texto.split('\n')) {
+    const figura = imagemDoBloco(linha);
+    if (figura) figuras.push(figura);
+  }
+  return figuras;
+}
+
+/** O que sobra do bloco depois de tirar as linhas que são só figura. */
+export function textoSemFiguras(texto: string): string {
+  return texto
+    .split('\n')
+    .filter((linha) => imagemDoBloco(linha) === null)
+    .join('\n');
+}
+
 /** A marcação que vai para o `.md`. Com origem conhecida, ela vira o link. */
 export function marcarImagem(nome: string, fonte: string | null): string {
   const marca = `![](anexos/${nome})`;
   return fonte && RE_EXTERNA.test(fonte) ? `[${marca}](${fonte})` : marca;
+}
+
+/**
+ * Qual das imagens da área de transferência é A imagem.
+ *
+ * Um mesmo "copiar" pode deixar mais de uma versão no clipboard — o Windows e
+ * alguns programas põem uma miniatura ao lado do original. Pegar a primeira que
+ * aparece é como se acaba colando uma tarja de 250 pixels no lugar do print
+ * inteiro. Fica a maior, que é sempre a que a pessoa quis.
+ */
+export function melhorImagem(arquivos: File[]): File | null {
+  const imagens = arquivos.filter((arquivo) => arquivo.type.startsWith('image/') && arquivo.size > 0);
+  if (imagens.length === 0) return null;
+  return imagens.reduce((maior, atual) => (atual.size > maior.size ? atual : maior));
 }
 
 /**

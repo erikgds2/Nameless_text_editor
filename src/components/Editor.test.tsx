@@ -30,6 +30,7 @@ function montar(overrides: Partial<Parameters<typeof Editor>[0]> = {}) {
     onAbrirLigacao: vi.fn(),
     onAbrirNota: vi.fn(),
     onSairDoBloco: vi.fn(),
+    onRecado: vi.fn(),
     onRenomear: vi.fn(),
     ...overrides,
   };

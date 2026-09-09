@@ -1255,16 +1255,42 @@ button {
 /* ----------------------------------------------- figura colada na página */
 
 /* A figura fica solta na página, sem moldura própria: quem dá contorno é o
-   bloco, no passar do cursor e na seleção, como em qualquer outro. A imagem
-   ocupa a caixa inteira e cabe dentro dela, de modo que arrastar o canto do
-   bloco seja o que redimensiona a foto. */
-.bloco__imagem {
+   bloco, no passar do cursor e na seleção, como em qualquer outro.
+   
+   Duas situações: o bloco que é só a figura (ela ocupa a caixa inteira) e o
+   bloco que tem texto e ganhou uma foto colada — aí ela fica no rodapé, logo
+   abaixo do que estava escrito, dentro do mesmo quadrado. */
+.bloco__figuras {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 8px;
+  height: 180px;
+  padding: 4px 12px 12px;
+}
+
+.bloco__figuras--inteira {
+  top: 0;
+  height: auto;
+  /* a alça de arrastar mora nos 18px do alto: sem este respiro ela cai sobre a
+     foto, e o que se vê é uma tarja atravessando a imagem */
+  padding: 20px 4px 4px;
+}
+
+.bloco__figura {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.bloco__imagem {
   width: 100%;
   height: 100%;
   border-radius: 4px;
   object-fit: contain;
+  object-position: center;
   user-select: none;
 }
 

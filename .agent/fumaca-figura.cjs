@@ -13,7 +13,8 @@ const os = require('node:os');
 const { pathToFileURL } = require('node:url');
 
 const RAIZ = path.resolve(__dirname, '..');
-const ICONE = path.join(RAIZ, 'build', 'icone.png');
+// aceita um anexo de verdade no argumento, para ver o caso que falhou
+const ICONE = process.argv[2] || path.join(RAIZ, 'build', 'icone.png');
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'ardosia', privileges: { standard: true, secure: true, supportFetchAPI: true } },
@@ -21,29 +22,41 @@ protocol.registerSchemesAsPrivileged([
 
 const PAGINA = (css) => `<!doctype html>
 <html data-theme="carvao"><head><meta charset="utf-8"><style>${css}
-  /* a arvore do app inteiro nao interessa aqui; o que se mede e o bloco */
   body { background: var(--base); }
-  .canvas { height: 480px; }
+  .canvas { height: 560px; }
 </style></head>
 <body>
   <div class="canvas">
-    <div class="bloco" style="left:40px;top:24px;width:320px;height:120px">
-      <div class="bloco__alca"></div>
-      <div class="bloco__espelho">Anatomia do fêmur</div>
-      <textarea class="bloco__texto">Anatomia do fêmur</textarea>
-      <div class="bloco__canto"></div>
-    </div>
-    <div id="figura" class="bloco" style="left:40px;top:160px;width:480px;height:270px">
+    <!-- o caso que o usuario relatou: colou no quadrado que ja tinha texto -->
+    <div class="bloco bloco--ativo" id="misto" style="left:40px;top:24px;width:360px;height:300px">
       <div class="bloco__alca"></div>
       <button class="bloco__excluir" style="opacity:1"></button>
-      <a class="bloco__origem" style="opacity:1" href="https://exemplo.org"></a>
-      <img class="bloco__imagem" src="ardosia://anexos/icone.png" alt="">
+      <div class="bloco__espelho">Anatomia do f&ecirc;mur<br>![](anexos/icone.png)</div>
+      <textarea class="bloco__texto" style="bottom:180px">Anatomia do fêmur
+![](anexos/icone.png)</textarea>
+      <div class="bloco__figuras">
+        <div class="bloco__figura">
+          <img class="bloco__imagem" src="ardosia://anexos/icone.png" alt="">
+        </div>
+      </div>
+      <div class="bloco__canto"></div>
+    </div>
+
+    <!-- bloco que e so a figura, do tamanho dela -->
+    <div class="bloco" id="figura" style="left:440px;top:24px;width:253px;height:78px">
+      <div class="bloco__alca"></div>
+      <div class="bloco__figuras bloco__figuras--inteira">
+        <div class="bloco__figura">
+          <img class="bloco__imagem" src="ardosia://anexos/icone.png" alt="">
+        </div>
+      </div>
       <div class="bloco__canto"></div>
     </div>
   </div>
 </body></html>`;
 
 app.whenReady().then(async () => {
+ try {
   protocol.handle('ardosia', async () => net.fetch(pathToFileURL(ICONE).toString()));
 
   const css = await fs.readFile(path.join(RAIZ, 'src', 'styles.css'), 'utf8');
@@ -56,13 +69,20 @@ app.whenReady().then(async () => {
 
   const medida = await win.webContents.executeJavaScript(`
     (() => {
-      const img = document.querySelector('.bloco__imagem');
+      const falta = ['#figura .bloco__imagem', '#figura .bloco__alca', '#misto .bloco__texto', '#misto .bloco__figuras']
+        .filter((selector) => !document.querySelector(selector));
+      if (falta.length) return { erro: 'nao achei na pagina: ' + falta.join(', ') };
+
+      const img = document.querySelector('#figura .bloco__imagem');
       const alca = document.querySelector('#figura .bloco__alca');
       // o ponto vem da propria alca: a pagina de fumaca nao tem a barra de
       // titulo do app, e coordenada chutada mede o lugar errado
       const caixa = alca.getBoundingClientRect();
       const noAlto = document.elementFromPoint(caixa.left + caixa.width / 2, caixa.top + caixa.height / 2);
+      const campo = document.querySelector('#misto .bloco__texto').getBoundingClientRect();
+      const foto = document.querySelector('#misto .bloco__figuras').getBoundingClientRect();
       return {
+        semSobreposicao: campo.bottom <= foto.top + 1,
         carregou: img.complete && img.naturalWidth > 0,
         largura: Math.round(img.getBoundingClientRect().width),
         altura: Math.round(img.getBoundingClientRect().height),
@@ -71,9 +91,11 @@ app.whenReady().then(async () => {
     })()
   `);
 
+  if (medida.erro) throw new Error(medida.erro);
   console.log('imagem carregou pelo protocolo:', medida.carregou ? 'ok' : 'RUIM');
-  console.log('imagem cabe no bloco (480x270):', medida.largura, 'x', medida.altura);
-  console.log('alça de arrastar por cima da foto:', medida.alcaAlcancavel ? 'ok' : 'RUIM');
+  console.log('figura desenhada em:', medida.largura, 'x', medida.altura);
+  console.log('alca de arrastar alcancavel por cima da foto:', medida.alcaAlcancavel ? 'ok' : 'RUIM');
+  console.log('texto e figura sem se cobrir:', medida.semSobreposicao ? 'ok' : 'RUIM');
 
   const tiro = await win.webContents.capturePage();
   const destino = path.join(os.tmpdir(), 'ardosia-figura.png');
@@ -81,5 +103,10 @@ app.whenReady().then(async () => {
   console.log('captura em:', destino);
 
   win.destroy();
-  app.quit();
+ } catch (err) {
+  // sem isto, um seletor que nao casa deixa a promessa pendurada e o Electron
+  // fica vivo para sempre, sem dizer o que houve
+  console.error('fumaca falhou:', err && err.message ? err.message : err);
+ }
+ app.quit();
 });

@@ -40,6 +40,8 @@ type Props = {
   conflito?: boolean;
   /** Esc dentro de um bloco devolve o teclado para a lista de notas. */
   onSairDoBloco: () => void;
+  /** Aviso passageiro, para o que falha sem barulho dentro do canvas. */
+  onRecado: (mensagem: string) => void;
   /** Renomear a nota: o texto novo entra na primeira linha. */
   onRenomear: (titulo: string) => void;
   onManterOMeu?: () => void;
@@ -91,6 +93,7 @@ export default function Editor({
   cadernoVazio = false,
   conflito = false,
   onSairDoBloco,
+  onRecado,
   onRenomear,
   onManterOMeu,
   onUsarODoDisco,
@@ -410,6 +413,7 @@ export default function Editor({
           achados={achados}
           achadoAtual={achadoAtual}
           onSair={onSairDoBloco}
+          onRecado={onRecado}
         />
         {mostrandoPreview && (
           <div

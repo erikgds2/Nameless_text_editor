@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   enderecoDaImagem,
+  figurasDoBloco,
+  textoSemFiguras,
   imagemDoBloco,
   LADO_MAXIMO,
   marcarImagem,
+  melhorImagem,
   origemDoHtml,
   tamanhoDoBloco,
 } from './imagem';
@@ -144,5 +147,70 @@ describe('tamanhoDoBloco', () => {
   it('dimensão desconhecida cai no mínimo, sem NaN', () => {
     expect(tamanhoDoBloco(0, 0)).toEqual({ largura: LARGURA_MINIMA, altura: ALTURA_MINIMA });
     expect(tamanhoDoBloco(Number.NaN, 100)).toEqual({ largura: LARGURA_MINIMA, altura: ALTURA_MINIMA });
+  });
+});
+
+describe('figurasDoBloco', () => {
+  it('acha a figura na linha própria, com texto em volta', () => {
+    expect(figurasDoBloco('Anatomia\n![](anexos/a.png)\nresto')).toEqual([
+      { src: 'anexos/a.png', fonte: null },
+    ]);
+  });
+
+  it('mais de uma figura, na ordem em que aparecem', () => {
+    const texto = 'Aula\n![](anexos/a.png)\nmeio\n[![](anexos/b.png)](https://exemplo.org)';
+    expect(figurasDoBloco(texto).map((f) => f.src)).toEqual(['anexos/a.png', 'anexos/b.png']);
+  });
+
+  it('marcação no meio de uma frase não é figura', () => {
+    expect(figurasDoBloco('olha ![](anexos/a.png) aqui')).toEqual([]);
+  });
+
+  it('bloco sem imagem nenhuma devolve lista vazia', () => {
+    expect(figurasDoBloco('só texto')).toEqual([]);
+    expect(figurasDoBloco('')).toEqual([]);
+  });
+});
+
+describe('textoSemFiguras', () => {
+  it('tira as linhas que são só figura e deixa o resto intacto', () => {
+    expect(textoSemFiguras('Anatomia\n![](anexos/a.png)\nresto')).toBe('Anatomia\nresto');
+  });
+
+  it('bloco que é só figura não sobra texto nenhum', () => {
+    expect(textoSemFiguras('![](anexos/a.png)').trim()).toBe('');
+  });
+
+  it('texto sem figura passa inteiro', () => {
+    expect(textoSemFiguras('uma linha\noutra')).toBe('uma linha\noutra');
+  });
+});
+
+describe('melhorImagem', () => {
+  const arquivo = (nome: string, tipo: string, bytes: number) =>
+    new File([new Uint8Array(bytes)], nome, { type: tipo });
+
+  it('entre a miniatura e o original, fica o original', () => {
+    const miniatura = arquivo('mini.png', 'image/png', 300);
+    const original = arquivo('print.png', 'image/png', 90000);
+
+    expect(melhorImagem([miniatura, original])?.name).toBe('print.png');
+    expect(melhorImagem([original, miniatura])?.name).toBe('print.png');
+  });
+
+  it('o que não é imagem fica de fora', () => {
+    const planilha = arquivo('dados.xlsx', 'application/vnd.ms-excel', 90000);
+    const imagem = arquivo('print.png', 'image/png', 500);
+
+    expect(melhorImagem([planilha, imagem])?.name).toBe('print.png');
+  });
+
+  it('arquivo vazio não é imagem: colar isso gravaria um anexo quebrado', () => {
+    expect(melhorImagem([arquivo('vazio.png', 'image/png', 0)])).toBeNull();
+  });
+
+  it('colagem sem imagem nenhuma devolve nada', () => {
+    expect(melhorImagem([])).toBeNull();
+    expect(melhorImagem([arquivo('texto.txt', 'text/plain', 100)])).toBeNull();
   });
 });

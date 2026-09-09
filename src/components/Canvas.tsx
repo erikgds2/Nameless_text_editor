@@ -5,7 +5,6 @@ import {
   ALTURA_MINIMA,
   LARGURA_MINIMA,
   LARGURA_PADRAO,
-  ESPACO,
   alturaAjustada,
   criarBloco,
   duplicarBloco,
@@ -13,7 +12,17 @@ import {
 } from '../canvas';
 import { realcar } from '../markdown';
 import { achadosDoBloco, realcarAchados, type Ocorrencia } from '../busca';
-import { enderecoDaImagem, imagemDoBloco, marcarImagem, origemDoHtml, tamanhoDoBloco } from '../imagem';
+import type { Figura } from '../imagem';
+import {
+  ALTURA_DA_FIGURA,
+  enderecoDaImagem,
+  figurasDoBloco,
+  marcarImagem,
+  melhorImagem,
+  origemDoHtml,
+  tamanhoDoBloco,
+  textoSemFiguras,
+} from '../imagem';
 import { alternarMarca, aoTeclarEnter, aoTeclarTab, inserirLink, urlColada } from '../edicao';
 import { completarLigacao, ligacaoSendoEscrita, ordenarCandidatos, type Escrevendo } from '../sugestoes';
 import type { TipoDoc } from '../notes';
@@ -33,20 +42,30 @@ type Props = {
   achadoAtual: Ocorrencia | null;
   /** Esc no bloco devolve o teclado para a lista de notas. */
   onSair: () => void;
+  /** Aviso passageiro para o que falha em silêncio, como uma imagem ilegível. */
+  onRecado: (mensagem: string) => void;
 };
 
 /**
- * As dimensões da imagem, para o bloco nascer do tamanho dela. Se não der para
- * medir, o bloco vem numa proporção de print e a pessoa ajusta pelo canto.
+ * As dimensões da imagem, para o bloco nascer do tamanho dela — e a prova de
+ * que a imagem é legível. `null` quando não dá para decodificar: colar algo que
+ * o navegador não consegue abrir tem de virar aviso, e não uma figura quebrada
+ * na página que ninguém sabe de onde veio.
+ *
+ * Sem `createImageBitmap` (jsdom, por exemplo) fica o tamanho de um print, que
+ * é chute honesto: ali não há decodificador nenhum para consultar.
  */
-async function medirImagem(arquivo: File): Promise<{ largura: number; altura: number }> {
+async function medirImagem(arquivo: File): Promise<{ largura: number; altura: number } | null> {
+  if (typeof createImageBitmap !== 'function') {
+    return { largura: LARGURA_PADRAO, altura: Math.round((LARGURA_PADRAO * 3) / 4) };
+  }
   try {
     const bitmap = await createImageBitmap(arquivo);
     const medida = { largura: bitmap.width, altura: bitmap.height };
     bitmap.close();
-    return medida;
+    return medida.largura > 0 && medida.altura > 0 ? medida : null;
   } catch {
-    return { largura: LARGURA_PADRAO, altura: Math.round((LARGURA_PADRAO * 3) / 4) };
+    return null;
   }
 }
 
@@ -64,6 +83,7 @@ export default function Canvas({
   achados,
   achadoAtual,
   onSair,
+  onRecado,
 }: Props) {
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [ativoId, setAtivoId] = useState<string | null>(null);
@@ -100,31 +120,54 @@ export default function Canvas({
   blocosRef.current = blocos;
 
   /**
-   * A imagem colada vira figura na página: um bloco próprio, do tamanho dela,
-   * que se arrasta e se redimensiona como qualquer outro. Colada num bloco
-   * ainda vazio, ela ocupa esse bloco — foi ali que a pessoa pediu. Colada num
-   * bloco que já tem texto, nasce logo abaixo, para não partir a frase ao meio.
+   * A imagem colada fica no quadrado onde foi colada — é onde a pessoa pediu.
+   *
+   * Bloco vazio vira a figura inteira, do tamanho dela. Bloco com texto ganha a
+   * marcação numa linha nova e cresce para abrir espaço à foto no rodapé: abrir
+   * outro quadrado ao lado, como se fazia antes, era mudar a nota de lugar sem
+   * ninguém ter pedido.
    */
   async function handleImagemColada(alvo: Bloco, arquivo: File, origem: string | null) {
+    const medida = await medirImagem(arquivo);
+    if (!medida) {
+      onRecado('Não foi possível ler a imagem colada.');
+      return;
+    }
+
     const nome = await onColarImagem(new Uint8Array(await arquivo.arrayBuffer()), arquivo.type);
     if (!nome) return;
 
-    const texto = marcarImagem(nome, origem);
-    const medida = await medirImagem(arquivo);
-    const { largura, altura } = tamanhoDoBloco(medida.largura, medida.altura);
+    const marca = marcarImagem(nome, origem);
     const agora = blocosRef.current;
-    const dono = agora.find((bloco) => bloco.id === alvo.id);
+    const dono = agora.find((bloco) => bloco.id === alvo.id) ?? alvo;
 
-    if (dono && dono.texto.trim() === '') {
-      onChange(agora.map((bloco) => (bloco.id === dono.id ? { ...bloco, texto, largura, altura } : bloco)));
+    if (dono.texto.trim() === '') {
+      const { largura, altura } = tamanhoDoBloco(medida.largura, medida.altura);
+      onChange(
+        agora.map((bloco) =>
+          bloco.id === dono.id ? { ...bloco, texto: marca, largura, altura } : bloco,
+        ),
+      );
       setAtivoId(dono.id);
       return;
     }
 
-    const base = dono ?? alvo;
-    const novo = { ...criarBloco(base.x, base.y + base.altura + ESPACO), texto, largura, altura };
-    onChange([...agora, novo]);
-    setAtivoId(novo.id);
+    // a linha nova entra no fim do texto, e a altura abre espaço para a figura
+    const texto = dono.texto.replace(/\s+$/, '') + '\n' + marca;
+    const jaTinhaFigura = figurasDoBloco(dono.texto).length > 0;
+    onChange(
+      agora.map((bloco) =>
+        bloco.id === dono.id
+          ? {
+              ...bloco,
+              texto,
+              largura: Math.max(bloco.largura, LARGURA_MINIMA),
+              altura: jaTinhaFigura ? bloco.altura : bloco.altura + ALTURA_DA_FIGURA,
+            }
+          : bloco,
+      ),
+    );
+    setAtivoId(dono.id);
   }
 
   // O bloco acompanha o texto, para baixo e de volta. Quem decide se é hora de
@@ -202,8 +245,12 @@ export default function Canvas({
       {blocos.map((bloco) => {
         // Numa nota de texto puro a marcação não vira figura: ali `![](...)` é
         // o que está escrito, e não uma instrução.
-        const figura = tipo === 'markdown' ? imagemDoBloco(bloco.texto) : null;
-        const endereco = figura && enderecoDaImagem(figura.src);
+        const figuras = tipo === 'markdown' ? figurasDoBloco(bloco.texto) : [];
+        const desenhaveis = figuras
+          .map((figura) => ({ ...figura, endereco: enderecoDaImagem(figura.src) }))
+          .filter((figura): figura is Figura & { endereco: string } => figura.endereco !== null);
+        // bloco que é SÓ a figura: ela ocupa a caixa inteira, sem campo de escrita
+        const soFigura = desenhaveis.length === 1 && textoSemFiguras(bloco.texto).trim() === '';
         return (
         <div
           key={bloco.id}
@@ -235,36 +282,8 @@ export default function Canvas({
               </svg>
             </button>
           )}
-          {figura && endereco ? (
-            <>
-              <img
-                className="bloco__imagem"
-                src={endereco}
-                alt="Imagem colada na nota"
-                draggable={false}
-              />
-              {figura.fonte && (
-                <a
-                  className="bloco__origem"
-                  href={figura.fonte}
-                  target="_blank"
-                  rel="noreferrer"
-                  title={`Abrir a origem: ${figura.fonte}`}
-                  aria-label="Abrir a origem da imagem"
-                >
-                  <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-                    <path
-                      d="M4.5 1H9v4.5M9 1L4.6 5.4M7.5 6.2V9H1V2.5h2.8"
-                      stroke="currentColor"
-                      strokeWidth="1.2"
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </a>
-              )}
-            </>
+          {soFigura ? (
+            <Figuras figuras={desenhaveis} inteira />
           ) : (
             <Escrita
               bloco={bloco}
@@ -281,8 +300,10 @@ export default function Canvas({
               onSair={onSair}
               onDuplicar={() => handleDuplicarBloco(bloco)}
               onBlur={() => handleBlurTexto(bloco)}
+              alturaDaFigura={desenhaveis.length > 0 ? ALTURA_DA_FIGURA : 0}
             />
           )}
+          {!soFigura && desenhaveis.length > 0 && <Figuras figuras={desenhaveis} />}
           <div
             className="bloco__canto"
             onPointerDown={(event) => handlePointerDownCanto(event, bloco)}
@@ -292,6 +313,55 @@ export default function Canvas({
         </div>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * As figuras de um bloco. `inteira` é o caso do bloco que não tem mais nada:
+ * a foto ocupa a caixa toda. Senão, elas ficam numa faixa no rodapé, embaixo
+ * do texto — que foi onde a pessoa colou.
+ */
+function Figuras({
+  figuras,
+  inteira = false,
+}: {
+  figuras: (Figura & { endereco: string })[];
+  inteira?: boolean;
+}) {
+  return (
+    <div className={inteira ? 'bloco__figuras bloco__figuras--inteira' : 'bloco__figuras'}>
+      {figuras.map((figura) => (
+        <div className="bloco__figura" key={`${figura.src}${figura.fonte ?? ''}`}>
+          <img
+            className="bloco__imagem"
+            src={figura.endereco}
+            alt="Imagem colada na nota"
+            draggable={false}
+          />
+          {figura.fonte && (
+            <a
+              className="bloco__origem"
+              href={figura.fonte}
+              target="_blank"
+              rel="noreferrer"
+              title={`Abrir a origem: ${figura.fonte}`}
+              aria-label="Abrir a origem da imagem"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                <path
+                  d="M4.5 1H9v4.5M9 1L4.6 5.4M7.5 6.2V9H1V2.5h2.8"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </a>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -311,6 +381,8 @@ type EscritaProps = {
   onSair: () => void;
   onDuplicar: () => void;
   onBlur: () => void;
+  /** Quanto do rodapé do bloco a figura ocupa; o texto para acima dela. */
+  alturaDaFigura: number;
 };
 
 /**
@@ -333,6 +405,7 @@ function Escrita({
   onSair,
   onDuplicar,
   onBlur,
+  alturaDaFigura,
 }: EscritaProps) {
   const [escrevendo, setEscrevendo] = useState<Escrevendo | null>(null);
   const [escolhido, setEscolhido] = useState(0);
@@ -379,11 +452,13 @@ function Escrita({
     const conteudo = area.scrollHeight;
     area.style.height = '';
 
-    const alvo = alturaAjustada(bloco.altura, conteudo, encolheu);
+    // a faixa da figura entra na conta: sem isso, apagar uma linha de texto
+    // encolheria o bloco por cima da foto que está no rodapé dele
+    const alvo = alturaAjustada(bloco.altura, conteudo + alturaDaFigura, encolheu);
     if (alvo !== null) onAltura(alvo);
     // onAltura vem do render atual; incluí-lo aqui repetiria o efeito à toa
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bloco.texto, bloco.altura, bloco.largura]);
+  }, [bloco.texto, bloco.altura, bloco.largura, alturaDaFigura]);
 
   /**
    * As regras de Markdown no teclado — continuar a lista, sair dela, indentar,
@@ -463,10 +538,12 @@ function Escrita({
    * lida agora — o evento não sobrevive ao primeiro `await`.
    */
   function aoColar(event: ClipboardEvent<HTMLTextAreaElement>) {
-    const item = [...event.clipboardData.items].find(
-      (candidato) => candidato.kind === 'file' && candidato.type.startsWith('image/'),
-    );
-    const imagem = item?.getAsFile();
+    const arquivos = [...event.clipboardData.items]
+      .filter((candidato) => candidato.kind === 'file')
+      .map((candidato) => candidato.getAsFile())
+      .filter((arquivo): arquivo is File => arquivo !== null);
+
+    const imagem = melhorImagem(arquivos);
     if (imagem) {
       event.preventDefault();
       onImagemColada(imagem, origemDoHtml(event.clipboardData.getData('text/html')));
@@ -490,6 +567,10 @@ function Escrita({
     area.setSelectionRange(novo.inicio, novo.fim);
   }
 
+  // O texto para onde a figura começa. Vale para as três camadas juntas: se o
+  // espelho não recuar igual, o realce descola das palavras.
+  const recuo = alturaDaFigura > 0 ? { bottom: `${alturaDaFigura}px` } : undefined;
+
   // As camadas de baixo têm de rolar junto com o texto, senão o realce
   // descola das palavras assim que o bloco passa da própria altura.
   function acompanharRolagem(event: UIEvent<HTMLTextAreaElement>) {
@@ -506,6 +587,7 @@ function Escrita({
       {achados.length > 0 && (
         <div
           className="bloco__achados"
+          style={recuo}
           ref={achadosRef}
           aria-hidden="true"
           // vem de realcarAchados(), que escapa tudo que o usuário digitou
@@ -515,6 +597,7 @@ function Escrita({
       {realce && (
         <div
           className="bloco__espelho"
+          style={recuo}
           ref={espelhoRef}
           aria-hidden="true"
           // o texto vem de realcar(), que escapa tudo que o usuário digitou
@@ -523,6 +606,7 @@ function Escrita({
       )}
       <textarea
         className="bloco__texto"
+        style={recuo}
         ref={areaRef}
         value={bloco.texto}
         spellCheck={false}

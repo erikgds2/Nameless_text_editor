@@ -23,6 +23,7 @@ function montar(blocos: Bloco[], tipo: 'markdown' | 'texto' = 'markdown') {
       achadoAtual={null}
       trechos={{}}
       onSair={vi.fn()}
+      onRecado={vi.fn()}
     />,
   );
   return { onChange, onColarImagem };
@@ -69,6 +70,7 @@ describe('Canvas', () => {
         achadoAtual={null}
         trechos={{}}
         onSair={vi.fn()}
+        onRecado={vi.fn()}
       />,
     );
     expect(container.querySelector('.bloco__espelho')).not.toBeNull();
@@ -86,6 +88,7 @@ describe('Canvas', () => {
         achadoAtual={null}
         trechos={{}}
         onSair={vi.fn()}
+        onRecado={vi.fn()}
       />,
     );
     expect(container.querySelector('.bloco__espelho')).toBeNull();
@@ -121,6 +124,7 @@ function montarVivo(inicial: Bloco[], tipo: 'markdown' | 'texto' = 'markdown') {
         achadoAtual={null}
         trechos={{}}
         onSair={vi.fn()}
+        onRecado={vi.fn()}
       />
     );
   }
@@ -244,6 +248,7 @@ describe('figura colada na página', () => {
         achadoAtual={null}
         trechos={{}}
         onSair={vi.fn()}
+        onRecado={vi.fn()}
       />,
     );
     return { onChange, onColarImagem };
@@ -263,7 +268,7 @@ describe('figura colada na página', () => {
     );
   });
 
-  it('colada num bloco com texto, a figura nasce abaixo e não parte a frase', async () => {
+  it('colada num bloco com texto, a figura fica NESSE bloco, e não num quadrado novo', async () => {
     const escrito = { ...bloco('Anatomia do fêmur'), y: 100, altura: 120 };
     const { onChange } = montarComEspiao([escrito]);
 
@@ -271,10 +276,23 @@ describe('figura colada na página', () => {
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
-    expect(depois).toHaveLength(2);
-    expect(depois[0]).toEqual(escrito);
-    expect(depois[1].texto).toBe('![](anexos/abc123.png)');
-    expect(depois[1].y).toBeGreaterThan(escrito.y + escrito.altura);
+
+    expect(depois).toHaveLength(1);
+    expect(depois[0].id).toBe(escrito.id);
+    expect(depois[0].texto).toBe('Anatomia do fêmur\n![](anexos/abc123.png)');
+    // o bloco cresce para a foto caber sem empurrar o que estava escrito
+    expect(depois[0].altura).toBeGreaterThan(escrito.altura);
+  });
+
+  it('a segunda figura no mesmo bloco não faz o bloco crescer de novo', async () => {
+    const comFigura = { ...bloco('Anatomia\n![](anexos/ja-tinha.png)'), altura: 300 };
+    const { onChange } = montarComEspiao([comFigura]);
+
+    fireEvent.paste(screen.getByRole('textbox'), { clipboardData: areaDeTransferencia(png()) });
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
+    expect(depois[0].altura).toBe(300);
   });
 
   it('a origem do print, quando existe, entra na marcação', async () => {
@@ -318,13 +336,6 @@ describe('figura colada na página', () => {
     expect(screen.queryByRole('link')).toBeNull();
   });
 
-  it('texto em volta da marcação continua sendo texto', () => {
-    montarComEspiao([bloco('olha isto:\n![](anexos/abc123.png)')]);
-
-    expect(screen.queryByRole('img')).toBeNull();
-    expect(screen.getByRole('textbox')).toBeInTheDocument();
-  });
-
   it('em nota de texto puro, a marcação não vira figura', () => {
     montarComEspiao([bloco('![](anexos/abc123.png)')], 'texto');
 
@@ -358,6 +369,7 @@ describe('tamanho da figura colada', () => {
         achadoAtual={null}
         trechos={{}}
         onSair={vi.fn()}
+        onRecado={vi.fn()}
       />,
     );
 
@@ -433,6 +445,7 @@ function montarComEspiaoSimples(blocos: Bloco[], tipo: 'markdown' | 'texto' = 'm
       achadoAtual={null}
       trechos={{}}
       onSair={vi.fn()}
+      onRecado={vi.fn()}
     />,
   );
   return { onChange };
@@ -452,6 +465,7 @@ describe('sair do bloco pelo teclado', () => {
         achadoAtual={null}
         trechos={{}}
         onSair={onSair}
+        onRecado={vi.fn()}
       />,
     );
 
@@ -487,6 +501,7 @@ describe('duplicar bloco', () => {
         achadoAtual={null}
         trechos={{}}
         onSair={vi.fn()}
+        onRecado={vi.fn()}
       />,
     );
 
@@ -516,6 +531,7 @@ describe('trecho na lista de ligações', () => {
           achados={[]}
           achadoAtual={null}
           onSair={vi.fn()}
+          onRecado={vi.fn()}
         />
       );
     }
@@ -536,5 +552,82 @@ describe('trecho na lista de ligações', () => {
 
     await digitar(screen.getByRole('textbox'), '[[');
     expect(screen.getByRole('button', { name: 'Aula 1' })).toBeInTheDocument();
+  });
+});
+
+describe('imagem que não dá para ler', () => {
+  function areaComArquivo(arquivo: File) {
+    return {
+      items: [{ kind: 'file', type: arquivo.type, getAsFile: () => arquivo }],
+      getData: () => '',
+    };
+  }
+
+  it('imagem ilegível vira aviso, e não uma figura quebrada na página', async () => {
+    vi.stubGlobal('createImageBitmap', async () => {
+      throw new Error('não é uma imagem');
+    });
+    const onChange = vi.fn();
+    const onColarImagem = vi.fn(async () => 'abc123.png');
+    const onRecado = vi.fn();
+    render(
+      <Canvas
+        blocos={[bloco('')]}
+        tipo="markdown"
+        onChange={onChange}
+        onColarImagem={onColarImagem}
+        titulos={[]}
+        trechos={{}}
+        achados={[]}
+        achadoAtual={null}
+        onSair={vi.fn()}
+        onRecado={onRecado}
+      />,
+    );
+
+    const quebrada = new File([new Uint8Array([1, 2, 3])], 'quebrada.png', { type: 'image/png' });
+    fireEvent.paste(screen.getByRole('textbox'), { clipboardData: areaComArquivo(quebrada) });
+
+    await waitFor(() => expect(onRecado).toHaveBeenCalledWith('Não foi possível ler a imagem colada.'));
+    // nada foi gravado nem escrito na nota
+    expect(onColarImagem).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('entre a miniatura e o print inteiro, é o print que vai para o disco', async () => {
+    vi.stubGlobal('createImageBitmap', async () => ({ width: 1200, height: 800, close: () => {} }));
+    const onColarImagem = vi.fn(async () => 'abc123.png');
+    render(
+      <Canvas
+        blocos={[bloco('')]}
+        tipo="markdown"
+        onChange={vi.fn()}
+        onColarImagem={onColarImagem}
+        titulos={[]}
+        trechos={{}}
+        achados={[]}
+        achadoAtual={null}
+        onSair={vi.fn()}
+        onRecado={vi.fn()}
+      />,
+    );
+
+    const miniatura = new File([new Uint8Array(10)], 'mini.png', { type: 'image/png' });
+    const inteiro = new File([new Uint8Array(5000)], 'print.png', { type: 'image/png' });
+    fireEvent.paste(screen.getByRole('textbox'), {
+      clipboardData: {
+        items: [
+          { kind: 'file', type: 'image/png', getAsFile: () => miniatura },
+          { kind: 'file', type: 'image/png', getAsFile: () => inteiro },
+        ],
+        getData: () => '',
+      },
+    });
+
+    await waitFor(() => expect(onColarImagem).toHaveBeenCalled());
+    const [bytes] = onColarImagem.mock.calls[0] as unknown as [Uint8Array, string];
+    expect(bytes.length).toBe(5000);
+    vi.unstubAllGlobals();
   });
 });

@@ -831,6 +831,7 @@ export default function App() {
           cadernoVazio={!carregando && notes.length === 0}
           conflito={activeId !== null && conflitos.has(activeId)}
           onSairDoBloco={focarNaLista}
+          onRecado={setRecado}
           onRenomear={handleRenomear}
           onManterOMeu={() => activeId && manterOMeu(activeId)}
           onUsarODoDisco={() => activeId && usarODoDisco(activeId)}
