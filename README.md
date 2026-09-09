@@ -16,7 +16,7 @@ código no navegador.
 | ----------------- | -------------------------------------------------- |
 | `npm run dev`     | Dev server + janela desktop                        |
 | `npm run dev:web` | Só o navegador, em http://localhost:5173           |
-| `npm run check`   | Tipos, testes e build — o portão antes de commitar |
+| `npm run check`   | Tipos, testes, build, design e arquitetura — o portão |
 | `npm run test`    | Só os testes                                       |
 | `npm run dist`    | Gera o instalador do Windows em `release/`         |
 
@@ -100,4 +100,5 @@ PATH; `node cli/ardosia.mjs` funciona sempre.
 
 - `PROJETO.md` — o que é, os princípios e as fases
 - `DESIGN.md` — a direção visual, com verificação executável
+- `.agent/METODOLOGIA.md` — a régua de engenharia, e de que livro veio cada regra
 - `.agent/ROTEAMENTO.md` — qual modelo faz o quê, e como isso se ajusta

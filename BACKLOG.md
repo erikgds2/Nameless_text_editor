@@ -1,4 +1,4 @@
-# BACKLOG — 110 melhorias
+# BACKLOG — 112 melhorias
 
 Itens agrupados por tema e ordenados por valor dentro de cada
 grupo. Marcados assim:
@@ -7,8 +7,9 @@ grupo. Marcados assim:
 - **P1** dói agora · **P2** melhora muito · **P3** quando sobrar tempo
 
 Regras que valem para todos: nada entra sem teste automático ou verificação
-executável; nada entra que viole o `DESIGN.md`; e nenhuma feature entra só
-porque é possível — cada uma paga o próprio peso na interface (princípio nº 6).
+executável; nada entra que viole o `DESIGN.md` nem a `.agent/METODOLOGIA.md`;
+e nenhuma feature entra só porque é possível — cada uma paga o próprio peso na
+interface (princípio nº 6).
 
 ---
 
@@ -176,6 +177,16 @@ precisar recarregar. Nada de servidor, nada de API: o disco é a interface.
 | 108 | `[x]` **P2** | `ardosia pasta` mostra onde as notas ficam, e `--definir` muda — a mesma config do app |
 | 109 | `[x]` **P3** | `ardosia anexar <nota> <arquivo>` põe uma imagem na nota como figura |
 | 110 | `[x]` **P3** | `ardosia ajuda` com exemplos prontos de uso por um agente |
+
+## K. Dívidas declaradas (111–112)
+
+O que os verificadores acusam e ainda não foi pago. Fica aqui com número para
+poder ser cobrado; o que não se vê não se paga.
+
+| # | | Item |
+| --- | --- | --- |
+| 111 | `[ ]` **P3** | Separar realce e renderização em `markdown.ts` (519 linhas, teto 400) — são duas responsabilidades no mesmo arquivo |
+| 112 | `[ ]` **P2** | `Canvas.tsx` encosta no teto de 700 linhas: o bloco de figura e o campo de escrita já são dois assuntos |
 
 ---
 

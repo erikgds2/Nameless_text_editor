@@ -294,6 +294,12 @@ export default function App() {
 
   // As fixadas seguem a ordem que voce escolheu; o resto, a edicao mais
   // recente. [...notes] e obrigatorio: sort() muta o array, e este e o estado.
+  // Quem cita quem. Refeito quando as notas mudam — é um Map por dentro, então
+  // aguenta as mil notas do teste sem pesar. Fica ANTES da lista visível porque
+  // é insumo dela: construí-lo dentro do filtro custaria uma varredura do
+  // caderno inteiro por nota, e o app pararia de responder muito antes das mil.
+  const indice = useMemo(() => construirIndice(notes), [notes]);
+
   const visibleNotes = useMemo(() => {
     const emOrdem = [...fixadasEmOrdem(notes), ...ordenarSoltas(notes, ajustes.ordem)];
     const filtradas =
@@ -301,18 +307,15 @@ export default function App() {
         ? emOrdem
         : filtro.tipo === 'tag'
           ? notasComTag(emOrdem, filtro.tag)
-          : emOrdem.filter((nota) => construirIndice(notes).apontadaPor(nota.id).length === 0);
+          : emOrdem.filter((nota) => indice.apontadaPor(nota.id).length === 0);
 
     return filtradas.filter((note) => matchesQuery(textoDaNota(note.blocos), query));
-  }, [notes, query, ajustes.ordem, filtro]);
+  }, [notes, query, ajustes.ordem, filtro, indice]);
 
   const tags = useMemo(() => tagsDoCaderno(notes), [notes]);
 
   const activeNote = notes.find((note) => note.id === activeId) ?? null;
 
-  // Quem cita quem. Refeito quando as notas mudam — é um Map por dentro, então
-  // aguenta as mil notas do teste sem pesar.
-  const indice = useMemo(() => construirIndice(notes), [notes]);
 
   const backlinks = useMemo(
     () =>
