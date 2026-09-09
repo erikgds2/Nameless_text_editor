@@ -23,7 +23,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 5 | `[x]` **P2** | `Ctrl+B` / `Ctrl+I` / `Ctrl+K` envolvem a seleção em negrito, itálico e link |
 | 6 | `[ ]` **P2** | Arrastar bloco com guias de alinhamento entre blocos vizinhos |
 | 7 | `[ ]` **P2** | Selecionar vários blocos e mover em conjunto |
-| 8 | `[x]` **P2** | Colar imagem da área de transferência: salva ao lado do `.md` e insere `![](...)` |
+| 8 | `[x]` **P2** | Colar imagem da área de transferência: vira figura na página, do tamanho dela, com a origem do print quando houver |
 | 9 | `[ ]` **P2** | Colar URL sobre texto selecionado vira `[texto](url)` |
 | 10 | `[ ]` **P2** | Bloco encolhe sozinho quando se apaga texto (hoje só cresce) |
 | 11 | `[ ]` **P2** | Modo foco: some tudo menos o bloco em edição (`Ctrl+Shift+F`) |

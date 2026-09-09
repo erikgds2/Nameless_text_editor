@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { ClipboardEvent, KeyboardEvent, MouseEvent, PointerEvent, UIEvent } from 'react';
-import { ALTURA_MINIMA, LARGURA_MINIMA, criarBloco, type Bloco } from '../canvas';
+import { ALTURA_MINIMA, LARGURA_MINIMA, LARGURA_PADRAO, criarBloco, type Bloco } from '../canvas';
 import { realcar } from '../markdown';
 import { achadosDoBloco, realcarAchados, type Ocorrencia } from '../busca';
+import { enderecoDaImagem, imagemDoBloco, marcarImagem, origemDoHtml, tamanhoDoBloco } from '../imagem';
 import { alternarMarca, aoTeclarEnter, aoTeclarTab, inserirLink } from '../edicao';
 import { completarLigacao, ligacaoSendoEscrita, ordenarCandidatos, type Escrevendo } from '../sugestoes';
 import type { TipoDoc } from '../notes';
@@ -23,6 +24,24 @@ type Props = {
 
 /** Margem de tolerância do auto-crescimento do bloco, em pixels. */
 const FOLGA = 4;
+
+/** Respiro entre o bloco onde a imagem foi colada e a figura que nasce abaixo. */
+const ESPACO = 16;
+
+/**
+ * As dimensões da imagem, para o bloco nascer do tamanho dela. Se não der para
+ * medir, o bloco vem numa proporção de print e a pessoa ajusta pelo canto.
+ */
+async function medirImagem(arquivo: File): Promise<{ largura: number; altura: number }> {
+  try {
+    const bitmap = await createImageBitmap(arquivo);
+    const medida = { largura: bitmap.width, altura: bitmap.height };
+    bitmap.close();
+    return medida;
+  } catch {
+    return { largura: LARGURA_PADRAO, altura: Math.round((LARGURA_PADRAO * 3) / 4) };
+  }
+}
 
 type Arraste =
   | { tipo: 'mover'; id: string; offsetX: number; offsetY: number }
@@ -63,6 +82,40 @@ export default function Canvas({
 
   function handleChangeTexto(id: string, texto: string) {
     onChange(blocos.map((bloco) => (bloco.id === id ? { ...bloco, texto } : bloco)));
+  }
+
+  // Guardar a imagem no disco leva alguns milissegundos, e quem colou pode ter
+  // continuado a digitar nesse meio-tempo. Escrever a partir de `blocos` — que
+  // é o valor de quando a colagem começou — devolveria o texto ao que era.
+  const blocosRef = useRef(blocos);
+  blocosRef.current = blocos;
+
+  /**
+   * A imagem colada vira figura na página: um bloco próprio, do tamanho dela,
+   * que se arrasta e se redimensiona como qualquer outro. Colada num bloco
+   * ainda vazio, ela ocupa esse bloco — foi ali que a pessoa pediu. Colada num
+   * bloco que já tem texto, nasce logo abaixo, para não partir a frase ao meio.
+   */
+  async function handleImagemColada(alvo: Bloco, arquivo: File, origem: string | null) {
+    const nome = await onColarImagem(new Uint8Array(await arquivo.arrayBuffer()), arquivo.type);
+    if (!nome) return;
+
+    const texto = marcarImagem(nome, origem);
+    const medida = await medirImagem(arquivo);
+    const { largura, altura } = tamanhoDoBloco(medida.largura, medida.altura);
+    const agora = blocosRef.current;
+    const dono = agora.find((bloco) => bloco.id === alvo.id);
+
+    if (dono && dono.texto.trim() === '') {
+      onChange(agora.map((bloco) => (bloco.id === dono.id ? { ...bloco, texto, largura, altura } : bloco)));
+      setAtivoId(dono.id);
+      return;
+    }
+
+    const base = dono ?? alvo;
+    const novo = { ...criarBloco(base.x, base.y + base.altura + ESPACO), texto, largura, altura };
+    onChange([...agora, novo]);
+    setAtivoId(novo.id);
   }
 
   // O bloco acompanha o texto para baixo, como no papel. Encolher fica a cargo
@@ -128,7 +181,12 @@ export default function Canvas({
 
   return (
     <div className="canvas" ref={canvasRef} onDoubleClick={handleDuploClique}>
-      {blocos.map((bloco) => (
+      {blocos.map((bloco) => {
+        // Numa nota de texto puro a marcação não vira figura: ali `![](...)` é
+        // o que está escrito, e não uma instrução.
+        const figura = tipo === 'markdown' ? imagemDoBloco(bloco.texto) : null;
+        const endereco = figura && enderecoDaImagem(figura.src);
+        return (
         <div
           key={bloco.id}
           className={[
@@ -159,19 +217,51 @@ export default function Canvas({
               </svg>
             </button>
           )}
-          <Escrita
-            bloco={bloco}
-            realce={tipo === 'markdown'}
-            achados={achadosDoBloco(achados, bloco.id)}
-            achadoAtual={achadoAtual}
-            autoFocus={bloco.id === criadoRecentemente || notaEmBranco}
-            onFocus={() => setAtivoId(bloco.id)}
-            onChange={(texto) => handleChangeTexto(bloco.id, texto)}
-            onAltura={(altura) => handleAltura(bloco.id, altura)}
-            onColarImagem={onColarImagem}
-            titulos={titulos}
-            onBlur={() => handleBlurTexto(bloco)}
-          />
+          {figura && endereco ? (
+            <>
+              <img
+                className="bloco__imagem"
+                src={endereco}
+                alt="Imagem colada na nota"
+                draggable={false}
+              />
+              {figura.fonte && (
+                <a
+                  className="bloco__origem"
+                  href={figura.fonte}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={`Abrir a origem: ${figura.fonte}`}
+                  aria-label="Abrir a origem da imagem"
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                    <path
+                      d="M4.5 1H9v4.5M9 1L4.6 5.4M7.5 6.2V9H1V2.5h2.8"
+                      stroke="currentColor"
+                      strokeWidth="1.2"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </a>
+              )}
+            </>
+          ) : (
+            <Escrita
+              bloco={bloco}
+              realce={tipo === 'markdown'}
+              achados={achadosDoBloco(achados, bloco.id)}
+              achadoAtual={achadoAtual}
+              autoFocus={bloco.id === criadoRecentemente || notaEmBranco}
+              onFocus={() => setAtivoId(bloco.id)}
+              onChange={(texto) => handleChangeTexto(bloco.id, texto)}
+              onAltura={(altura) => handleAltura(bloco.id, altura)}
+              onImagemColada={(arquivo, origem) => handleImagemColada(bloco, arquivo, origem)}
+              titulos={titulos}
+              onBlur={() => handleBlurTexto(bloco)}
+            />
+          )}
           <div
             className="bloco__canto"
             onPointerDown={(event) => handlePointerDownCanto(event, bloco)}
@@ -179,7 +269,8 @@ export default function Canvas({
             onPointerUp={handlePointerUp}
           />
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -193,7 +284,7 @@ type EscritaProps = {
   onFocus: () => void;
   onChange: (texto: string) => void;
   onAltura: (altura: number) => void;
-  onColarImagem: (bytes: Uint8Array, tipo: string) => Promise<string | null>;
+  onImagemColada: (arquivo: File, origem: string | null) => void;
   titulos: string[];
   onBlur: () => void;
 };
@@ -212,7 +303,7 @@ function Escrita({
   onFocus,
   onChange,
   onAltura,
-  onColarImagem,
+  onImagemColada,
   titulos,
   onBlur,
 }: EscritaProps) {
@@ -313,11 +404,11 @@ function Escrita({
   }
 
   /**
-   * Imagem colada vira arquivo na pasta e uma marcação Markdown no texto. O
-   * caminho gravado é relativo de propósito: o .md continua fazendo sentido
-   * fora do app, e quem resolve o caminho para exibir é a pré-visualização.
+   * A colagem de imagem não escreve nada aqui: quem monta a figura é o canvas,
+   * porque ela vira um bloco, e não um trecho de texto. Só a origem tem de ser
+   * lida agora — o evento não sobrevive ao primeiro `await`.
    */
-  async function aoColar(event: ClipboardEvent<HTMLTextAreaElement>) {
+  function aoColar(event: ClipboardEvent<HTMLTextAreaElement>) {
     const item = [...event.clipboardData.items].find(
       (candidato) => candidato.kind === 'file' && candidato.type.startsWith('image/'),
     );
@@ -325,17 +416,7 @@ function Escrita({
     if (!imagem) return;
 
     event.preventDefault();
-    // o evento morre no await; guarde o que precisa antes
-    const area = event.currentTarget;
-    const { selectionStart, selectionEnd, value } = area;
-
-    const nome = await onColarImagem(new Uint8Array(await imagem.arrayBuffer()), imagem.type);
-    if (!nome) return;
-
-    const marca = `![](anexos/${nome})`;
-    onChange(value.slice(0, selectionStart) + marca + value.slice(selectionEnd));
-    const fim = selectionStart + marca.length;
-    requestAnimationFrame(() => area.setSelectionRange(fim, fim));
+    onImagemColada(imagem, origemDoHtml(event.clipboardData.getData('text/html')));
   }
 
   // As camadas de baixo têm de rolar junto com o texto, senão o realce

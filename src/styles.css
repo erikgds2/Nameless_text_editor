@@ -1252,6 +1252,49 @@ button {
   background: var(--alert-wash);
 }
 
+/* ----------------------------------------------- figura colada na página */
+
+/* A figura fica solta na página, sem moldura própria: quem dá contorno é o
+   bloco, no passar do cursor e na seleção, como em qualquer outro. A imagem
+   ocupa a caixa inteira e cabe dentro dela, de modo que arrastar o canto do
+   bloco seja o que redimensiona a foto. */
+.bloco__imagem {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  object-fit: contain;
+  user-select: none;
+}
+
+/* De onde o print veio. Só aparece quando a área de transferência soube dizer,
+   e fica no canto oposto ao de excluir para não disputar o mesmo clique. */
+.bloco__origem {
+  position: absolute;
+  z-index: 2;
+  top: 2px;
+  left: 2px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--rapido), color var(--rapido), background-color var(--rapido);
+}
+
+.bloco:hover .bloco__origem {
+  opacity: 1;
+}
+
+.bloco__origem:hover {
+  color: var(--accent);
+  background: var(--surface-alt);
+}
+
 /* ------------------------------------------------------------- ligações */
 
 .preview a.ligacao {

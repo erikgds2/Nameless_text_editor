@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Canvas from './Canvas';
 import { criarBloco, type Bloco } from '../canvas';
@@ -204,5 +204,156 @@ describe('escolher a ligação sem perder texto', () => {
       initialSelectionEnd: 0,
     });
     expect(campo).toHaveValue('[[Limites e continuidade]]fim da frase');
+  });
+});
+
+describe('figura colada na página', () => {
+  /** A área de transferência do navegador, no que o componente lê dela. */
+  function areaDeTransferencia(arquivo: File | null, html = '') {
+    return {
+      items: arquivo
+        ? [{ kind: 'file', type: arquivo.type, getAsFile: () => arquivo }]
+        : [{ kind: 'string', type: 'text/plain', getAsFile: () => null }],
+      getData: (tipo: string) => (tipo === 'text/html' ? html : ''),
+    };
+  }
+
+  function png() {
+    return new File([new Uint8Array([137, 80, 78, 71])], 'print.png', { type: 'image/png' });
+  }
+
+  function montarComEspiao(blocos: Bloco[], tipo: 'markdown' | 'texto' = 'markdown') {
+    const onChange = vi.fn();
+    const onColarImagem = vi.fn(async () => 'abc123.png');
+    render(
+      <Canvas
+        blocos={blocos}
+        tipo={tipo}
+        onChange={onChange}
+        onColarImagem={onColarImagem}
+        titulos={[]}
+        achados={[]}
+        achadoAtual={null}
+      />,
+    );
+    return { onChange, onColarImagem };
+  }
+
+  it('colada num bloco vazio, a figura ocupa esse bloco', async () => {
+    const vazio = bloco('');
+    const { onChange, onColarImagem } = montarComEspiao([vazio]);
+
+    fireEvent.paste(screen.getByRole('textbox'), { clipboardData: areaDeTransferencia(png()) });
+
+    await waitFor(() => expect(onColarImagem).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith([
+        expect.objectContaining({ id: vazio.id, texto: '![](anexos/abc123.png)' }),
+      ]),
+    );
+  });
+
+  it('colada num bloco com texto, a figura nasce abaixo e não parte a frase', async () => {
+    const escrito = { ...bloco('Anatomia do fêmur'), y: 100, altura: 120 };
+    const { onChange } = montarComEspiao([escrito]);
+
+    fireEvent.paste(screen.getByRole('textbox'), { clipboardData: areaDeTransferencia(png()) });
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
+    expect(depois).toHaveLength(2);
+    expect(depois[0]).toEqual(escrito);
+    expect(depois[1].texto).toBe('![](anexos/abc123.png)');
+    expect(depois[1].y).toBeGreaterThan(escrito.y + escrito.altura);
+  });
+
+  it('a origem do print, quando existe, entra na marcação', async () => {
+    const { onChange } = montarComEspiao([bloco('')]);
+
+    fireEvent.paste(screen.getByRole('textbox'), {
+      clipboardData: areaDeTransferencia(png(), `<img src="https://exemplo.org/femur.png">`),
+    });
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
+    expect(depois[0].texto).toBe('[![](anexos/abc123.png)](https://exemplo.org/femur.png)');
+  });
+
+  it('colagem sem imagem nenhuma não mexe na nota', async () => {
+    const { onChange, onColarImagem } = montarComEspiao([bloco('')]);
+
+    fireEvent.paste(screen.getByRole('textbox'), { clipboardData: areaDeTransferencia(null) });
+
+    expect(onColarImagem).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('o bloco que é só uma imagem aparece como figura, e não como texto', () => {
+    montarComEspiao([bloco('![](anexos/abc123.png)')]);
+
+    const figura = screen.getByRole('img', { name: 'Imagem colada na nota' });
+    expect(figura).toHaveAttribute('src', 'ardosia://anexos/abc123.png');
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  it('com origem guardada, a figura oferece o caminho de volta', () => {
+    montarComEspiao([bloco('[![](anexos/abc123.png)](https://exemplo.org/femur)')]);
+
+    const origem = screen.getByRole('link', { name: 'Abrir a origem da imagem' });
+    expect(origem).toHaveAttribute('href', 'https://exemplo.org/femur');
+  });
+
+  it('sem origem, não há link nenhum para abrir', () => {
+    montarComEspiao([bloco('![](anexos/abc123.png)')]);
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
+  it('texto em volta da marcação continua sendo texto', () => {
+    montarComEspiao([bloco('olha isto:\n![](anexos/abc123.png)')]);
+
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
+  });
+
+  it('em nota de texto puro, a marcação não vira figura', () => {
+    montarComEspiao([bloco('![](anexos/abc123.png)')], 'texto');
+
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.getByDisplayValue('![](anexos/abc123.png)')).toBeInTheDocument();
+  });
+});
+
+describe('tamanho da figura colada', () => {
+  function areaComPng() {
+    const arquivo = new File([new Uint8Array([137, 80, 78, 71])], 'print.png', { type: 'image/png' });
+    return {
+      items: [{ kind: 'file', type: 'image/png', getAsFile: () => arquivo }],
+      getData: () => '',
+    };
+  }
+
+  it('o bloco nasce do tamanho da imagem, encolhido se ela for grande demais', async () => {
+    // o jsdom não decodifica imagem; o que interessa aqui é o que o canvas faz
+    // com as dimensões, não como as obtém
+    vi.stubGlobal('createImageBitmap', async () => ({ width: 1920, height: 1080, close: () => {} }));
+    const onChange = vi.fn();
+    render(
+      <Canvas
+        blocos={[bloco('')]}
+        tipo="markdown"
+        onChange={onChange}
+        onColarImagem={vi.fn(async () => 'abc123.png')}
+        titulos={[]}
+        achados={[]}
+        achadoAtual={null}
+      />,
+    );
+
+    fireEvent.paste(screen.getByRole('textbox'), { clipboardData: areaComPng() });
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
+    expect(depois[0]).toMatchObject({ largura: 480, altura: 270 });
+    vi.unstubAllGlobals();
   });
 });

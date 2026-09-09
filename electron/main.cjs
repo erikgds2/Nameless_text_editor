@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, net, protocol } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, net, protocol, shell } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const notas = require('./notas.cjs');
@@ -44,6 +44,15 @@ function createWindow(modo, bounds) {
   });
 
   janelaPrincipal = win;
+
+  // Link externo — a origem de um print colado, um endereco na nota — abre no
+  // navegador do sistema, e nunca numa janela deste app: janela nova do
+  // Electron carregaria site de fora com o preload junto. So http e https
+  // passam; o resto e recusado em silencio.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    return { action: 'deny' };
+  });
 
   // A janela de captura fica escondida, nao fechada. Sem isto ela seguraria o
   // app vivo depois que a janela principal fosse fechada.

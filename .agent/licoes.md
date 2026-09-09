@@ -28,3 +28,5 @@ próximas tarefas. Gerado pelo run.mjs — pode editar e reescrever à mão.
 - (1x) acrilico do Windows nao e transparencia: e vidro fosco, borra o que esta atras e nunca deixa ver. Transparencia de verdade exige transparent:true na criacao da janela, e os dois nao convivem
 - (1x) duplo de teste complacente esconde bug: a ponte falsa tolerava renomear arquivo inexistente e o disco de verdade lanca ENOENT. Duplo tem de recusar o que o original recusa
 - (1x) escreva o arquivo antes de renomea-lo: na primeira gravacao o nome provisorio ainda nao existe no disco
+- (1x) o jsdom nao implementa scrollIntoView: preencha no test-setup, e nao com uma guarda no componente — defesa no codigo de producao para limitacao do ambiente de teste mente sobre o que o codigo precisa
+- (1x) pagina de fumaca sem a arvore de layout do app da tamanho errado ao container, e elementFromPoint com coordenada chutada mede o lugar errado: ancore o ponto no getBoundingClientRect do proprio elemento
