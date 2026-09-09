@@ -19,6 +19,14 @@ import {
   type Atualizacao,
 } from './janela';
 import { TAMANHOS, TEMAS, carregarAjustes, salvarAjustes, type Ajustes as AjustesTipo } from './ajustes';
+import {
+  atual as documentoDoPasso,
+  desfazer,
+  iniciar,
+  refazer,
+  registrar,
+  type Historico,
+} from './historico';
 import type { Comando } from './comandos';
 
 export default function App() {
@@ -246,6 +254,40 @@ export default function App() {
     setSalvamento('salvando');
   }
 
+  /**
+   * Um histórico por nota, e não um só para o app: trocar de nota para conferir
+   * outra coisa e voltar é rotina neste editor, e perder o desfazer por causa
+   * disso seria pior que não ter desfazer.
+   */
+  const historicos = useRef(new Map<string, Historico>());
+
+  function historicoDa(id: string, blocos: Bloco[]): Historico {
+    const guardado = historicos.current.get(id);
+    if (guardado) return guardado;
+    const primeiro = iniciar(blocos);
+    historicos.current.set(id, primeiro);
+    return primeiro;
+  }
+
+  function andarNoHistorico(mover: (historico: Historico) => Historico) {
+    if (!activeId) return;
+    const nota = notes.find((outra) => outra.id === activeId);
+    if (!nota) return;
+
+    const antes = historicoDa(activeId, nota.blocos);
+    const depois = mover(antes);
+    if (depois === antes) return;
+
+    historicos.current.set(activeId, depois);
+    marcar(activeId);
+    const blocos = documentoDoPasso(depois);
+    setNotes((prev) =>
+      prev.map((outra) =>
+        outra.id === activeId ? { ...outra, blocos, updatedAt: Date.now() } : outra,
+      ),
+    );
+  }
+
   function handleNewNote() {
     const note = deposito.criar(ajustes.tipoPadrao);
     setNotes((prev) => [note, ...prev]);
@@ -255,6 +297,8 @@ export default function App() {
 
   function handleChangeBlocos(blocos: Bloco[]) {
     if (!activeId) return;
+    const anteriores = notes.find((nota) => nota.id === activeId)?.blocos ?? blocos;
+    historicos.current.set(activeId, registrar(historicoDa(activeId, anteriores), blocos));
     marcar(activeId);
     setNotes((prev) =>
       prev.map((note) =>
@@ -273,6 +317,7 @@ export default function App() {
 
   function handleDelete(id: string) {
     sujas.current.delete(id);
+    historicos.current.delete(id);
     setNotes((prev) => prev.filter((note) => note.id !== id));
     if (activeId === id) setActiveId(null);
     deposito.apagar(id).catch((err) => console.error('Não foi possível apagar a nota:', err));
@@ -365,6 +410,20 @@ export default function App() {
 
     return [
       { id: 'nova', titulo: 'Nova nota', secao: 'Notas', atalho: 'Ctrl + N', executar: handleNewNote },
+      {
+        id: 'desfazer',
+        titulo: 'Desfazer',
+        secao: 'Escrita',
+        atalho: 'Ctrl + Z',
+        executar: () => andarNoHistorico(desfazer),
+      },
+      {
+        id: 'refazer',
+        titulo: 'Refazer',
+        secao: 'Escrita',
+        atalho: 'Ctrl + Y',
+        executar: () => andarNoHistorico(refazer),
+      },
       {
         id: 'buscar',
         titulo: 'Buscar nas notas',
@@ -460,6 +519,16 @@ export default function App() {
       if (event.key === ',') {
         event.preventDefault();
         setMostrandoAjustes((prev) => !prev);
+      }
+      // O desfazer do navegador só enxerga a caixa onde o cursor está; desfazer
+      // meio documento é pior que não desfazer, então tomamos a tecla inteira.
+      if (event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        andarNoHistorico(event.shiftKey ? refazer : desfazer);
+      }
+      if (event.key.toLowerCase() === 'y') {
+        event.preventDefault();
+        andarNoHistorico(refazer);
       }
     }
     window.addEventListener('keydown', onKeyDown);

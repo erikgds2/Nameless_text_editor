@@ -16,7 +16,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 
 | # | | Item |
 | --- | --- | --- |
-| 1 | `[ ]` **P1** | Desfazer/refazer do documento inteiro (`Ctrl+Z`/`Ctrl+Y`), não só dentro de um bloco |
+| 1 | `[x]` **P1** | Desfazer/refazer do documento inteiro (`Ctrl+Z`/`Ctrl+Y`), não só dentro de um bloco |
 | 2 | `[x]` **P1** | Duplo `Enter` em lista encerra a lista, como em todo editor de Markdown |
 | 3 | `[x]` **P1** | Continuação automática de lista: `Enter` numa linha `- ` cria o próximo `- ` |
 | 4 | `[x]` **P1** | `Tab`/`Shift+Tab` aninham e desaninham item de lista |
