@@ -22,31 +22,31 @@ protocol.registerSchemesAsPrivileged([
 
 // Os dois blocos exatamente como estao na nota do usuario, com as imagens
 // dele: bloco misto de 320x365 com foto 260x402, e bloco so-figura 373x165.
+// Uma secao com foto colada: campo de escrita em cima, figura no rodape.
 const PAGINA = (css) => `<!doctype html>
 <html data-theme="carvao"><head><meta charset="utf-8"><style>${css}
   body { background: var(--base); }
-  .canvas { height: 620px; }
+  .canvas { height: 560px; }
 </style></head>
 <body>
   <div class="canvas">
-    <div class="bloco bloco--puro" id="misto" style="left:15px;top:15px;width:320px;height:587px">
+    <div class="bloco bloco--puro bloco--ativo" id="misto" style="left:24px;top:24px;width:320px;height:446px">
       <div class="bloco__alca"></div>
-      <textarea class="bloco__texto" style="bottom:min(402px, calc(100% - 44px))"># Fase 2 no disco
-
-Editada fora do app, no Bloco de Notas - e o app leu de volta.</textarea>
+      <textarea class="bloco__texto" style="bottom:min(402px, calc(100% - 44px))">Legenda da foto</textarea>
       <div class="bloco__figuras" style="--figura:402px">
         <div class="bloco__figura">
-          <img class="bloco__imagem" src="ardosia://anexos/ce6f5be94668.png" alt="">
+          <img class="bloco__imagem" src="ardosia://anexos/foto.png" alt="">
         </div>
       </div>
       <div class="bloco__canto"></div>
     </div>
 
-    <div class="bloco bloco--puro" id="figura" style="left:360px;top:15px;width:373px;height:189px">
+    <div class="bloco bloco--puro" id="figura" style="left:376px;top:24px;width:320px;height:446px">
       <div class="bloco__alca"></div>
-      <div class="bloco__figuras bloco__figuras--inteira">
+      <textarea class="bloco__texto" style="bottom:min(402px, calc(100% - 44px))"></textarea>
+      <div class="bloco__figuras" style="--figura:402px">
         <div class="bloco__figura">
-          <img class="bloco__imagem" src="ardosia://anexos/dc33395b125a.png" alt="">
+          <img class="bloco__imagem" src="ardosia://anexos/foto.png" alt="">
         </div>
       </div>
       <div class="bloco__canto"></div>
@@ -71,7 +71,7 @@ app.whenReady().then(async () => {
 
   const medida = await win.webContents.executeJavaScript(`
     (() => {
-      const falta = ['#figura .bloco__imagem', '#figura .bloco__alca', '#misto .bloco__texto', '#misto .bloco__figuras']
+      const falta = ['#figura .bloco__imagem', '#figura .bloco__alca', '#misto .bloco__texto', '#misto .bloco__figuras', '#figura .bloco__texto']
         .filter((selector) => !document.querySelector(selector));
       if (falta.length) return { erro: 'nao achei na pagina: ' + falta.join(', ') };
 
@@ -86,6 +86,7 @@ app.whenReady().then(async () => {
       const foto = document.querySelector('#misto .bloco__figuras').getBoundingClientRect();
       return {
         semSobreposicao: campo.bottom <= foto.top + 1,
+        campoDaSecaoSoComFoto: Math.round(document.querySelector('#figura .bloco__texto').getBoundingClientRect().height),
         carregou: img.complete && img.naturalWidth > 0,
         largura: Math.round(img.getBoundingClientRect().width),
         altura: Math.round(img.getBoundingClientRect().height),
@@ -101,6 +102,7 @@ app.whenReady().then(async () => {
   console.log('figura desenhada em:', medida.largura, 'x', medida.altura);
   console.log('alca de arrastar alcancavel por cima da foto:', medida.alcaAlcancavel ? 'ok' : 'RUIM');
   console.log('texto e figura sem se cobrir:', medida.semSobreposicao ? 'ok' : 'RUIM');
+  console.log('altura do campo na secao so com foto:', medida.campoDaSecaoSoComFoto, 'px');
   console.log('foto do bloco misto: desenhada', medida.mistoDesenhado, '| natural', medida.mistoNatural);
 
   const tiro = await win.webContents.capturePage();

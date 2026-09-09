@@ -75,13 +75,6 @@ async function medirImagem(arquivo: File): Promise<{ largura: number; altura: nu
   }
 }
 
-/**
- * A alça de arrastar ocupa o alto da seção. Uma seção só de figura precisa
- * desse tanto a mais, senão a foto é desenhada por baixo dela — e o que se vê
- * é uma tarja atravessando a imagem.
- */
-const ESPACO_DA_ALCA = 24;
-
 /** O que fica para o texto quando a seção cresce por causa de uma foto. */
 const ESPACO_PARA_O_TEXTO = 44;
 
@@ -166,25 +159,34 @@ export default function Canvas({
     // sumiu de vez: a foto vira uma seção nova, onde a antiga estava. Perder o
     // que a pessoa acabou de colar é o pior desfecho possível
     if (!dono) {
-      const { largura, altura } = tamanhoDoBloco(medida.largura, medida.altura);
+      const { largura } = tamanhoDoBloco(medida.largura, medida.altura);
+      const faixa = alturaDaFigura(largura, medida.largura, medida.altura);
       const nova = {
         ...criarBloco(alvo.x, alvo.y),
-        imagem,
+        imagem: { ...imagem, altura: faixa },
         largura,
-        altura: altura + ESPACO_DA_ALCA,
+        altura: faixa + ESPACO_PARA_O_TEXTO,
       };
       onChange([...agora, nova]);
       setAtivoId(nova.id);
       return;
     }
 
-    // seção ainda em branco: a foto ocupa ela inteira, do tamanho da imagem
+    // seção ainda em branco: a foto no rodapé e uma linha de escrita em cima.
+    // Antes ela ocupava a caixa inteira e a seção ficava sem campo nenhum —
+    // não dava para escrever uma legenda, nem antes nem depois da foto.
     if (dono.texto.trim() === '' && !dono.imagem) {
-      const { largura, altura } = tamanhoDoBloco(medida.largura, medida.altura);
+      const { largura } = tamanhoDoBloco(medida.largura, medida.altura);
+      const faixa = alturaDaFigura(largura, medida.largura, medida.altura);
       onChange(
         agora.map((bloco) =>
           bloco.id === dono.id
-            ? { ...bloco, imagem, largura, altura: altura + ESPACO_DA_ALCA }
+            ? {
+                ...bloco,
+                imagem: { ...imagem, altura: faixa },
+                largura,
+                altura: faixa + ESPACO_PARA_O_TEXTO,
+              }
             : bloco,
         ),
       );
@@ -195,12 +197,13 @@ export default function Canvas({
     // seção que já tem foto: a nova vira outra seção, logo abaixo. Duas fotos
     // no mesmo quadrado seriam duas coisas disputando o mesmo espaço.
     if (dono.imagem) {
-      const { largura, altura } = tamanhoDoBloco(medida.largura, medida.altura);
+      const { largura } = tamanhoDoBloco(medida.largura, medida.altura);
+      const faixa = alturaDaFigura(largura, medida.largura, medida.altura);
       const nova = {
         ...criarBloco(dono.x, dono.y + dono.altura + ESPACO),
-        imagem,
+        imagem: { ...imagem, altura: faixa },
         largura,
-        altura: altura + ESPACO_DA_ALCA,
+        altura: faixa + ESPACO_PARA_O_TEXTO,
       };
       onChange([...agora, nova]);
       setAtivoId(nova.id);
@@ -263,8 +266,13 @@ export default function Canvas({
     setCriadoRecentemente(copia.id);
   }
 
+  /**
+   * Seção vazia que perde o foco vai embora — ela só existia porque alguém
+   * clicou por engano. Mas seção com figura NUNCA some por não ter texto: a
+   * foto é o conteúdo dela, e sumir levaria o que a pessoa acabou de colar.
+   */
   function handleBlurTexto(bloco: Bloco) {
-    if (bloco.texto.trim() !== '' || blocos.length <= 1) return;
+    if (bloco.texto.trim() !== '' || bloco.imagem || blocos.length <= 1) return;
     onChange(blocos.filter((b) => b.id !== bloco.id));
   }
 
@@ -321,8 +329,6 @@ export default function Canvas({
         // uma foto colada mesmo quando não é Markdown nenhum.
         const endereco = bloco.imagem ? enderecoDaImagem(bloco.imagem.src) : null;
         const figura = endereco ? { ...bloco.imagem!, endereco } : null;
-        // seção que é SÓ a figura: ela ocupa a caixa inteira, sem campo de escrita
-        const soFigura = figura !== null && bloco.texto.trim() === '';
         return (
         <div
           key={bloco.id}
@@ -354,10 +360,7 @@ export default function Canvas({
               </svg>
             </button>
           )}
-          {soFigura ? (
-            <Figuras figura={figura} inteira />
-          ) : (
-            <Escrita
+          <Escrita
               bloco={bloco}
               realce={tipo === 'markdown'}
               achados={achadosDoBloco(achados, bloco.id)}
@@ -372,10 +375,9 @@ export default function Canvas({
               onSair={onSair}
               onDuplicar={() => handleDuplicarBloco(bloco)}
               onBlur={() => handleBlurTexto(bloco)}
-              alturaDaFigura={figura?.altura ?? (figura ? ALTURA_MINIMA_DA_FIGURA : 0)}
-            />
-          )}
-          {!soFigura && figura && (
+            alturaDaFigura={figura?.altura ?? (figura ? ALTURA_MINIMA_DA_FIGURA : 0)}
+          />
+          {figura && (
             <Figuras figura={figura} onMedida={(natural) => handleMedidaDaFigura(bloco, natural)} />
           )}
           <div

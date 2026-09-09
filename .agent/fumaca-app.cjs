@@ -128,6 +128,23 @@ async function perguntar(expressao) {
     console.log('figuras desenhadas na nota (larguras):', naTela || '(nenhuma)');
     if (!naTela) falhou = true;
 
+    // escrever na secao que tem foto: era o que travava depois de colar
+    const escreveu = await perguntar(`
+      (() => {
+        const campo = document.querySelector('.bloco .bloco__texto');
+        if (!campo) return 'SEM CAMPO DE ESCRITA na secao com foto';
+        campo.focus();
+        const setter = Object.getOwnPropertyDescriptor(
+          window.HTMLTextAreaElement.prototype, 'value',
+        ).set;
+        setter.call(campo, 'legenda escrita pelo teste');
+        campo.dispatchEvent(new Event('input', { bubbles: true }));
+        return document.activeElement === campo ? 'escreveu e manteve o foco' : 'perdeu o foco';
+      })()
+    `);
+    console.log('escrita na secao com foto:', escreveu);
+    if (!String(escreveu).startsWith('escreveu')) falhou = true;
+
     const erroDeCabecalho = erros.includes('ByteString');
     console.log('erro de cabecalho no main:', erroDeCabecalho ? 'RUIM' : 'nao');
     if (erroDeCabecalho) falhou = true;

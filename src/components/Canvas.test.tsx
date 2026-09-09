@@ -254,21 +254,21 @@ describe('figura colada na página', () => {
     return { onChange, onColarImagem };
   }
 
-  it('colada numa seção vazia, a figura ocupa essa seção', async () => {
+  it('colada numa seção vazia, a figura fica nela — e sobra onde escrever', async () => {
     const vazio = bloco('');
     const { onChange, onColarImagem } = montarComEspiao([vazio]);
 
     fireEvent.paste(screen.getByRole('textbox'), { clipboardData: areaDeTransferencia(png()) });
 
     await waitFor(() => expect(onColarImagem).toHaveBeenCalled());
-    await waitFor(() =>
-      expect(onChange).toHaveBeenCalledWith([
-        expect.objectContaining({ id: vazio.id, imagem: { src: 'anexos/abc123.png' } }),
-      ]),
-    );
-    // a figura é da seção: o texto dela não é usado para guardar a foto
     const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
+
+    expect(depois[0].id).toBe(vazio.id);
+    expect(depois[0].imagem?.src).toBe('anexos/abc123.png');
+    // a figura é da seção: o texto dela não é usado para guardar a foto
     expect(depois[0].texto).toBe('');
+    // e a seção é mais alta que a foto, para caber uma linha de escrita
+    expect(depois[0].altura).toBeGreaterThan(depois[0].imagem!.altura!);
   });
 
   it('colada num bloco com texto, a figura fica NESSE bloco, e não num quadrado novo', async () => {
@@ -306,7 +306,7 @@ describe('figura colada na página', () => {
 
     expect(depois).toHaveLength(2);
     expect(depois[0].imagem).toEqual({ src: 'anexos/ja-tinha.png' });
-    expect(depois[1].imagem).toEqual({ src: 'anexos/abc123.png' });
+    expect(depois[1].imagem?.src).toBe('anexos/abc123.png');
     expect(depois[1].y).toBeGreaterThan(comFigura.y + comFigura.altura);
   });
 
@@ -319,7 +319,7 @@ describe('figura colada na página', () => {
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
-    expect(depois[0].imagem).toEqual({
+    expect(depois[0].imagem).toMatchObject({
       src: 'anexos/abc123.png',
       fonte: 'https://exemplo.org/femur.png',
     });
@@ -334,12 +334,13 @@ describe('figura colada na página', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('a seção que é só uma figura aparece como figura, e não como texto', () => {
+  it('a seção só com figura também tem onde escrever: era o que travava', () => {
     montarComEspiao([{ ...bloco(''), imagem: { src: 'anexos/abc123.png' } }]);
 
     const figura = screen.getByRole('img', { name: 'Imagem colada na nota' });
     expect(figura).toHaveAttribute('src', 'ardosia://anexos/abc123.png');
-    expect(screen.queryByRole('textbox')).toBeNull();
+    // o campo de escrita existe mesmo sem texto nenhum
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
   });
 
   it('a figura aparece TAMBÉM em nota de texto puro — era aí que ela sumia', () => {
@@ -407,8 +408,10 @@ describe('tamanho da figura colada', () => {
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
-    // 270 da foto mais o espaço da alça, que senão cairia por cima dela
-    expect(depois[0]).toMatchObject({ largura: 480, altura: 294 });
+    // 1920x1080 numa seção de 480: sobram 456 de largura útil, e a foto pede
+    // 257 de faixa. A seção ganha isso mais a linha de escrita.
+    expect(depois[0]).toMatchObject({ largura: 480, altura: 257 + 44 });
+    expect(depois[0].imagem?.altura).toBe(257);
     vi.unstubAllGlobals();
   });
 });

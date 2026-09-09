@@ -30,7 +30,8 @@ A hierarquia é a mesma que o projeto já usava para as lições:
 | --- | --- | --- |
 | `node .agent/check-design.mjs` | escala tipográfica, raio, sombra, cor fora dos tokens, contraste WCAG | `DESIGN.md` |
 | `node .agent/check-arquitetura.mjs` | regra da dependência, varredura dentro de varredura, módulo grande demais, módulo sem teste | *Arquitetura Limpa*, *Entendendo Algoritmos*, *Refatoração*, *Trabalho Eficaz com Código Legado* |
-| `src/escala.test.ts` | como o custo cresce quando o caderno dobra de tamanho | Cormen, *Entendendo Algoritmos* |
+| `src/escala.test.ts` | contagem de operações: o que dá o mesmo número em qualquer máquina | Cormen, *Entendendo Algoritmos* |
+| `node .agent/check-escala.mjs` | a medição por relógio, sob demanda — fora do portão porque oscila | Cormen, *Entendendo Algoritmos* |
 
 ---
 
@@ -68,8 +69,13 @@ vez por nota. Com mil notas, um milhão de varreduras. O app continuaria
 "funcionando" nos testes e travaria na mão de quem tem caderno grande.
 
 **Cobrado por:** `check-arquitetura.mjs` regra 2 (varredura em laço) e
-`src/escala.test.ts`, que mede como o custo cresce ao dobrar a entrada — e que
-tem um caso propositalmente quadrático para provar que a régua acusa.
+`src/escala.test.ts`, que conta operações — e que tem um caso propositalmente
+quadrático para provar que a régua acusa.
+
+A medição por **relógio** saiu da bateria e virou `node .agent/check-escala.mjs`.
+O motivo é uma lição desta sessão: com a máquina ocupada, o tempo oscilava e o
+portão derrubava por motivo errado. Portão que falha sem defeito treina a gente
+a ignorá-lo, o que é pior do que não medir.
 
 ## 3. Refatorar só com o teste verde dos dois lados
 
@@ -144,6 +150,10 @@ desde o começo.
 2. `node .agent/check-design.mjs` — a direção visual.
 3. `node .agent/check-arquitetura.mjs` — as regras acima.
 4. Mudou a tela? Um `.agent/fumaca-*.cjs` desenha e mede, e eu olho a captura.
+   Mexeu em algo que só existe no aplicativo instalado — protocolo, janela,
+   ponte, nome do app? Então `node .agent/fumaca-app.cjs`, que sobe o app **de
+   verdade**: foi um defeito invisível a todos os outros testes (o acento no
+   nome do app quebrando o protocolo) que obrigou a criá-lo.
 5. Mudou comportamento? O commit diz o que mudou e por quê, e os testes da
    regra antiga foram reescritos, não apagados.
 6. Errou? A lição entra em `.agent/licoes.md` com o contador, para não voltar.

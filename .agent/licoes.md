@@ -48,3 +48,6 @@ próximas tarefas. Gerado pelo run.mjs — pode editar e reescrever à mão.
 - (1x) fumaca rodado como script solto (`electron arquivo.cjs`) NAO tem o nome do app: para reproduzir o que o usuario ve, suba o app de verdade (`electron .`), senao a variavel que quebra fica de fora do teste
 - (1x) porta de depuracao remota 9222 costuma estar ocupada por outro Chrome da maquina: o teste conecta na janela errada e mede outro programa. Use porta alta e confira a URL do alvo
 - (1x) teste de complexidade nao pode depender de relogio numa maquina ocupada: conte operacoes, que da o mesmo numero em qualquer lugar
+- (1x) secao so com figura sem campo de escrita trava a nota: depois de colar nao havia onde escrever legenda nenhuma. Toda secao precisa de campo, mesmo quando o conteudo dela e uma foto
+- (1x) apagar bloco vazio no blur leva junto a secao que so tem figura — o texto esta vazio, mas o conteudo dela e a foto
+- (1x) teste que mede tempo nao pertence ao portao: numa maquina ocupada ele derruba por motivo errado, e portao que falha sem defeito treina a ignora-lo. Contagem de operacoes na bateria; relogio num verificador a parte
