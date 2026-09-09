@@ -30,3 +30,7 @@ próximas tarefas. Gerado pelo run.mjs — pode editar e reescrever à mão.
 - (1x) escreva o arquivo antes de renomea-lo: na primeira gravacao o nome provisorio ainda nao existe no disco
 - (1x) o jsdom nao implementa scrollIntoView: preencha no test-setup, e nao com uma guarda no componente — defesa no codigo de producao para limitacao do ambiente de teste mente sobre o que o codigo precisa
 - (1x) pagina de fumaca sem a arvore de layout do app da tamanho errado ao container, e elementFromPoint com coordenada chutada mede o lugar errado: ancore o ponto no getBoundingClientRect do proprio elemento
+- (1x) `npm run lancar` em segundo plano falha nesta maquina e o erro chega truncado (so `pid/stdout/stderr null`): lance em primeiro plano, mesmo demorando
+- (1x) decisao de comportamento visual escolhida por descricao escrita nao vale: o usuario aprovou "a figura nasce abaixo" no texto e recusou ao ver funcionando. Ofereca a escolha depois de mostrar, ou implemente o caminho que ele descreveu com as proprias palavras
+- (1x) area de transferencia pode trazer mais de uma versao da mesma imagem (miniatura + original): pegar a primeira cola a miniatura. Escolha a maior
+- (1x) fumaca de Electron sem try/catch em volta do executeJavaScript trava para sempre quando um seletor nao casa: a promessa fica pendurada e o app nunca sai
