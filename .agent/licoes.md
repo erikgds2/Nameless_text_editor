@@ -34,3 +34,5 @@ próximas tarefas. Gerado pelo run.mjs — pode editar e reescrever à mão.
 - (1x) decisao de comportamento visual escolhida por descricao escrita nao vale: o usuario aprovou "a figura nasce abaixo" no texto e recusou ao ver funcionando. Ofereca a escolha depois de mostrar, ou implemente o caminho que ele descreveu com as proprias palavras
 - (1x) area de transferencia pode trazer mais de uma versao da mesma imagem (miniatura + original): pegar a primeira cola a miniatura. Escolha a maior
 - (1x) fumaca de Electron sem try/catch em volta do executeJavaScript trava para sempre quando um seletor nao casa: a promessa fica pendurada e o app nunca sai
+- (1x) conteudo da nota nunca pode depender do TIPO dela: a foto amarrada a `tipo === 'markdown'` sumia em nota de texto puro, e o app dizia que estava tudo bem. O que a secao guarda vai no marcador do bloco, nao no texto
+- (1x) teste de modulo nao pega bug de integracao: a colagem tinha 37 testes de unidade verdes e gravava a foto sem escrever na nota. Cubra o caminho inteiro (App -> componente -> deposito -> arquivo)
