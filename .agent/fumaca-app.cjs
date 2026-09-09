@@ -128,6 +128,19 @@ async function perguntar(expressao) {
     console.log('figuras desenhadas na nota (larguras):', naTela || '(nenhuma)');
     if (!naTela) falhou = true;
 
+    // clicar NA FOTO tem de levar o cursor para o texto: e onde a mao vai
+    const cliqueNaFoto = await perguntar(`
+      (() => {
+        const foto = document.querySelector('.bloco__figura');
+        if (!foto) return 'sem figura na tela';
+        foto.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        const campo = document.querySelector('.bloco .bloco__texto');
+        return document.activeElement === campo ? 'cursor foi para o texto' : 'clique nao fez nada';
+      })()
+    `);
+    console.log('clicar na foto:', cliqueNaFoto);
+    if (cliqueNaFoto !== 'cursor foi para o texto') falhou = true;
+
     // escrever na secao que tem foto: era o que travava depois de colar
     const escreveu = await perguntar(`
       (() => {

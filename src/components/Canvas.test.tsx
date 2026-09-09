@@ -410,7 +410,7 @@ describe('tamanho da figura colada', () => {
     const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
     // 1920x1080 numa seção de 480: sobram 456 de largura útil, e a foto pede
     // 257 de faixa. A seção ganha isso mais a linha de escrita.
-    expect(depois[0]).toMatchObject({ largura: 480, altura: 257 + 44 });
+    expect(depois[0]).toMatchObject({ largura: 480, altura: 257 + 72 });
     expect(depois[0].imagem?.altura).toBe(257);
     vi.unstubAllGlobals();
   });
@@ -698,7 +698,7 @@ describe('nota colada por uma versão antiga: a foto se mede sozinha', () => {
 
     const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
     expect(depois[0].imagem).toEqual({ src: 'anexos/a.png', altura: 402 });
-    expect(depois[0].altura).toBe(402 + 44);
+    expect(depois[0].altura).toBe(402 + 72);
   });
 
   it('quando a seção já sabe a medida, desenhar não mexe em nada', () => {
@@ -923,11 +923,71 @@ describe('foto que veio do cache', () => {
 
     const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
     expect(depois[0].imagem).toEqual({ src: 'anexos/a.png', altura: 402 });
-    expect(depois[0].altura).toBe(402 + 44);
+    expect(depois[0].altura).toBe(402 + 72);
 
     // devolve o jsdom ao que era, para não contaminar os outros testes
     for (const prop of ['complete', 'naturalWidth', 'naturalHeight']) {
       delete (HTMLImageElement.prototype as unknown as Record<string, unknown>)[prop];
     }
+  });
+});
+
+describe('escrever na seção que tem foto', () => {
+  function comFoto(texto = 'Legenda') {
+    render(
+      <Canvas
+        blocos={[{ ...bloco(texto), imagem: { src: 'anexos/a.png', altura: 200 } }]}
+        tipo="texto"
+        onChange={vi.fn()}
+        onColarImagem={vi.fn(async () => 'x.png')}
+        titulos={[]}
+        trechos={{}}
+        achados={[]}
+        achadoAtual={null}
+        onSair={vi.fn()}
+        onRecado={vi.fn()}
+      />,
+    );
+  }
+
+  it('clicar na foto põe o cursor no texto, no fim do que já está escrito', () => {
+    comFoto('Legenda');
+    const campo = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+    fireEvent.mouseDown(screen.getByRole('img', { name: 'Imagem colada na nota' }));
+
+    expect(campo).toHaveFocus();
+    expect(campo.selectionStart).toBe('Legenda'.length);
+  });
+
+  it('clicar no link da origem não rouba o cursor', () => {
+    render(
+      <Canvas
+        blocos={[
+          {
+            ...bloco('Legenda'),
+            imagem: { src: 'anexos/a.png', altura: 200, fonte: 'https://exemplo.org' },
+          },
+        ]}
+        tipo="texto"
+        onChange={vi.fn()}
+        onColarImagem={vi.fn(async () => 'x.png')}
+        titulos={[]}
+        trechos={{}}
+        achados={[]}
+        achadoAtual={null}
+        onSair={vi.fn()}
+        onRecado={vi.fn()}
+      />,
+    );
+
+    fireEvent.mouseDown(screen.getByRole('link', { name: 'Abrir a origem da imagem' }));
+    expect(screen.getByRole('textbox')).not.toHaveFocus();
+  });
+
+  it('a seção sem texto nenhum também aceita o clique na foto', () => {
+    comFoto('');
+    fireEvent.mouseDown(screen.getByRole('img', { name: 'Imagem colada na nota' }));
+    expect(screen.getByRole('textbox')).toHaveFocus();
   });
 });

@@ -12,11 +12,14 @@ export default function Figuras({
   figura,
   inteira = false,
   onMedida,
+  onEscrever,
 }: {
   figura: Imagem & { endereco: string };
   inteira?: boolean;
   /** Só é chamado quando a seção ainda não sabe quanto a foto pede. */
   onMedida?: (natural: { largura: number; altura: number }) => void;
+  /** Clicar na foto escreve na seção: é onde a mão vai, numa folha de papel. */
+  onEscrever?: () => void;
 }) {
   const [falhou, setFalhou] = useState(false);
   /**
@@ -50,7 +53,15 @@ export default function Figuras({
       className={inteira ? 'bloco__figuras bloco__figuras--inteira' : 'bloco__figuras'}
       style={inteira ? undefined : ({ '--figura': `${figura.altura ?? ALTURA_MINIMA_DA_FIGURA}px` } as CSSProperties)}
     >
-      <div className="bloco__figura">
+      <div
+        className="bloco__figura"
+        onMouseDown={(evento) => {
+          // o link da origem tem clique proprio; o resto da foto escreve
+          if ((evento.target as HTMLElement).closest('.bloco__origem')) return;
+          evento.preventDefault();
+          onEscrever?.();
+        }}
+      >
         {falhou && (
           <p className="bloco__figura-quebrada" role="alert">
             Não foi possível abrir esta imagem.
