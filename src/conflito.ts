@@ -23,6 +23,33 @@ export type Juncao = {
   conflitos: Conflito[];
 };
 
+/**
+ * O id de um bloco nasce de `crypto.randomUUID()` toda vez que o arquivo é
+ * lido — ou seja, **toda releitura da pasta troca a identidade de todos os
+ * blocos**. Quem estava com o cursor num bloco, ou no meio de colar uma foto
+ * nele, perdia o bloco de vista: o id que tinha em mãos deixava de existir.
+ *
+ * Aqui os ids da tela são reaproveitados pelos blocos do disco que ocupam o
+ * mesmo lugar na página. A posição é o que identifica uma seção para quem está
+ * olhando, e é o que sobrevive a uma ida e volta pelo arquivo.
+ */
+export function preservarIdsDosBlocos(doDisco: Note, naTela: Note | undefined): Note {
+  if (!naTela) return doDisco;
+
+  const disponiveis = new Map(naTela.blocos.map((bloco) => [`${bloco.x}:${bloco.y}`, bloco.id]));
+  const blocos = doDisco.blocos.map((bloco) => {
+    const chave = `${bloco.x}:${bloco.y}`;
+    const id = disponiveis.get(chave);
+    if (id === undefined) return bloco;
+    // cada id só é reaproveitado uma vez: dois blocos com o mesmo id seriam o
+    // mesmo bloco para o React
+    disponiveis.delete(chave);
+    return { ...bloco, id };
+  });
+
+  return { ...doDisco, blocos };
+}
+
 export function juntarComDisco(
   anteriores: Note[],
   doDisco: Note[],
@@ -35,8 +62,12 @@ export function juntarComDisco(
   );
   const porId = new Map(preservadas.map((nota) => [nota.id, nota]));
 
+  const antesPorId = new Map(anteriores.map((nota) => [nota.id, nota]));
+
   const conflitos: Conflito[] = [];
-  const juntas = doDisco.map((doArquivo) => {
+  const juntas = doDisco.map((doArquivoCru) => {
+    // a nota volta do disco com os ids de bloco que já estavam na tela
+    const doArquivo = preservarIdsDosBlocos(doArquivoCru, antesPorId.get(doArquivoCru.id));
     const naTela = porId.get(doArquivo.id);
     // a nota em branco só é preservada enquanto não existe arquivo dela: se o
     // arquivo existe e tem texto, o texto é a novidade, e é ele que aparece

@@ -36,3 +36,7 @@ próximas tarefas. Gerado pelo run.mjs — pode editar e reescrever à mão.
 - (1x) fumaca de Electron sem try/catch em volta do executeJavaScript trava para sempre quando um seletor nao casa: a promessa fica pendurada e o app nunca sai
 - (1x) conteudo da nota nunca pode depender do TIPO dela: a foto amarrada a `tipo === 'markdown'` sumia em nota de texto puro, e o app dizia que estava tudo bem. O que a secao guarda vai no marcador do bloco, nao no texto
 - (1x) teste de modulo nao pega bug de integracao: a colagem tinha 37 testes de unidade verdes e gravava a foto sem escrever na nota. Cubra o caminho inteiro (App -> componente -> deposito -> arquivo)
+- (1x) id de bloco gerado por randomUUID a cada leitura do arquivo faz TODA releitura da pasta trocar a identidade de todos os blocos: quem estava com o cursor num bloco, ou no meio de um await, perde o bloco de vista. Preserve os ids casando por posicao
+- (1x) `agora.map(b => b.id === alvo.id ? mudar(b) : b)` que nao casa nenhum id nao falha: devolve a lista inalterada e o trabalho some em silencio. Depois de um await, sempre trate o caso de o alvo ter deixado de existir
+- (1x) medir DESENHO nao e medir CARREGAMENTO: passei tres rodadas conferindo tamanho de imagem enquanto o defeito era a foto nunca chegar ao bloco. Quando o usuario diz 'quebrada', teste o onerror, nao o layout
+- (1x) teste que mede tempo com entrada pequena e instavel: o caso quadratico com 120 itens cabia no ruido do relogio e acusava por sorte. Base grande o bastante para a diferenca sair do ruido

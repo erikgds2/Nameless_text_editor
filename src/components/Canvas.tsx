@@ -155,7 +155,28 @@ export default function Canvas({
 
     const imagem: Imagem = { src: `anexos/${nome}`, ...(origem ? { fonte: origem } : {}) };
     const agora = blocosRef.current;
-    const dono = agora.find((bloco) => bloco.id === alvo.id) ?? alvo;
+
+    // A seção pode ter mudado de identidade enquanto a imagem era lida e
+    // gravada: uma releitura da pasta reconstrói os blocos. Procura-se pelo id
+    // e, se ele não existir mais, pelo lugar que a seção ocupava na página.
+    const dono =
+      agora.find((bloco) => bloco.id === alvo.id) ??
+      agora.find((bloco) => bloco.x === alvo.x && bloco.y === alvo.y);
+
+    // sumiu de vez: a foto vira uma seção nova, onde a antiga estava. Perder o
+    // que a pessoa acabou de colar é o pior desfecho possível
+    if (!dono) {
+      const { largura, altura } = tamanhoDoBloco(medida.largura, medida.altura);
+      const nova = {
+        ...criarBloco(alvo.x, alvo.y),
+        imagem,
+        largura,
+        altura: altura + ESPACO_DA_ALCA,
+      };
+      onChange([...agora, nova]);
+      setAtivoId(nova.id);
+      return;
+    }
 
     // seção ainda em branco: a foto ocupa ela inteira, do tamanho da imagem
     if (dono.texto.trim() === '' && !dono.imagem) {

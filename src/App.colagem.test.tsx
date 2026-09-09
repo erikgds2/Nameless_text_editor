@@ -169,3 +169,60 @@ describe('colar imagem, do teclado ao arquivo', () => {
     expect(arquivos.get('aula')).not.toContain('img=');
   });
 });
+
+/**
+ * O caso que vinha se perdendo na mão do usuário e que nenhum teste pegava.
+ *
+ * Recortar a tela com Win+Shift+S tira o foco da janela. Ao voltar, o app relê
+ * a pasta — e a releitura reconstrói os blocos com ids NOVOS, porque o id do
+ * bloco nasce de `crypto.randomUUID()` a cada leitura do arquivo. Se essa
+ * releitura chega no meio da colagem, o bloco em que se colou já não existe
+ * com aquele id, e a foto era descartada em silêncio: gravada no disco,
+ * ausente da nota.
+ */
+describe('colagem enquanto a pasta é relida', () => {
+  it('a foto não se perde quando a releitura troca os ids dos blocos', async () => {
+    const { ponte, arquivos } = pastaFalsa({ aula: nota('aula', 'Anatomia', 'texto') });
+
+    // a gravação do anexo fica pendurada de propósito: é a janela em que a
+    // releitura da pasta cabe, e é o tamanho dela na vida real (um IPC)
+    let liberarAnexo!: () => void;
+    const anexoGravado = new Promise<void>((resolve) => {
+      liberarAnexo = resolve;
+    });
+    const original = ponte.salvarAnexo;
+    ponte.salvarAnexo = async (bytes: Uint8Array, tipo: string) => {
+      await anexoGravado;
+      return original(bytes, tipo);
+    };
+
+    vi.stubGlobal('ardosia', ponte);
+    render(<App />);
+
+    const campo = await screen.findByDisplayValue('Anatomia');
+    colar(campo);
+
+    // ao voltar da ferramenta de captura a janela reganha o foco, o app relê a
+    // pasta, e os blocos renascem com ids novos — no meio da colagem
+    window.dispatchEvent(new Event('focus'));
+    await waitFor(() => expect(ponte.listar).toBeDefined());
+    await Promise.resolve();
+
+    liberarAnexo();
+
+    await screen.findByRole('img', { name: 'Imagem colada na nota' });
+    await waitFor(() => expect(arquivos.get('aula')).toContain('img=anexos/1.png'));
+  });
+
+  it('o texto que já estava na nota continua lá depois disso', async () => {
+    const { ponte, arquivos } = pastaFalsa({ aula: nota('aula', 'Anatomia', 'texto') });
+    vi.stubGlobal('ardosia', ponte);
+    render(<App />);
+
+    colar(await screen.findByDisplayValue('Anatomia'));
+    window.dispatchEvent(new Event('focus'));
+
+    await waitFor(() => expect(arquivos.get('aula')).toContain('img='));
+    expect(desserializar(arquivos.get('aula')!, 'aula').blocos[0].texto).toBe('Anatomia');
+  });
+});

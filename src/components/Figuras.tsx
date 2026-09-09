@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { Imagem } from '../canvas';
 import { ALTURA_MINIMA_DA_FIGURA } from '../imagem';
@@ -17,18 +18,28 @@ export default function Figuras({
   /** Só é chamado quando a seção ainda não sabe quanto a foto pede. */
   onMedida?: (natural: { largura: number; altura: number }) => void;
 }) {
+  const [falhou, setFalhou] = useState(false);
   return (
     <div
       className={inteira ? 'bloco__figuras bloco__figuras--inteira' : 'bloco__figuras'}
       style={inteira ? undefined : ({ '--figura': `${figura.altura ?? ALTURA_MINIMA_DA_FIGURA}px` } as CSSProperties)}
     >
       <div className="bloco__figura">
+        {falhou && (
+          <p className="bloco__figura-quebrada" role="alert">
+            Não foi possível abrir esta imagem.
+            <span>{figura.src}</span>
+          </p>
+        )}
         <img
           className="bloco__imagem"
           src={figura.endereco}
           alt="Imagem colada na nota"
           draggable={false}
+          hidden={falhou}
+          onError={() => setFalhou(true)}
           onLoad={(evento) => {
+            setFalhou(false);
             // Nota colada por uma versão que ainda não guardava o tamanho da
             // faixa: a foto se mede na primeira vez que é desenhada, e a seção
             // aprende quanto ela pede. Sem isto, ela abriria espremida no piso.

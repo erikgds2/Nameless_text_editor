@@ -731,3 +731,128 @@ describe('nota colada por uma versão antiga: a foto se mede sozinha', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+describe('a seção troca de identidade no meio da colagem', () => {
+  function png() {
+    return new File([new Uint8Array([137, 80, 78, 71])], 'print.png', { type: 'image/png' });
+  }
+
+  function area() {
+    const arquivo = png();
+    return {
+      items: [{ kind: 'file', type: 'image/png', getAsFile: () => arquivo }],
+      getData: () => '',
+    };
+  }
+
+  /**
+   * É o que a releitura da pasta fazia: os blocos voltam do arquivo com ids
+   * novos. Quem estava colando ficava com um id que não existe mais.
+   */
+  it('a foto vai para a seção que ocupa o mesmo lugar na página', async () => {
+    const antes = { ...bloco('Anatomia'), x: 15, y: 15 };
+    const onChange = vi.fn();
+
+    const { rerender } = render(
+      <Canvas
+        blocos={[antes]}
+        tipo="texto"
+        onChange={onChange}
+        onColarImagem={vi.fn(async () => 'abc123.png')}
+        titulos={[]}
+        trechos={{}}
+        achados={[]}
+        achadoAtual={null}
+        onSair={vi.fn()}
+        onRecado={vi.fn()}
+      />,
+    );
+
+    fireEvent.paste(screen.getByRole('textbox'), { clipboardData: area() });
+
+    // no meio da colagem, o mesmo bloco volta com outro id
+    const renascido = { ...antes, id: 'id-novo-depois-da-releitura' };
+    rerender(
+      <Canvas
+        blocos={[renascido]}
+        tipo="texto"
+        onChange={onChange}
+        onColarImagem={vi.fn(async () => 'abc123.png')}
+        titulos={[]}
+        trechos={{}}
+        achados={[]}
+        achadoAtual={null}
+        onSair={vi.fn()}
+        onRecado={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
+
+    expect(depois).toHaveLength(1);
+    expect(depois[0].id).toBe('id-novo-depois-da-releitura');
+    expect(depois[0].imagem?.src).toBe('anexos/abc123.png');
+  });
+
+  it('se a seção sumiu de vez, a foto vira uma seção nova em vez de se perder', async () => {
+    const antes = { ...bloco('Anatomia'), x: 15, y: 15 };
+    const outro = { ...bloco('outra seção'), x: 400, y: 400 };
+    const onChange = vi.fn();
+
+    const props = {
+      tipo: 'texto' as const,
+      onChange,
+      onColarImagem: vi.fn(async () => 'abc123.png'),
+      titulos: [],
+      trechos: {},
+      achados: [],
+      achadoAtual: null,
+      onSair: vi.fn(),
+      onRecado: vi.fn(),
+    };
+
+    const { rerender } = render(<Canvas blocos={[antes]} {...props} />);
+    fireEvent.paste(screen.getByRole('textbox'), { clipboardData: area() });
+    rerender(<Canvas blocos={[outro]} {...props} />);
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
+
+    expect(depois).toHaveLength(2);
+    expect(depois[1].imagem?.src).toBe('anexos/abc123.png');
+    expect(depois[1]).toMatchObject({ x: 15, y: 15 });
+  });
+});
+
+describe('imagem que não abre', () => {
+  function comFigura() {
+    render(
+      <Canvas
+        blocos={[{ ...bloco(''), imagem: { src: 'anexos/sumiu.png', altura: 200 } }]}
+        tipo="texto"
+        onChange={vi.fn()}
+        onColarImagem={vi.fn(async () => 'x.png')}
+        titulos={[]}
+        trechos={{}}
+        achados={[]}
+        achadoAtual={null}
+        onSair={vi.fn()}
+        onRecado={vi.fn()}
+      />,
+    );
+  }
+
+  it('em vez do ícone de quebrada, a seção diz o que houve e qual arquivo', () => {
+    comFigura();
+    fireEvent.error(screen.getByRole('img', { name: 'Imagem colada na nota' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível abrir esta imagem');
+    expect(screen.getByText('anexos/sumiu.png')).toBeInTheDocument();
+  });
+
+  it('imagem que abre não mostra aviso nenhum', () => {
+    comFigura();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});

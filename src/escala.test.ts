@@ -97,10 +97,12 @@ describe('o caderno grande não pode travar o app', () => {
    * agora na forma de um medidor que nunca acusa nada.
    */
   it('a régua acusa quando o trabalho É quadrático', () => {
+    // base maior de propósito: com poucas notas o trabalho quadrático ainda
+    // cabe no ruído do relógio, e o teste passava a acusar por sorte
     const { razao } = crescimentoAceitavel(
       (notas) => notas.forEach(() => notas.forEach((nota) => textoDaNota(nota.blocos))),
       3,
-      120,
+      250,
     );
     expect(razao).toBeGreaterThan(3);
   });

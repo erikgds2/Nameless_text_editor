@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { juntarComDisco } from './conflito';
+import { juntarComDisco, preservarIdsDosBlocos } from './conflito';
 import { createNote, type Note } from './notes';
 import { criarBloco } from './canvas';
 
@@ -79,5 +79,55 @@ describe('juntarComDisco', () => {
 
     expect(conflitos.map((c) => c.id)).toEqual(['a']);
     expect(notas.find((n) => n.id === 'b')?.blocos[0].texto).toBe('atualizada por fora');
+  });
+});
+
+describe('preservarIdsDosBlocos', () => {
+  function comBlocos(id: string, ...posicoes: [number, number, string][]): Note {
+    const base = createNote();
+    return {
+      ...base,
+      id,
+      blocos: posicoes.map(([x, y, texto]) => ({ ...criarBloco(x, y), texto })),
+    };
+  }
+
+  it('o bloco que ocupa o mesmo lugar mantém o id que estava na tela', () => {
+    const naTela = comBlocos('a', [15, 15, 'Anatomia']);
+    const doDisco = comBlocos('a', [15, 15, 'Anatomia']);
+
+    const junta = preservarIdsDosBlocos(doDisco, naTela);
+    expect(junta.blocos[0].id).toBe(naTela.blocos[0].id);
+  });
+
+  it('bloco em lugar novo fica com o id que veio do disco', () => {
+    const naTela = comBlocos('a', [15, 15, 'Anatomia']);
+    const doDisco = comBlocos('a', [15, 15, 'Anatomia'], [15, 400, 'de fora']);
+
+    const junta = preservarIdsDosBlocos(doDisco, naTela);
+    expect(junta.blocos[0].id).toBe(naTela.blocos[0].id);
+    expect(junta.blocos[1].id).toBe(doDisco.blocos[1].id);
+  });
+
+  it('dois blocos nunca herdam o mesmo id: seriam o mesmo bloco para o React', () => {
+    const naTela = comBlocos('a', [15, 15, 'um']);
+    const doDisco = comBlocos('a', [15, 15, 'um'], [15, 15, 'outro no mesmo lugar']);
+
+    const ids = preservarIdsDosBlocos(doDisco, naTela).blocos.map((b) => b.id);
+    expect(new Set(ids).size).toBe(2);
+  });
+
+  it('nota que não estava na tela passa como veio', () => {
+    const doDisco = comBlocos('a', [15, 15, 'Anatomia']);
+    expect(preservarIdsDosBlocos(doDisco, undefined)).toBe(doDisco);
+  });
+
+  it('na junção, quem lê a pasta de novo continua com os mesmos blocos', () => {
+    const naTela = comBlocos('a', [15, 15, 'Anatomia']);
+    const doDisco = comBlocos('a', [15, 15, 'Anatomia editada por fora']);
+
+    const { notas } = juntarComDisco([naTela], [doDisco], nenhuma);
+    expect(notas[0].blocos[0].id).toBe(naTela.blocos[0].id);
+    expect(notas[0].blocos[0].texto).toBe('Anatomia editada por fora');
   });
 });

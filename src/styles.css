@@ -1675,3 +1675,26 @@ h1.editor__title {
   color: var(--ink);
   font-weight: 600;
 }
+
+/* A imagem não abriu. O ícone de quebrada do navegador não diz nada a quem
+   está escrevendo; o caminho do arquivo diz. */
+.bloco__figura-quebrada {
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  border: 1px dashed var(--alert);
+  border-radius: 4px;
+  color: var(--alert);
+  font-size: 12px;
+  text-align: center;
+}
+
+.bloco__figura-quebrada span {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
