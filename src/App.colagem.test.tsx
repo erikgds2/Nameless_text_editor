@@ -112,7 +112,8 @@ describe('colar imagem, do teclado ao arquivo', () => {
 
     const salva = desserializar(arquivos.get('fase-2')!, 'fase-2');
     expect(salva.tipo).toBe('texto');
-    expect(salva.blocos[0].imagem).toEqual({ src: 'anexos/1.png' });
+    // a faixa recebe a altura que a foto pede: 301x290 numa seção de 320
+    expect(salva.blocos[0].imagem).toEqual({ src: 'anexos/1.png', altura: 285 });
     expect(salva.blocos[0].texto).toBe('# Fase 2 no disco');
   });
 

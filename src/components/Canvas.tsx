@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import type { ClipboardEvent, KeyboardEvent, MouseEvent, PointerEvent, UIEvent } from 'react';
+import type {
+  ClipboardEvent,
+  KeyboardEvent,
+  MouseEvent,
+  PointerEvent,
+  UIEvent,
+} from 'react';
 import {
   ALTURA_MINIMA,
   ESPACO,
@@ -12,10 +18,12 @@ import {
   type Bloco,
   type Imagem,
 } from '../canvas';
+import Figuras from './Figuras';
 import { realcar } from '../markdown';
 import { achadosDoBloco, realcarAchados, type Ocorrencia } from '../busca';
 import {
-  ALTURA_DA_FIGURA,
+  ALTURA_MINIMA_DA_FIGURA,
+  alturaDaFigura,
   enderecoDaImagem,
   melhorImagem,
   origemDoHtml,
@@ -66,6 +74,16 @@ async function medirImagem(arquivo: File): Promise<{ largura: number; altura: nu
     return null;
   }
 }
+
+/**
+ * A alça de arrastar ocupa o alto da seção. Uma seção só de figura precisa
+ * desse tanto a mais, senão a foto é desenhada por baixo dela — e o que se vê
+ * é uma tarja atravessando a imagem.
+ */
+const ESPACO_DA_ALCA = 24;
+
+/** O que fica para o texto quando a seção cresce por causa de uma foto. */
+const ESPACO_PARA_O_TEXTO = 44;
 
 type Arraste =
   | { tipo: 'mover'; id: string; offsetX: number; offsetY: number }
@@ -143,7 +161,11 @@ export default function Canvas({
     if (dono.texto.trim() === '' && !dono.imagem) {
       const { largura, altura } = tamanhoDoBloco(medida.largura, medida.altura);
       onChange(
-        agora.map((bloco) => (bloco.id === dono.id ? { ...bloco, imagem, largura, altura } : bloco)),
+        agora.map((bloco) =>
+          bloco.id === dono.id
+            ? { ...bloco, imagem, largura, altura: altura + ESPACO_DA_ALCA }
+            : bloco,
+        ),
       );
       setAtivoId(dono.id);
       return;
@@ -153,19 +175,52 @@ export default function Canvas({
     // no mesmo quadrado seriam duas coisas disputando o mesmo espaço.
     if (dono.imagem) {
       const { largura, altura } = tamanhoDoBloco(medida.largura, medida.altura);
-      const nova = { ...criarBloco(dono.x, dono.y + dono.altura + ESPACO), imagem, largura, altura };
+      const nova = {
+        ...criarBloco(dono.x, dono.y + dono.altura + ESPACO),
+        imagem,
+        largura,
+        altura: altura + ESPACO_DA_ALCA,
+      };
       onChange([...agora, nova]);
       setAtivoId(nova.id);
       return;
     }
 
-    // seção com texto: a foto entra no rodapé DELA, e o quadrado cresce para caber
+    // seção com texto: a foto entra no rodapé DELA, e o quadrado cresce
+    // exatamente o que a foto pede — nem uma faixa fixa que a espreme, nem
+    // espaço vazio sobrando embaixo
+    const faixa = alturaDaFigura(dono.largura, medida.largura, medida.altura);
     onChange(
       agora.map((bloco) =>
-        bloco.id === dono.id ? { ...bloco, imagem, altura: bloco.altura + ALTURA_DA_FIGURA } : bloco,
+        bloco.id === dono.id
+          ? { ...bloco, imagem: { ...imagem, altura: faixa }, altura: bloco.altura + faixa }
+          : bloco,
       ),
     );
     setAtivoId(dono.id);
+  }
+
+  /**
+   * A seção aprende quanto a foto pede, na primeira vez que a foto é desenhada.
+   * Serve às notas coladas por versões que ainda não guardavam essa medida — e
+   * a seção cresce, se for preciso, para a foto não ficar espremida contra o
+   * texto que já estava lá.
+   */
+  function handleMedidaDaFigura(bloco: Bloco, natural: { largura: number; altura: number }) {
+    if (!bloco.imagem || bloco.imagem.altura) return;
+
+    const faixa = alturaDaFigura(bloco.largura, natural.largura, natural.altura);
+    onChange(
+      blocosRef.current.map((outro) =>
+        outro.id === bloco.id
+          ? {
+              ...outro,
+              imagem: { ...outro.imagem!, altura: faixa },
+              altura: Math.max(outro.altura, faixa + ESPACO_PARA_O_TEXTO),
+            }
+          : outro,
+      ),
+    );
   }
 
   // O bloco acompanha o texto, para baixo e de volta. Quem decide se é hora de
@@ -296,10 +351,12 @@ export default function Canvas({
               onSair={onSair}
               onDuplicar={() => handleDuplicarBloco(bloco)}
               onBlur={() => handleBlurTexto(bloco)}
-              alturaDaFigura={figura ? ALTURA_DA_FIGURA : 0}
+              alturaDaFigura={figura?.altura ?? (figura ? ALTURA_MINIMA_DA_FIGURA : 0)}
             />
           )}
-          {!soFigura && figura && <Figuras figura={figura} />}
+          {!soFigura && figura && (
+            <Figuras figura={figura} onMedida={(natural) => handleMedidaDaFigura(bloco, natural)} />
+          )}
           <div
             className="bloco__canto"
             onPointerDown={(event) => handlePointerDownCanto(event, bloco)}
@@ -309,53 +366,6 @@ export default function Canvas({
         </div>
         );
       })}
-    </div>
-  );
-}
-
-/**
- * As figuras de um bloco. `inteira` é o caso do bloco que não tem mais nada:
- * a foto ocupa a caixa toda. Senão, elas ficam numa faixa no rodapé, embaixo
- * do texto — que foi onde a pessoa colou.
- */
-function Figuras({
-  figura,
-  inteira = false,
-}: {
-  figura: Imagem & { endereco: string };
-  inteira?: boolean;
-}) {
-  return (
-    <div className={inteira ? 'bloco__figuras bloco__figuras--inteira' : 'bloco__figuras'}>
-      <div className="bloco__figura">
-        <img
-          className="bloco__imagem"
-          src={figura.endereco}
-          alt="Imagem colada na nota"
-          draggable={false}
-        />
-        {figura.fonte && (
-          <a
-            className="bloco__origem"
-            href={figura.fonte}
-            target="_blank"
-            rel="noreferrer"
-            title={`Abrir a origem: ${figura.fonte}`}
-            aria-label="Abrir a origem da imagem"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-              <path
-                d="M4.5 1H9v4.5M9 1L4.6 5.4M7.5 6.2V9H1V2.5h2.8"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </a>
-        )}
-      </div>
     </div>
   );
 }
@@ -563,7 +573,11 @@ function Escrita({
 
   // O texto para onde a figura começa. Vale para as três camadas juntas: se o
   // espelho não recuar igual, o realce descola das palavras.
-  const recuo = alturaDaFigura > 0 ? { bottom: `${alturaDaFigura}px` } : undefined;
+  // o mesmo teto do CSS da faixa: o texto nunca fica sem espaço
+  const recuo =
+    alturaDaFigura > 0
+      ? { bottom: `min(${alturaDaFigura}px, calc(100% - 44px))` }
+      : undefined;
 
   // As camadas de baixo têm de rolar junto com o texto, senão o realce
   // descola das palavras assim que o bloco passa da própria altura.

@@ -21,7 +21,9 @@ export function serializar(nota: Note): string {
     .sort((a, b) => a.y - b.y || a.x - b.x)
     .map((bloco) => {
       const figura = bloco.imagem
-        ? ` img=${bloco.imagem.src}${bloco.imagem.fonte ? ` fonte=${bloco.imagem.fonte}` : ''}`
+        ? ` img=${bloco.imagem.src}` +
+          (bloco.imagem.altura ? ` imgh=${bloco.imagem.altura}` : '') +
+          (bloco.imagem.fonte ? ` fonte=${bloco.imagem.fonte}` : '')
         : '';
       const marcador = `<!-- ardosia:bloco x=${bloco.x} y=${bloco.y} w=${bloco.largura} h=${bloco.altura}${figura} -->`;
       return bloco.texto ? `${marcador}\n${bloco.texto}` : marcador;
@@ -113,7 +115,7 @@ function extrairBlocos(corpo: string): Bloco[] {
         largura: geometriaTamanho(atributos.w, LARGURA_PADRAO, LARGURA_MINIMA),
         altura: geometriaTamanho(atributos.h, ALTURA_PADRAO, ALTURA_MINIMA),
         texto,
-        ...(imagemDoAtributo(atributos.img, atributos.fonte) ?? {}),
+        ...(imagemDoAtributo(atributos.img, atributos.fonte, atributos.imgh) ?? {}),
       }),
     );
   });
@@ -126,10 +128,18 @@ function blocoComTexto(x: number, y: number, texto: string): Bloco {
 }
 
 /** `img=anexos/abc.png` no marcador, validado como qualquer caminho de anexo. */
-function imagemDoAtributo(src?: string, fonte?: string): { imagem: Imagem } | null {
+function imagemDoAtributo(src?: string, fonte?: string, imgh?: string): { imagem: Imagem } | null {
   const figura = src ? imagemDoBloco(`![](${src})`) : null;
   if (!figura) return null;
-  return { imagem: { src: figura.src, ...(fonte && ehFonteValida(fonte) ? { fonte } : {}) } };
+
+  const altura = Number(imgh);
+  return {
+    imagem: {
+      src: figura.src,
+      ...(fonte && ehFonteValida(fonte) ? { fonte } : {}),
+      ...(Number.isFinite(altura) && altura > 0 ? { altura: Math.round(altura) } : {}),
+    },
+  };
 }
 
 function ehFonteValida(fonte: string): boolean {

@@ -282,11 +282,13 @@ describe('figura colada na página', () => {
 
     expect(depois).toHaveLength(1);
     expect(depois[0].id).toBe(escrito.id);
-    expect(depois[0].imagem).toEqual({ src: 'anexos/abc123.png' });
+    expect(depois[0].imagem?.src).toBe('anexos/abc123.png');
     // o texto que já estava lá fica intacto
     expect(depois[0].texto).toBe('Anatomia do fêmur');
-    // e o bloco cresce para a foto caber sem empurrar o que estava escrito
-    expect(depois[0].altura).toBeGreaterThan(escrito.altura);
+    // a faixa tem a altura que a foto pede, e o bloco cresce exatamente isso
+    const faixa = depois[0].imagem?.altura ?? 0;
+    expect(faixa).toBeGreaterThan(0);
+    expect(depois[0].altura).toBe(escrito.altura + faixa);
   });
 
   it('seção que já tem foto: a segunda vira outra seção, logo abaixo', async () => {
@@ -405,7 +407,8 @@ describe('tamanho da figura colada', () => {
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
-    expect(depois[0]).toMatchObject({ largura: 480, altura: 270 });
+    // 270 da foto mais o espaço da alça, que senão cairia por cima dela
+    expect(depois[0]).toMatchObject({ largura: 480, altura: 294 });
     vi.unstubAllGlobals();
   });
 });
@@ -657,5 +660,74 @@ describe('imagem que não dá para ler', () => {
     const [bytes] = onColarImagem.mock.calls[0] as unknown as [Uint8Array, string];
     expect(bytes.length).toBe(5000);
     vi.unstubAllGlobals();
+  });
+});
+
+describe('nota colada por uma versão antiga: a foto se mede sozinha', () => {
+  function comFiguraSemAltura() {
+    const onChange = vi.fn();
+    render(
+      <Canvas
+        blocos={[{ ...bloco('Anatomia'), largura: 320, altura: 185, imagem: { src: 'anexos/a.png' } }]}
+        tipo="texto"
+        onChange={onChange}
+        onColarImagem={vi.fn(async () => 'x.png')}
+        titulos={[]}
+        trechos={{}}
+        achados={[]}
+        achadoAtual={null}
+        onSair={vi.fn()}
+        onRecado={vi.fn()}
+      />,
+    );
+    return onChange;
+  }
+
+  it('ao desenhar, a seção aprende quanto a foto pede e cresce para caber', () => {
+    const onChange = comFiguraSemAltura();
+    const img = screen.getByRole('img', { name: 'Imagem colada na nota' });
+
+    // o jsdom não decodifica imagem: as dimensões entram na mão, como o
+    // navegador as entregaria no onLoad
+    Object.defineProperty(img, 'naturalWidth', { value: 260, configurable: true });
+    Object.defineProperty(img, 'naturalHeight', { value: 402, configurable: true });
+    fireEvent.load(img);
+
+    const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
+    expect(depois[0].imagem).toEqual({ src: 'anexos/a.png', altura: 402 });
+    expect(depois[0].altura).toBe(402 + 44);
+  });
+
+  it('quando a seção já sabe a medida, desenhar não mexe em nada', () => {
+    const onChange = vi.fn();
+    render(
+      <Canvas
+        blocos={[
+          { ...bloco('Anatomia'), altura: 500, imagem: { src: 'anexos/a.png', altura: 300 } },
+        ]}
+        tipo="texto"
+        onChange={onChange}
+        onColarImagem={vi.fn(async () => 'x.png')}
+        titulos={[]}
+        trechos={{}}
+        achados={[]}
+        achadoAtual={null}
+        onSair={vi.fn()}
+        onRecado={vi.fn()}
+      />,
+    );
+
+    fireEvent.load(screen.getByRole('img', { name: 'Imagem colada na nota' }));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('imagem que não carrega não muda a seção', () => {
+    const onChange = comFiguraSemAltura();
+    const img = screen.getByRole('img', { name: 'Imagem colada na nota' });
+
+    Object.defineProperty(img, 'naturalWidth', { value: 0, configurable: true });
+    fireEvent.load(img);
+
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

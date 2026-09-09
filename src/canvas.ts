@@ -22,6 +22,15 @@ export type Imagem = {
   src: string;
   /** De onde o print veio, quando a área de transferência soube dizer. */
   fonte?: string;
+  /**
+   * Quanto do rodapé da seção a foto ocupa, em pixels. É o tamanho DELA, e não
+   * uma faixa fixa: uma foto alta pedia mais espaço do que qualquer constante
+   * daria, e aparecia espremida a um terço do que é.
+   *
+   * Só vale quando a seção também tem texto — sozinha, a foto ocupa a seção
+   * inteira. E nunca engole o texto: o CSS a limita ao que sobra da caixa.
+   */
+  altura?: number;
 };
 
 export const LARGURA_PADRAO = 320;

@@ -1260,6 +1260,10 @@ button {
    Duas situações: o bloco que é só a figura (ela ocupa a caixa inteira) e o
    bloco que tem texto e ganhou uma foto colada — aí ela fica no rodapé, logo
    abaixo do que estava escrito, dentro do mesmo quadrado. */
+/* A faixa tem a altura que a FOTO pede, e não uma constante: um print alto
+   espremido numa faixa fixa fica ilegível, que era o defeito. O teto de
+   `calc(100% - 44px)` é o que impede a foto de engolir o texto quando a seção
+   é encolhida pelo canto. */
 .bloco__figuras {
   position: absolute;
   left: 0;
@@ -1267,7 +1271,8 @@ button {
   bottom: 0;
   display: flex;
   gap: 8px;
-  height: 180px;
+  height: var(--figura, 180px);
+  max-height: calc(100% - 44px);
   padding: 4px 12px 12px;
 }
 

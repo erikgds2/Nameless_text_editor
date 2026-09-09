@@ -20,34 +20,33 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'ardosia', privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
+// Os dois blocos exatamente como estao na nota do usuario, com as imagens
+// dele: bloco misto de 320x365 com foto 260x402, e bloco so-figura 373x165.
 const PAGINA = (css) => `<!doctype html>
 <html data-theme="carvao"><head><meta charset="utf-8"><style>${css}
   body { background: var(--base); }
-  .canvas { height: 560px; }
+  .canvas { height: 620px; }
 </style></head>
 <body>
   <div class="canvas">
-    <!-- o caso que o usuario relatou: colou no quadrado que ja tinha texto -->
-    <div class="bloco bloco--puro bloco--ativo" id="misto" class2="bloco--puro" style="left:40px;top:24px;width:360px;height:320px">
+    <div class="bloco bloco--puro" id="misto" style="left:15px;top:15px;width:320px;height:587px">
       <div class="bloco__alca"></div>
-      <button class="bloco__excluir" style="opacity:1"></button>
-            <textarea class="bloco__texto" style="bottom:180px">Fase 2 no disco
+      <textarea class="bloco__texto" style="bottom:min(402px, calc(100% - 44px))"># Fase 2 no disco
 
-Nota de texto puro — sem Markdown nenhum.</textarea>
-      <div class="bloco__figuras">
+Editada fora do app, no Bloco de Notas - e o app leu de volta.</textarea>
+      <div class="bloco__figuras" style="--figura:402px">
         <div class="bloco__figura">
-          <img class="bloco__imagem" src="ardosia://anexos/icone.png" alt="">
+          <img class="bloco__imagem" src="ardosia://anexos/ce6f5be94668.png" alt="">
         </div>
       </div>
       <div class="bloco__canto"></div>
     </div>
 
-    <!-- bloco que e so a figura, do tamanho dela -->
-    <div class="bloco" id="figura" style="left:440px;top:24px;width:253px;height:78px">
+    <div class="bloco bloco--puro" id="figura" style="left:360px;top:15px;width:373px;height:189px">
       <div class="bloco__alca"></div>
       <div class="bloco__figuras bloco__figuras--inteira">
         <div class="bloco__figura">
-          <img class="bloco__imagem" src="ardosia://anexos/icone.png" alt="">
+          <img class="bloco__imagem" src="ardosia://anexos/dc33395b125a.png" alt="">
         </div>
       </div>
       <div class="bloco__canto"></div>
@@ -57,13 +56,16 @@ Nota de texto puro — sem Markdown nenhum.</textarea>
 
 app.whenReady().then(async () => {
  try {
-  protocol.handle('ardosia', async () => net.fetch(pathToFileURL(ICONE).toString()));
+  protocol.handle('ardosia', async (requisicao) => {
+    const nome = new URL(requisicao.url).pathname.replace(/^\//, '');
+    return net.fetch(pathToFileURL(path.join(os.tmpdir(), nome)).toString());
+  });
 
   const css = await fs.readFile(path.join(RAIZ, 'src', 'styles.css'), 'utf8');
   const pagina = path.join(os.tmpdir(), 'ardosia-fumaca-figura.html');
   await fs.writeFile(pagina, PAGINA(css), 'utf8');
 
-  const win = new BrowserWindow({ width: 620, height: 520, show: false });
+  const win = new BrowserWindow({ width: 780, height: 660, show: false });
   await win.loadFile(pagina);
   await new Promise((pronto) => setTimeout(pronto, 600));
 
@@ -74,6 +76,7 @@ app.whenReady().then(async () => {
       if (falta.length) return { erro: 'nao achei na pagina: ' + falta.join(', ') };
 
       const img = document.querySelector('#figura .bloco__imagem');
+      const doMisto = document.querySelector('#misto .bloco__imagem');
       const alca = document.querySelector('#figura .bloco__alca');
       // o ponto vem da propria alca: a pagina de fumaca nao tem a barra de
       // titulo do app, e coordenada chutada mede o lugar errado
@@ -87,6 +90,8 @@ app.whenReady().then(async () => {
         largura: Math.round(img.getBoundingClientRect().width),
         altura: Math.round(img.getBoundingClientRect().height),
         alcaAlcancavel: noAlto === alca,
+        mistoDesenhado: Math.round(doMisto.getBoundingClientRect().width) + 'x' + Math.round(doMisto.getBoundingClientRect().height),
+        mistoNatural: doMisto.naturalWidth + 'x' + doMisto.naturalHeight,
       };
     })()
   `);
@@ -96,6 +101,7 @@ app.whenReady().then(async () => {
   console.log('figura desenhada em:', medida.largura, 'x', medida.altura);
   console.log('alca de arrastar alcancavel por cima da foto:', medida.alcaAlcancavel ? 'ok' : 'RUIM');
   console.log('texto e figura sem se cobrir:', medida.semSobreposicao ? 'ok' : 'RUIM');
+  console.log('foto do bloco misto: desenhada', medida.mistoDesenhado, '| natural', medida.mistoNatural);
 
   const tiro = await win.webContents.capturePage();
   const destino = path.join(os.tmpdir(), 'ardosia-figura.png');

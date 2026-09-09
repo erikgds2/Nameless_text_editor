@@ -16,12 +16,31 @@ import { ALTURA_MINIMA, LARGURA_MINIMA } from './canvas';
 /** Um bloco de imagem não passa disto; maior que a tela não ajuda ninguém. */
 export const LADO_MAXIMO = 480;
 
+/** Piso da faixa de figura: abaixo disso não se enxerga o que foi colado. */
+export const ALTURA_MINIMA_DA_FIGURA = 80;
+
+/** Respiro lateral da faixa, o mesmo do CSS. */
+const PADDING_DA_FIGURA = 24;
+
 /**
- * Altura da faixa de figuras no rodapé de um bloco que também tem texto. É o
- * espaço que a colagem acrescenta ao bloco, para a foto caber sem empurrar o
- * que já estava escrito.
+ * Quanto do rodapé da seção a foto precisa para aparecer inteira.
+ *
+ * A regra é a da folha de caderno: a foto tem o tamanho dela. Cabe na largura
+ * da seção? Então vai na altura natural. Mais larga que a seção? Encolhe na
+ * proporção. Nunca é ampliada além do tamanho original — print ampliado borra —
+ * e nunca passa do teto, que é o mesmo de uma seção só de figura.
  */
-export const ALTURA_DA_FIGURA = 180;
+export function alturaDaFigura(larguraDoBloco: number, largura: number, altura: number): number {
+  if (!(largura > 0) || !(altura > 0)) return ALTURA_MINIMA_DA_FIGURA;
+
+  const disponivel = Math.max(1, larguraDoBloco - PADDING_DA_FIGURA);
+  const proporcional = (disponivel * altura) / largura;
+
+  return Math.max(
+    ALTURA_MINIMA_DA_FIGURA,
+    Math.round(Math.min(altura, proporcional, LADO_MAXIMO)),
+  );
+}
 
 /** Fora do `anexos/` da própria pasta, só o que veio da web aberta. */
 const RE_ANEXO = /^anexos\/[^/\\]+$/;

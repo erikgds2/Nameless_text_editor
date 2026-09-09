@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ALTURA_MINIMA_DA_FIGURA,
+  alturaDaFigura,
   enderecoDaImagem,
   figurasDoBloco,
   textoSemFiguras,
@@ -212,5 +214,35 @@ describe('melhorImagem', () => {
   it('colagem sem imagem nenhuma devolve nada', () => {
     expect(melhorImagem([])).toBeNull();
     expect(melhorImagem([arquivo('texto.txt', 'text/plain', 100)])).toBeNull();
+  });
+});
+
+describe('alturaDaFigura', () => {
+  it('foto que cabe na largura da seção aparece na altura natural dela', () => {
+    // o caso real: seção de 320, print de 260x402 — antes ele era espremido a 164
+    expect(alturaDaFigura(320, 260, 402)).toBe(402);
+  });
+
+  it('foto mais larga que a seção encolhe na proporção', () => {
+    // 296 de largura útil; 1600x900 vira 296x167
+    expect(alturaDaFigura(320, 1600, 900)).toBe(167);
+  });
+
+  it('nunca amplia além do tamanho original: print esticado borra', () => {
+    expect(alturaDaFigura(800, 100, 60)).toBe(ALTURA_MINIMA_DA_FIGURA);
+    expect(alturaDaFigura(800, 400, 200)).toBe(200);
+  });
+
+  it('respeita o mesmo teto de uma seção só de figura', () => {
+    expect(alturaDaFigura(2000, 1000, 3000)).toBe(LADO_MAXIMO);
+  });
+
+  it('foto minúscula ainda ganha altura que dê para ver', () => {
+    expect(alturaDaFigura(320, 16, 16)).toBe(ALTURA_MINIMA_DA_FIGURA);
+  });
+
+  it('dimensão desconhecida não vira NaN na altura da seção', () => {
+    expect(alturaDaFigura(320, 0, 0)).toBe(ALTURA_MINIMA_DA_FIGURA);
+    expect(alturaDaFigura(320, Number.NaN, 100)).toBe(ALTURA_MINIMA_DA_FIGURA);
   });
 });

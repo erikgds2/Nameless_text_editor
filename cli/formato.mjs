@@ -85,7 +85,9 @@ export function escreverNota(nota) {
   const corpo = emOrdemDeLeitura(nota.blocos)
     .map((bloco) => {
       const figura = bloco.imagem
-        ? ` img=${bloco.imagem.src}${bloco.imagem.fonte ? ` fonte=${bloco.imagem.fonte}` : ''}`
+        ? ` img=${bloco.imagem.src}` +
+          (bloco.imagem.altura ? ` imgh=${bloco.imagem.altura}` : '') +
+          (bloco.imagem.fonte ? ` fonte=${bloco.imagem.fonte}` : '')
         : '';
       const marcador = `<!-- ardosia:bloco x=${bloco.x} y=${bloco.y} w=${bloco.largura} h=${bloco.altura}${figura} -->`;
       return bloco.texto ? `${marcador}\n${bloco.texto}` : marcador;
@@ -157,7 +159,7 @@ function extrairBlocos(corpo) {
         largura: tamanho(atributos.w, LARGURA_PADRAO, LARGURA_MINIMA),
         altura: tamanho(atributos.h, ALTURA_PADRAO, ALTURA_MINIMA),
         texto: corpo.slice(inicio, fim).trim(),
-        ...imagemDoAtributo(atributos.img, atributos.fonte),
+        ...imagemDoAtributo(atributos.img, atributos.fonte, atributos.imgh),
       }),
     );
   });
@@ -183,9 +185,16 @@ function ehSrcAceita(src) {
   return SO_ANEXO.test(src) || SO_EXTERNA.test(src);
 }
 
-function imagemDoAtributo(src, fonte) {
+function imagemDoAtributo(src, fonte, imgh) {
   if (!src || !ehSrcAceita(src)) return {};
-  return { imagem: { src, ...(fonte && SO_EXTERNA.test(fonte) ? { fonte } : {}) } };
+  const altura = Number(imgh);
+  return {
+    imagem: {
+      src,
+      ...(fonte && SO_EXTERNA.test(fonte) ? { fonte } : {}),
+      ...(Number.isFinite(altura) && altura > 0 ? { altura: Math.round(altura) } : {}),
+    },
+  };
 }
 
 /** A imagem de uma linha que e SO uma imagem, como as notas antigas guardavam. */

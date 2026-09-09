@@ -203,7 +203,7 @@ poder ser cobrado; o que não se vê não se paga.
 | # | | Item |
 | --- | --- | --- |
 | 111 | `[ ]` **P3** | Separar realce e renderização em `markdown.ts` (519 linhas, teto 400) — são duas responsabilidades no mesmo arquivo |
-| 112 | `[ ]` **P2** | `Canvas.tsx` encosta no teto de 700 linhas: o bloco de figura e o campo de escrita já são dois assuntos |
+| 112 | `[x]` **P2** | `Canvas.tsx` passou do teto de 700 linhas: a figura saiu para `components/Figuras.tsx` |
 
 ---
 
