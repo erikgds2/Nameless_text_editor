@@ -156,3 +156,33 @@ export function renomearLigacoes(texto: string, de: string, para: string): strin
   resultado += texto.slice(cursor);
   return resultado;
 }
+
+/**
+ * Renomear uma nota deixa órfãs as ligações que apontavam para o título
+ * antigo: `[[Anatomia]]` continua apontando para um nome que não existe mais.
+ * Isto reescreve essas ligações nas OUTRAS notas, e devolve só as que mudaram
+ * — quem não citava a nota renomeada não precisa ser gravado de novo.
+ */
+export function renomearNasOutras(
+  notas: Note[],
+  idRenomeada: string,
+  de: string,
+  para: string,
+): Note[] {
+  if (normalize(de.trim()) === normalize(para.trim())) return [];
+
+  const tocadas: Note[] = [];
+  for (const nota of notas) {
+    if (nota.id === idRenomeada) continue;
+
+    let mudou = false;
+    const blocos = nota.blocos.map((bloco) => {
+      const texto = renomearLigacoes(bloco.texto, de, para);
+      if (texto === bloco.texto) return bloco;
+      mudou = true;
+      return { ...bloco, texto };
+    });
+    if (mudou) tocadas.push({ ...nota, blocos, updatedAt: Date.now() });
+  }
+  return tocadas;
+}

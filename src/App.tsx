@@ -25,17 +25,28 @@ import {
   reordenarFixadas,
   type Criterio,
 } from './ordenacao';
-import { construirIndice } from './links';
+import { construirIndice, renomearNasOutras } from './links';
+import { trechoDaNota } from './sugestoes';
+import { notasComTag, tagsDoCaderno } from './tags';
 import { juntarComDisco } from './conflito';
 import {
   acompanharFoco,
   aoAtualizar,
   instalarAtualizacao,
   modoDeFundoDaJanela,
+  mostrarNaPasta,
+  registrarErrosEmArquivo,
   trocarModoDeFundo,
   type Atualizacao,
 } from './janela';
-import { TAMANHOS, TEMAS, carregarAjustes, salvarAjustes, type Ajustes as AjustesTipo } from './ajustes';
+import {
+  TAMANHOS,
+  TEMAS,
+  carregarAjustes,
+  salvarAjustes,
+  temaDoSistema,
+  type Ajustes as AjustesTipo,
+} from './ajustes';
 import {
   atual as documentoDoPasso,
   desfazer,
@@ -56,6 +67,8 @@ export default function App() {
   const [pasta, setPasta] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  /** Filtro da lista lateral: uma tag, ou as notas que ninguém cita. */
+  const [filtro, setFiltro] = useState<{ tipo: 'tag'; tag: string } | { tipo: 'orfas' } | null>(null);
   const [ajustes, setAjustes] = useState<AjustesTipo>(carregarAjustes);
   const [mostrandoAjustes, setMostrandoAjustes] = useState(false);
   const [mostrandoPaleta, setMostrandoPaleta] = useState(false);
@@ -68,6 +81,25 @@ export default function App() {
 
   // Só interessa avisar quando há o que fazer: estar em dia não é notícia.
   useEffect(() => aoAtualizar(setAtualizacao), []);
+
+  // O que quebrar na janela vai para o arquivo de erros do app: sem isso,
+  // diagnosticar o aplicativo instalado dependeria de alguém abrir o console.
+  useEffect(() => registrarErrosEmArquivo(), []);
+
+  // Seguir o claro/escuro do sistema, quando se pede isso. O navegador já
+  // responde essa pergunta, e a resposta muda sozinha quando o Windows muda.
+  useEffect(() => {
+    if (!ajustes.temaAutomatico) return;
+    const consulta = window.matchMedia('(prefers-color-scheme: dark)');
+    const aplicar = () =>
+      setAjustes((prev) =>
+        prev.temaAutomatico ? { ...prev, tema: temaDoSistema(consulta.matches) } : prev,
+      );
+
+    aplicar();
+    consulta.addEventListener('change', aplicar);
+    return () => consulta.removeEventListener('change', aplicar);
+  }, [ajustes.temaAutomatico]);
 
   // Um aviso que some sozinho: serve para o que falhou sem barulho, como colar
   // imagem onde não há disco para guardá-la.
@@ -262,13 +294,19 @@ export default function App() {
 
   // As fixadas seguem a ordem que voce escolheu; o resto, a edicao mais
   // recente. [...notes] e obrigatorio: sort() muta o array, e este e o estado.
-  const visibleNotes = useMemo(
-    () =>
-      [...fixadasEmOrdem(notes), ...ordenarSoltas(notes, ajustes.ordem)].filter((note) =>
-        matchesQuery(textoDaNota(note.blocos), query),
-      ),
-    [notes, query, ajustes.ordem],
-  );
+  const visibleNotes = useMemo(() => {
+    const emOrdem = [...fixadasEmOrdem(notes), ...ordenarSoltas(notes, ajustes.ordem)];
+    const filtradas =
+      filtro === null
+        ? emOrdem
+        : filtro.tipo === 'tag'
+          ? notasComTag(emOrdem, filtro.tag)
+          : emOrdem.filter((nota) => construirIndice(notes).apontadaPor(nota.id).length === 0);
+
+    return filtradas.filter((note) => matchesQuery(textoDaNota(note.blocos), query));
+  }, [notes, query, ajustes.ordem, filtro]);
+
+  const tags = useMemo(() => tagsDoCaderno(notes), [notes]);
 
   const activeNote = notes.find((note) => note.id === activeId) ?? null;
 
@@ -296,6 +334,18 @@ export default function App() {
         .map((nota) => deriveTitle(textoDaNota(nota.blocos))),
     [notes, activeId],
   );
+
+  // O começo de cada nota, por título. Duas notas com o mesmo título são um
+  // caso raro e sem resposta certa: fica a primeira, como na lista.
+  const trechos = useMemo(() => {
+    const mapa: Record<string, string> = {};
+    for (const nota of notes) {
+      const texto = textoDaNota(nota.blocos);
+      const titulo = deriveTitle(texto);
+      if (!(titulo in mapa)) mapa[titulo] = trechoDaNota(texto);
+    }
+    return mapa;
+  }, [notes]);
 
   /**
    * Seguir uma ligação. Se a nota não existe, ela nasce ali mesmo, já com o
@@ -359,6 +409,24 @@ export default function App() {
     setNotes((prev) => [note, ...prev]);
     setActiveId(note.id);
     setQuery('');
+  }
+
+  /**
+   * Renomear a nota aberta, e arrastar junto quem apontava para ela: sem isto,
+   * cada `[[Título antigo]]` das outras notas viraria uma ligação quebrada —
+   * renomear passaria a ser uma operação que estraga o caderno.
+   */
+  function handleRenomear(titulo: string) {
+    if (!activeNote) return;
+    const antigo = deriveTitle(textoDaNota(activeNote.blocos));
+    handleChangeBlocos(trocarTitulo(activeNote.blocos, titulo));
+
+    const tocadas = renomearNasOutras(notesRef.current, activeNote.id, antigo, titulo);
+    if (tocadas.length === 0) return;
+
+    const porId = new Map(tocadas.map((nota) => [nota.id, nota]));
+    for (const nota of tocadas) marcar(nota.id);
+    setNotes((prev) => prev.map((nota) => porId.get(nota.id) ?? nota));
   }
 
   /** A cópia entra ao lado da original e já fica aberta, pronta para ser mudada. */
@@ -542,6 +610,18 @@ export default function App() {
         secao: 'Notas',
         atalho: 'Ctrl + Shift + D',
         executar: handleNotaDeHoje,
+      },
+      {
+        id: 'orfas',
+        titulo: 'Notas que ninguém cita',
+        secao: 'Notas',
+        executar: () => setFiltro({ tipo: 'orfas' }),
+      },
+      {
+        id: 'na-pasta',
+        titulo: 'Mostrar esta nota na pasta',
+        secao: 'Notas',
+        executar: () => activeId && mostrarNaPasta(activeId),
       },
       {
         id: 'duplicar',
@@ -733,6 +813,10 @@ export default function App() {
           onNewNote={handleNewNote}
           onTogglePin={handleTogglePin}
           onReordenar={handleReordenar}
+          tags={tags}
+          filtro={filtro}
+          onFiltrar={setFiltro}
+          onLimparFiltro={() => setFiltro(null)}
         />
         )}
         <Editor
@@ -744,13 +828,15 @@ export default function App() {
           onMudarTipo={handleMudarTipo}
           onColarImagem={handleColarImagem}
           recado={recado}
+          cadernoVazio={!carregando && notes.length === 0}
           conflito={activeId !== null && conflitos.has(activeId)}
           onSairDoBloco={focarNaLista}
-          onRenomear={(titulo) => activeNote && handleChangeBlocos(trocarTitulo(activeNote.blocos, titulo))}
+          onRenomear={handleRenomear}
           onManterOMeu={() => activeId && manterOMeu(activeId)}
           onUsarODoDisco={() => activeId && usarODoDisco(activeId)}
           backlinks={backlinks}
           titulos={titulos}
+          trechos={trechos}
           existeNota={(alvo) => indice.resolver(alvo) !== null}
           onAbrirLigacao={handleAbrirLigacao}
           onAbrirNota={setActiveId}

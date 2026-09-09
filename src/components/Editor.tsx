@@ -34,6 +34,8 @@ type Props = {
   recado?: string | null;
   divisoria: number;
   onMudarDivisoria: (por_cento: number) => void;
+  /** Não há nota nenhuma no caderno: é a primeira abertura, e ela ensina. */
+  cadernoVazio?: boolean;
   /** O arquivo desta nota mudou por fora enquanto havia edição pendente aqui. */
   conflito?: boolean;
   /** Esc dentro de um bloco devolve o teclado para a lista de notas. */
@@ -44,6 +46,8 @@ type Props = {
   onUsarODoDisco?: () => void;
   backlinks: { id: string; titulo: string }[];
   titulos: string[];
+  /** O começo de cada nota, por título, para a lista de ligações. */
+  trechos: Record<string, string>;
   existeNota: (alvo: string) => boolean;
   onAbrirLigacao: (alvo: string) => void;
   onAbrirNota: (id: string) => void;
@@ -84,6 +88,7 @@ export default function Editor({
   recado,
   divisoria,
   onMudarDivisoria,
+  cadernoVazio = false,
   conflito = false,
   onSairDoBloco,
   onRenomear,
@@ -91,6 +96,7 @@ export default function Editor({
   onUsarODoDisco,
   backlinks,
   titulos,
+  trechos,
   existeNota,
   onAbrirLigacao,
   onAbrirNota,
@@ -257,12 +263,31 @@ export default function Editor({
   }
 
   if (!note) {
+    // Primeira abertura: a tela vazia é a única chance de ensinar o básico, e
+    // três linhas é o que alguém lê antes de começar a escrever.
     return (
       <main className="editor editor--empty">
-        <p className="editor__hint">
-          Nenhuma nota aberta
-          <span>Ctrl + N para criar uma</span>
-        </p>
+        {cadernoVazio ? (
+          <div className="primeiros-passos">
+            <h2 className="primeiros-passos__titulo">Um caderno em branco</h2>
+            <p className="primeiros-passos__linha">
+              <kbd>Ctrl + N</kbd> cria uma nota. A primeira linha vira o título dela, e o nome do
+              arquivo <code>.md</code> na sua pasta.
+            </p>
+            <p className="primeiros-passos__linha">
+              <strong>Duplo clique</strong> em qualquer ponto vazio da página começa um bloco ali —
+              a nota é uma folha de rascunho, não uma coluna.
+            </p>
+            <p className="primeiros-passos__linha">
+              <kbd>Ctrl + /</kbd> mostra o resto dos atalhos. Nada aqui exige mouse.
+            </p>
+          </div>
+        ) : (
+          <p className="editor__hint">
+            Nenhuma nota aberta
+            <span>Ctrl + N para criar uma</span>
+          </p>
+        )}
       </main>
     );
   }
@@ -381,6 +406,7 @@ export default function Editor({
           onChange={onChange}
           onColarImagem={onColarImagem}
           titulos={titulos}
+          trechos={trechos}
           achados={achados}
           achadoAtual={achadoAtual}
           onSair={onSairDoBloco}

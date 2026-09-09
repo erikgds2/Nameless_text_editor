@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ACENTOS, PADRAO, TAMANHOS, TEMAS, carregarAjustes, salvarAjustes } from './ajustes';
+import { ACENTOS, PADRAO, TAMANHOS, TEMAS, carregarAjustes, salvarAjustes, temaDoSistema } from './ajustes';
 
 beforeEach(() => localStorage.clear());
 
@@ -171,5 +171,34 @@ describe('a janela nasce visível', () => {
   it('opacidade 0 escolhida agora continua valendo — a migração é uma vez só', () => {
     salvarAjustes({ ...PADRAO, opacidade: 0 });
     expect(carregarAjustes().opacidade).toBe(0);
+  });
+});
+
+describe('temaDoSistema', () => {
+  it('claro é Papel; escuro é Carvão', () => {
+    expect(temaDoSistema(false)).toBe('papel');
+    expect(temaDoSistema(true)).toBe('carvao');
+  });
+
+  it('escuro não escolhe Acrílico: o material se decide na criação da janela', () => {
+    expect(temaDoSistema(true)).not.toBe('acrilico');
+  });
+});
+
+describe('temaAutomatico nos ajustes', () => {
+  it('nasce desligado: o tema escolhido à mão manda até alguém dizer o contrário', () => {
+    expect(carregarAjustes().temaAutomatico).toBe(false);
+  });
+
+  it('sobrevive a salvar e carregar', () => {
+    salvarAjustes({ ...carregarAjustes(), temaAutomatico: true });
+    expect(carregarAjustes().temaAutomatico).toBe(true);
+  });
+
+  it('valor estragado cai no padrão, sem derrubar o resto', () => {
+    localStorage.setItem('ardosia:ajustes:v2', JSON.stringify({ temaAutomatico: 'sim', corpo: 17 }));
+    const ajustes = carregarAjustes();
+    expect(ajustes.temaAutomatico).toBe(false);
+    expect(ajustes.corpo).toBe(17);
   });
 });

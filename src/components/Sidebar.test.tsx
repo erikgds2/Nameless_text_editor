@@ -20,6 +20,10 @@ function montar(overrides: Partial<Parameters<typeof Sidebar>[0]> = {}) {
     onNewNote: vi.fn(),
     onTogglePin: vi.fn(),
     onReordenar: vi.fn(),
+    tags: [] as { tag: string; quantas: number }[],
+    filtro: null as { tipo: 'tag'; tag: string } | { tipo: 'orfas' } | null,
+    onFiltrar: vi.fn(),
+    onLimparFiltro: vi.fn(),
     ...overrides,
   };
   render(<Sidebar {...props} />);
@@ -131,5 +135,53 @@ describe('ordem das notas fixadas', () => {
     fireEvent.drop(uma);
 
     expect(props.onReordenar).not.toHaveBeenCalled();
+  });
+});
+
+describe('tags e filtro', () => {
+  const comTags = [
+    comTexto(createNote(), '# Aula\nrever #anatomia'),
+    comTexto(createNote(), '# Outra\nsem marca'),
+  ];
+
+  it('as tags do caderno viram botões', () => {
+    montar({ notes: comTags, tags: [{ tag: 'anatomia', quantas: 1 }] });
+    expect(screen.getByRole('button', { name: '#anatomia' })).toBeInTheDocument();
+  });
+
+  it('clicar numa tag pede o filtro dela', async () => {
+    const props = montar({ notes: comTags, tags: [{ tag: 'anatomia', quantas: 1 }] });
+
+    await userEvent.click(screen.getByRole('button', { name: '#anatomia' }));
+
+    expect(props.onFiltrar).toHaveBeenCalledWith({ tipo: 'tag', tag: 'anatomia' });
+  });
+
+  it('com filtro em vigor, a lista de tags dá lugar ao aviso do filtro', () => {
+    montar({
+      notes: comTags,
+      tags: [{ tag: 'anatomia', quantas: 1 }],
+      filtro: { tipo: 'tag', tag: 'anatomia' },
+    });
+
+    expect(screen.getByText('#anatomia')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '#anatomia' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'limpar' })).toBeInTheDocument();
+  });
+
+  it('o filtro de órfãs se explica em palavras', () => {
+    montar({ notes: comTags, filtro: { tipo: 'orfas' } });
+    expect(screen.getByText('Ninguém aponta para estas')).toBeInTheDocument();
+  });
+
+  it('limpar avisa quem cuida da lista', async () => {
+    const props = montar({ notes: comTags, filtro: { tipo: 'orfas' } });
+    await userEvent.click(screen.getByRole('button', { name: 'limpar' }));
+    expect(props.onLimparFiltro).toHaveBeenCalled();
+  });
+
+  it('caderno sem tag nenhuma não mostra faixa vazia', () => {
+    montar({ notes: comTags, tags: [] });
+    expect(document.querySelector('.tags')).toBeNull();
   });
 });

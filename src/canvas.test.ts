@@ -3,6 +3,7 @@ import {
   criarBloco,
   textoDaNota,
   alturaAjustada,
+  duplicarBloco,
   LARGURA_PADRAO,
   ALTURA_PADRAO,
   ALTURA_MINIMA,
@@ -85,5 +86,32 @@ describe('alturaAjustada', () => {
   it('diferença dentro da folga não move o bloco: é assim que o laço converge', () => {
     expect(alturaAjustada(120, 114, true)).toBeNull();
     expect(alturaAjustada(120, 124, false)).toBeNull();
+  });
+});
+
+describe('duplicarBloco', () => {
+  const original = { ...criarBloco(48, 100), largura: 280, altura: 140, texto: 'a copiar' };
+
+  it('a cópia nasce logo abaixo, na mesma coluna', () => {
+    const copia = duplicarBloco(original);
+    expect(copia.x).toBe(original.x);
+    expect(copia.y).toBeGreaterThan(original.y + original.altura);
+  });
+
+  it('texto e tamanho vêm junto', () => {
+    const copia = duplicarBloco(original);
+    expect(copia.texto).toBe('a copiar');
+    expect(copia.largura).toBe(280);
+    expect(copia.altura).toBe(140);
+  });
+
+  it('id novo: dois blocos com o mesmo id seriam o mesmo bloco', () => {
+    expect(duplicarBloco(original).id).not.toBe(original.id);
+  });
+
+  it('o original não é tocado', () => {
+    const antes = { ...original };
+    duplicarBloco(original);
+    expect(original).toEqual(antes);
   });
 });

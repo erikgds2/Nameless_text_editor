@@ -13,6 +13,12 @@ type Props = {
   onNewNote: () => void;
   onTogglePin: (id: string) => void;
   onReordenar: (idArrastada: string, idAlvo: string) => void;
+  /** As tags do caderno, da mais usada para a menos usada. */
+  tags: { tag: string; quantas: number }[];
+  /** O filtro em vigor, quando há um: uma tag, ou as notas que ninguém cita. */
+  filtro: { tipo: 'tag'; tag: string } | { tipo: 'orfas' } | null;
+  onFiltrar: (filtro: { tipo: 'tag'; tag: string } | null) => void;
+  onLimparFiltro: () => void;
 };
 
 const dateFormat = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' });
@@ -37,6 +43,10 @@ export default function Sidebar({
   onNewNote,
   onTogglePin,
   onReordenar,
+  tags,
+  filtro,
+  onFiltrar,
+  onLimparFiltro,
 }: Props) {
   const listaRef = useRef<HTMLUListElement | null>(null);
   const [arrastando, setArrastando] = useState<string | null>(null);
@@ -98,6 +108,32 @@ export default function Sidebar({
           </svg>
         </button>
       </div>
+
+      {filtro && (
+        <div className="filtro">
+          <span className="filtro__nome">
+            {filtro.tipo === 'orfas' ? 'Ninguém aponta para estas' : `#${filtro.tag}`}
+          </span>
+          <button className="filtro__limpar" onClick={onLimparFiltro}>
+            limpar
+          </button>
+        </div>
+      )}
+
+      {!filtro && tags.length > 0 && (
+        <div className="tags">
+          {tags.slice(0, 12).map(({ tag, quantas }) => (
+            <button
+              key={tag}
+              className="tag"
+              onClick={() => onFiltrar({ tipo: 'tag', tag })}
+              title={`${quantas} ${quantas === 1 ? 'nota' : 'notas'}`}
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      )}
 
       <ul className="notelist" ref={listaRef} onKeyDown={aoTeclarNaLista}>
         {notes.map((note) => {

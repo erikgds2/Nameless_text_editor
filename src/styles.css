@@ -1534,3 +1534,113 @@ h1.editor__title {
   font-family: var(--ui);
   outline: none;
 }
+
+/* O título com o começo da nota embaixo: títulos parecidos só se distinguem
+   pelo corpo, e é ele que evita ligar para a nota errada. */
+.sugestao__titulo {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sugestao__trecho {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+/* ------------------------------------------------------------ tags e filtro */
+
+/* As tags do caderno, acima da lista. Ficam discretas: são atalho para
+   filtrar, e não conteúdo — a nota é que importa. */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 12px 8px;
+}
+
+.tag {
+  padding: 2px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color var(--rapido), color var(--rapido), border-color var(--rapido);
+}
+
+.tag:hover {
+  border-color: var(--accent);
+  color: var(--ink-strong);
+  background: var(--accent-wash);
+}
+
+/* Filtro em vigor. A lista deixou de mostrar tudo, e isso precisa estar
+   escrito: uma lista que esconde notas sem dizer por quê parece defeito. */
+.filtro {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--accent-wash);
+}
+
+.filtro__nome {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--ink-strong);
+}
+
+.filtro__limpar {
+  font-size: 11px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.filtro__limpar:hover {
+  color: var(--ink-strong);
+}
+
+/* --------------------------------------------------- primeira abertura */
+
+/* O caderno vazio é a única tela que todo mundo vê antes de saber usar o app.
+   Três linhas: o que cria uma nota, o que cria um bloco, e onde está o resto. */
+.primeiros-passos {
+  max-width: 460px;
+  padding: 24px;
+}
+
+.primeiros-passos__titulo {
+  margin-bottom: 12px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.primeiros-passos__linha {
+  margin-bottom: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.primeiros-passos kbd,
+.primeiros-passos code {
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.primeiros-passos strong {
+  color: var(--ink);
+  font-weight: 600;
+}

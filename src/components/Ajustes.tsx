@@ -58,11 +58,18 @@ export default function Ajustes({
               <span className="ajustes__dica">Acrílico usa o material da janela do Windows</span>
             </span>
             <div className="opcoes">
+              <button
+                className={`opcao${ajustes.temaAutomatico ? ' opcao--on' : ''}`}
+                onClick={() => onMudar({ ...ajustes, temaAutomatico: !ajustes.temaAutomatico })}
+                title="Seguir o claro/escuro do Windows"
+              >
+                Automático
+              </button>
               {TEMAS.map((tema) => (
                 <button
                   key={tema.id}
                   className={`opcao${tema.id === ajustes.tema ? ' opcao--on' : ''}`}
-                  onClick={() => onMudar({ ...ajustes, tema: tema.id })}
+                  onClick={() => onMudar({ ...ajustes, tema: tema.id, temaAutomatico: false })}
                 >
                   {tema.rotulo}
                 </button>

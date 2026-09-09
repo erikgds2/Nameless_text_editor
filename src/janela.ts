@@ -62,3 +62,32 @@ export async function instalarAtualizacao(): Promise<void> {
 export async function versaoInstalada(): Promise<string | null> {
   return (await window.ardosia?.versao()) ?? null;
 }
+
+/** Abre o Explorer com o arquivo da nota selecionado. No navegador, não faz nada. */
+export async function mostrarNaPasta(id: string): Promise<void> {
+  await window.ardosia?.mostrarNaPasta(id);
+}
+
+/**
+ * Manda o erro para o arquivo de registro do aplicativo. Existe porque ninguém
+ * vai abrir o console para contar o que aconteceu — e sem o que aconteceu não
+ * há como consertar.
+ */
+export function registrarErrosEmArquivo(): () => void {
+  const ponte = window.ardosia;
+  if (!ponte) return () => {};
+
+  const aoFalhar = (evento: ErrorEvent) => {
+    ponte.registrarErro(evento.error?.stack ?? evento.message).catch(() => {});
+  };
+  const aoRejeitar = (evento: PromiseRejectionEvent) => {
+    ponte.registrarErro(evento.reason?.stack ?? String(evento.reason)).catch(() => {});
+  };
+
+  window.addEventListener('error', aoFalhar);
+  window.addEventListener('unhandledrejection', aoRejeitar);
+  return () => {
+    window.removeEventListener('error', aoFalhar);
+    window.removeEventListener('unhandledrejection', aoRejeitar);
+  };
+}

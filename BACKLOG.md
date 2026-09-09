@@ -3,7 +3,7 @@
 Itens agrupados por tema e ordenados por valor dentro de cada
 grupo. Marcados assim:
 
-- `[ ]` a fazer · `[~]` em andamento · `[x]` pronto
+- `[ ]` a fazer · `[~]` em andamento · `[x]` pronto · `[—]` descartado, com o motivo escrito
 - **P1** dói agora · **P2** melhora muito · **P3** quando sobrar tempo
 
 Regras que valem para todos: nada entra sem teste automático ou verificação
@@ -29,7 +29,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 11 | `[ ]` **P2** | Modo foco: some tudo menos o bloco em edição (atalho a escolher — `Ctrl+Shift+F` agora é a busca entre notas) |
 | 12 | `[ ]` **P2** | Largura máxima de leitura configurável no bloco (medida em ch) |
 | 13 | `[ ]` **P3** | Grade opcional de alinhamento no canvas, de 8px |
-| 14 | `[ ]` **P3** | Duplicar bloco com `Ctrl+D` |
+| 14 | `[x]` **P3** | Duplicar bloco com `Ctrl+D` |
 | 15 | `[ ]` **P3** | Ordenar blocos automaticamente numa coluna ("arrumar a página") |
 | 16 | `[ ]` **P3** | Cor de fundo por bloco, escolhida entre os tokens do tema |
 | 17 | `[ ]` **P3** | Zoom do canvas (`Ctrl` + roda) para ver a página inteira |
@@ -43,7 +43,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 20 | `[x]` **P1** | Lista de tarefas `- [ ]` / `- [x]`, clicável direto na pré-visualização |
 | 21 | `[ ]` **P2** | Cerca de código com linguagem (` ```ts `) e realce de sintaxe no preview |
 | 22 | `[ ]` **P2** | Rolagem sincronizada entre editor e pré-visualização |
-| 23 | `[ ]` **P2** | Cabeçalho `#` aumenta de tamanho no próprio editor, não só no preview |
+| 23 | `[—]` **P2** | Cabeçalho `#` maior no próprio editor — **não dá** sem trocar o núcleo: o texto é digitado num textarea, que tem fonte de tamanho único, e o realce só funciona porque a camada de trás casa pixel a pixel com ele. Só com contenteditable, perdendo desfazer e acentuação nativos |
 | 24 | `[ ]` **P2** | Exportar a nota como HTML e como PDF |
 | 25 | `[x]` **P3** | Imagens no preview, lendo o arquivo da pasta da nota |
 | 26 | `[ ]` **P3** | Notas de rodapé `[^1]` |
@@ -59,7 +59,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 31 | `[x]` **P1** | Busca dentro da nota aberta, com realce das ocorrências |
 | 32 | `[x]` **P1** | Paleta de comandos (`Ctrl+K`): abrir nota, trocar tema, tudo sem mouse |
 | 33 | `[x]` **P1** | Busca mostra o trecho onde o termo apareceu, não só o começo da nota |
-| 34 | `[ ]` **P2** | Tags `#assunto` no texto viram filtro na barra lateral |
+| 34 | `[x]` **P2** | Tags `#assunto` no texto viram filtro na barra lateral (`#` de cabeçalho não conta) |
 | 35 | `[x]` **P2** | Ordenar a lista por título, criação ou edição |
 | 36 | `[ ]` **P2** | Lixeira: apagar move para `.lixeira/` e dá 30 dias de arrependimento |
 | 37 | `[x]` **P2** | Duplicar nota |
@@ -78,9 +78,9 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 45 | `[x]` **P1** | Clicar num `[[link]]` abre a nota; `[[link]]` para nota inexistente a cria |
 | 46 | `[x]` **P1** | Backlinks: "o que aponta para esta nota", no rodapé do editor |
 | 47 | `[x]` **P2** | Nota de hoje (`Ctrl+Shift+D`): abre a do dia, criando se ainda não existe |
-| 48 | `[ ]` **P2** | Autocompletar de `[[` mostra o trecho inicial da nota candidata |
-| 49 | `[ ]` **P3** | Renomear nota atualiza os `[[links]]` que apontam para ela |
-| 50 | `[ ]` **P3** | Notas órfãs: quais não são referenciadas por ninguém |
+| 48 | `[x]` **P2** | Autocompletar de `[[` mostra o trecho inicial da nota candidata |
+| 49 | `[x]` **P3** | Renomear nota atualiza os `[[links]]` que apontam para ela |
+| 50 | `[x]` **P3** | Notas órfãs: comando "Notas que ninguém cita" filtra a lista |
 
 ## E. Estudo — Fase 5, o que torna o projeto dele (51–60)
 
@@ -105,7 +105,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 62 | `[x]` **P1** | Aviso de conflito quando o arquivo mudou por fora e por dentro ao mesmo tempo |
 | 63 | `[x]` **P1** | Indicador de "salvo / salvando / erro ao salvar" visível |
 | 64 | `[ ]` **P2** | Backup automático diário da pasta, em zip, com retenção curta |
-| 65 | `[ ]` **P2** | Abrir a nota na pasta pelo Explorer (menu de contexto na lista) |
+| 65 | `[x]` **P2** | Abrir a nota na pasta pelo Explorer — comando da paleta, e não menu de contexto |
 | 66 | `[ ]` **P2** | Importar uma pasta de `.md` existente (Obsidian, Notion exportado) |
 | 67 | `[ ]` **P2** | Exportar tudo em zip |
 | 68 | `[ ]` **P3** | Anexos: arrastar arquivo para dentro da nota |
@@ -122,9 +122,9 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 74 | `[x]` **P1** | Divisória arrastável entre editor e pré-visualização |
 | 75 | `[x]` **P2** | Barra lateral recolhível (`Ctrl+\`) |
 | 76 | `[ ]` **P2** | Escolher a fonte do corpo entre as monoespaçadas instaladas |
-| 77 | `[ ]` **P2** | Acompanhar o tema claro/escuro do Windows automaticamente |
-| 78 | `[ ]` **P2** | Estado vazio da primeira abertura que ensine o básico em três linhas |
-| 79 | `[ ]` **P3** | Lembrar tamanho e posição da janela entre sessões |
+| 77 | `[x]` **P2** | Acompanhar o tema claro/escuro do Windows automaticamente |
+| 78 | `[x]` **P2** | Estado vazio da primeira abertura que ensine o básico em três linhas |
+| 79 | `[x]` **P3** | Lembrar tamanho e posição da janela entre sessões |
 | 80 | `[ ]` **P3** | Ícone na bandeja do sistema, com captura rápida |
 | 81 | `[ ]` **P3** | Abas, como no Notepads, para várias notas abertas |
 | 82 | `[ ]` **P3** | Tema de alto contraste, para quando a vista cansa de vez |
@@ -154,7 +154,7 @@ porque é possível — cada uma paga o próprio peso na interface (princípio n
 | 96 | `[ ]` **P2** | Verificador de acessibilidade no `npm run check` |
 | 97 | `[ ]` **P2** | Cobertura de testes reportada, com piso que não pode cair |
 | 98 | `[ ]` **P3** | Atualização automática do app instalado |
-| 99 | `[ ]` **P3** | Registro de erros em arquivo, para diagnosticar sem console aberto |
+| 99 | `[x]` **P3** | Registro de erros em arquivo, para diagnosticar sem console aberto |
 | 100 | `[ ]` **P3** | Publicar a versão web, que a arquitetura já dá de graça |
 
 ## J. Linha de comando: escrever no caderno sem abrir o caderno (101–110)

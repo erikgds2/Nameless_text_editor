@@ -48,8 +48,20 @@ const PAGINA = (css) => `<!doctype html>
       <button class="conflito__acao">Usar o do disco</button>
     </div>
   </main>
-  <div class="atalhos__fundo" style="inset:0">
-    <section class="atalhos">${listaDeAtalhos}</section>
+  <aside class="sidebar" style="position:absolute;left:0;top:0;width:280px;height:100%">
+    <div class="sidebar__top"><input class="search" placeholder="Buscar"></div>
+    <div class="tags">
+      <button class="tag">#anatomia</button>
+      <button class="tag">#prova</button>
+      <button class="tag">#revisao</button>
+    </div>
+    <ul class="notelist"></ul>
+  </aside>
+  <div class="primeiros-passos" style="position:absolute;left:320px;top:120px">
+    <h2 class="primeiros-passos__titulo">Um caderno em branco</h2>
+    <p class="primeiros-passos__linha"><kbd>Ctrl + N</kbd> cria uma nota. A primeira linha vira o titulo dela, e o nome do arquivo <code>.md</code> na sua pasta.</p>
+    <p class="primeiros-passos__linha"><strong>Duplo clique</strong> em qualquer ponto vazio da pagina comeca um bloco ali.</p>
+    <p class="primeiros-passos__linha"><kbd>Ctrl + /</kbd> mostra o resto dos atalhos.</p>
   </div>
 </body></html>`;
 
@@ -65,25 +77,20 @@ app.whenReady().then(async () => {
   const medida = await win.webContents.executeJavaScript(`
     (() => {
       const faixa = document.querySelector('.conflito').getBoundingClientRect();
-      const caixa = document.querySelector('.atalhos').getBoundingClientRect();
-      const teclas = [...document.querySelectorAll('.atalhos__tecla')];
-      const texto = [...document.querySelectorAll('.atalhos__texto')];
-      // as teclas alinhadas numa coluna so: se alguma escapar, a lista fica torta
-      const colunas = new Set(teclas.map((t) => Math.round(t.getBoundingClientRect().left)));
-      const cortado = texto.some((t) => t.scrollWidth > t.clientWidth + 1);
+      const tags = [...document.querySelectorAll('.tag')];
+      const lateral = document.querySelector('.sidebar').getBoundingClientRect();
+      const passos = document.querySelector('.primeiros-passos').getBoundingClientRect();
       return {
         faixaVisivel: faixa.height > 0 && faixa.width > 0,
-        atalhosNaTela: caixa.bottom <= window.innerHeight,
-        colunas: colunas.size,
-        cortado,
+        tagsNaLateral: tags.every((t) => t.getBoundingClientRect().right <= lateral.right),
+        passosNaTela: passos.right <= window.innerWidth,
       };
     })()
   `);
 
   console.log('faixa de conflito aparece:', medida.faixaVisivel ? 'ok' : 'RUIM');
-  console.log('ajuda de atalhos cabe na janela:', medida.atalhosNaTela ? 'ok' : 'RUIM');
-  console.log('colunas de tecla (uma por grupo):', medida.colunas);
-  console.log('texto de atalho cortado:', medida.cortado ? 'RUIM' : 'nao');
+  console.log('tags cabem na barra lateral:', medida.tagsNaLateral ? 'ok' : 'RUIM');
+  console.log('primeiros passos dentro da janela:', medida.passosNaTela ? 'ok' : 'RUIM');
 
   const tiro = await win.webContents.capturePage();
   const destino = path.join(os.tmpdir(), 'ardosia-telas.png');

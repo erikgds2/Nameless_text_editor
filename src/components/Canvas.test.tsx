@@ -21,6 +21,7 @@ function montar(blocos: Bloco[], tipo: 'markdown' | 'texto' = 'markdown') {
       titulos={['Aula de Kant', 'Limites e continuidade']}
       achados={[]}
       achadoAtual={null}
+      trechos={{}}
       onSair={vi.fn()}
     />,
   );
@@ -66,6 +67,7 @@ describe('Canvas', () => {
         titulos={[]}
         achados={[]}
         achadoAtual={null}
+        trechos={{}}
         onSair={vi.fn()}
       />,
     );
@@ -82,6 +84,7 @@ describe('Canvas', () => {
         titulos={[]}
         achados={[]}
         achadoAtual={null}
+        trechos={{}}
         onSair={vi.fn()}
       />,
     );
@@ -116,6 +119,7 @@ function montarVivo(inicial: Bloco[], tipo: 'markdown' | 'texto' = 'markdown') {
         titulos={['Aula de Kant', 'Limites e continuidade']}
         achados={[]}
         achadoAtual={null}
+        trechos={{}}
         onSair={vi.fn()}
       />
     );
@@ -238,6 +242,7 @@ describe('figura colada na página', () => {
         titulos={[]}
         achados={[]}
         achadoAtual={null}
+        trechos={{}}
         onSair={vi.fn()}
       />,
     );
@@ -351,6 +356,7 @@ describe('tamanho da figura colada', () => {
         titulos={[]}
         achados={[]}
         achadoAtual={null}
+        trechos={{}}
         onSair={vi.fn()}
       />,
     );
@@ -425,6 +431,7 @@ function montarComEspiaoSimples(blocos: Bloco[], tipo: 'markdown' | 'texto' = 'm
       titulos={[]}
       achados={[]}
       achadoAtual={null}
+      trechos={{}}
       onSair={vi.fn()}
     />,
   );
@@ -443,6 +450,7 @@ describe('sair do bloco pelo teclado', () => {
         titulos={[]}
         achados={[]}
         achadoAtual={null}
+        trechos={{}}
         onSair={onSair}
       />,
     );
@@ -462,5 +470,71 @@ describe('sair do bloco pelo teclado', () => {
     await userEvent.type(campo, '{Escape}');
 
     expect(campo).toHaveFocus();
+  });
+});
+
+describe('duplicar bloco', () => {
+  it('Ctrl+D copia o bloco em que se escreve', async () => {
+    const onChange = vi.fn();
+    render(
+      <Canvas
+        blocos={[bloco('a copiar')]}
+        tipo="markdown"
+        onChange={onChange}
+        onColarImagem={vi.fn(async () => 'x.png')}
+        titulos={[]}
+        achados={[]}
+        achadoAtual={null}
+        trechos={{}}
+        onSair={vi.fn()}
+      />,
+    );
+
+    screen.getByRole('textbox').focus();
+    await userEvent.keyboard('{Control>}d{/Control}');
+
+    const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
+    expect(depois).toHaveLength(2);
+    expect(depois[1].texto).toBe('a copiar');
+    expect(depois[1].id).not.toBe(depois[0].id);
+  });
+});
+
+describe('trecho na lista de ligações', () => {
+  /** Um pai de verdade: sem ele o campo não acumula o que se digita. */
+  function montarComTrechos(titulos: string[], trechos: Record<string, string>) {
+    function Pai() {
+      const [blocos, setBlocos] = useState([bloco('')]);
+      return (
+        <Canvas
+          blocos={blocos}
+          tipo="markdown"
+          onChange={setBlocos}
+          onColarImagem={vi.fn(async () => 'x.png')}
+          titulos={titulos}
+          trechos={trechos}
+          achados={[]}
+          achadoAtual={null}
+          onSair={vi.fn()}
+        />
+      );
+    }
+    render(<Pai />);
+  }
+
+  it('a sugestão mostra o começo da nota, para títulos parecidos não se confundirem', async () => {
+    montarComTrechos(['Aula 1', 'Aula 2'], { 'Aula 1': 'sobre o fêmur', 'Aula 2': 'sobre a tíbia' });
+
+    await digitar(screen.getByRole('textbox'), '[[Aula');
+
+    expect(screen.getByRole('button', { name: /Aula 1/ })).toHaveTextContent('sobre o fêmur');
+    expect(screen.getByRole('button', { name: /Aula 2/ })).toHaveTextContent('sobre a tíbia');
+  });
+
+  it('nota sem corpo aparece só com o título', async () => {
+    montarComTrechos(['Aula 1'], { 'Aula 1': '' });
+
+    await digitar(screen.getByRole('textbox'), '[[');
+    expect(screen.getByRole('button', { name: 'Aula 1' })).toBeInTheDocument();
   });
 });

@@ -1,10 +1,32 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, net, protocol, shell } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, net, protocol, screen, shell } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const notas = require('./notas.cjs');
 const { autoUpdater } = require('electron-updater');
+const { boundsVisiveis, cortarLog, linhaDeErro } = require('./geometria.cjs');
+const fs = require('node:fs');
 
 const isDev = !app.isPackaged;
+
+// ---------------------------------------------------------------------------
+// Registro de erros em arquivo. Sem isto, diagnosticar o app instalado depende
+// de abrir o console de quem esta usando — que ninguem vai abrir. O arquivo
+// fica ao lado da config, nunca na pasta de notas: nao e conteudo.
+
+function caminhoDoLog() {
+  return path.join(app.getPath('userData'), 'erros.log');
+}
+
+function registrarErro(origem, mensagem) {
+  try {
+    const arquivo = caminhoDoLog();
+    const anterior = fs.existsSync(arquivo) ? fs.readFileSync(arquivo, 'utf8') : '';
+    const novo = anterior + linhaDeErro(new Date(), origem, mensagem) + '\n';
+    fs.writeFileSync(arquivo, cortarLog(novo), 'utf8');
+  } catch {
+    // um erro ao registrar erro nao pode derrubar o app
+  }
+}
 
 // O esquema precisa ser declarado antes do app ficar pronto para o Chromium
 // tratar as imagens dos anexos como conteudo de origem normal.
@@ -44,6 +66,19 @@ function createWindow(modo, bounds) {
   });
 
   janelaPrincipal = win;
+
+  // Lembrar onde a janela estava. So depois que ela para de se mexer: gravar a
+  // cada pixel de um arraste escreveria no disco centenas de vezes por segundo.
+  let aviso = null;
+  const guardar = () => {
+    if (aviso) clearTimeout(aviso);
+    aviso = setTimeout(() => {
+      if (win.isDestroyed() || win.isMinimized() || win.isFullScreen()) return;
+      notas.gravarJanela(win.getNormalBounds()).catch(() => {});
+    }, 400);
+  };
+  win.on('resize', guardar);
+  win.on('move', guardar);
 
   // Link externo — a origem de um print colado, um endereco na nota — abre no
   // navegador do sistema, e nunca numa janela deste app: janela nova do
@@ -174,6 +209,8 @@ function registrarCanais() {
   ipcMain.handle('ardosia:salvar-anexo', (_evento, bytes, tipo) => notas.salvarAnexo(bytes, tipo));
   ipcMain.handle('ardosia:modo-de-fundo', () => notas.modoDeFundo());
   ipcMain.handle('ardosia:versao', () => app.getVersion());
+  ipcMain.handle('ardosia:mostrar-na-pasta', (_evento, id) => notas.mostrarNaPasta(id));
+  ipcMain.handle('ardosia:registrar-erro', (_evento, mensagem) => registrarErro('janela', mensagem));
   ipcMain.handle('ardosia:instalar-atualizacao', () => autoUpdater.quitAndInstall());
 
   // Trocar o fundo exige uma janela nova: transparencia e material do sistema
@@ -199,6 +236,9 @@ function registrarCanais() {
   });
 }
 
+process.on('uncaughtException', (erro) => registrarErro('main', erro?.stack ?? erro));
+process.on('unhandledRejection', (motivo) => registrarErro('main', motivo?.stack ?? motivo));
+
 app.whenReady().then(async () => {
   // ardosia://anexos/<arquivo> serve as imagens coladas. E o unico caminho pelo
   // qual a janela le arquivo do disco, e ele so alcanca a subpasta de anexos.
@@ -212,7 +252,8 @@ app.whenReady().then(async () => {
   });
 
   registrarCanais();
-  createWindow(await notas.modoDeFundo());
+  const lembrada = boundsVisiveis(await notas.lerJanela(), screen.getAllDisplays());
+  createWindow(await notas.modoDeFundo(), lembrada ?? undefined);
 
   vigiarAtualizacoes();
 

@@ -25,6 +25,7 @@ function montar(overrides: Partial<Parameters<typeof Editor>[0]> = {}) {
     onMudarDivisoria: vi.fn(),
     backlinks: [] as { id: string; titulo: string }[],
     titulos: [] as string[],
+    trechos: {} as Record<string, string>,
     existeNota: () => true,
     onAbrirLigacao: vi.fn(),
     onAbrirNota: vi.fn(),
@@ -313,5 +314,22 @@ describe('renomear a nota', () => {
     await userEvent.type(screen.getByRole('textbox', { name: 'Título da nota' }), '{Enter}');
 
     expect(props.onRenomear).not.toHaveBeenCalled();
+  });
+});
+
+describe('caderno vazio', () => {
+  it('na primeira abertura, a tela ensina o básico', () => {
+    montar({ note: null, cadernoVazio: true });
+
+    expect(screen.getByText('Um caderno em branco')).toBeInTheDocument();
+    expect(screen.getByText(/Duplo clique/)).toBeInTheDocument();
+    expect(screen.getByText(/mostra o resto dos atalhos/)).toBeInTheDocument();
+  });
+
+  it('com notas na pasta, mas nenhuma aberta, a lição não se repete', () => {
+    montar({ note: null, cadernoVazio: false });
+
+    expect(screen.queryByText('Um caderno em branco')).toBeNull();
+    expect(screen.getByText('Nenhuma nota aberta')).toBeInTheDocument();
   });
 });

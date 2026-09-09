@@ -29,6 +29,8 @@ export type PonteDisco = Arquivos & {
   modoDeFundo(): Promise<'acrilico' | 'vidro'>;
   trocarModoDeFundo(modo: 'acrilico' | 'vidro'): Promise<void>;
   versao(): Promise<string>;
+  mostrarNaPasta(id: string): Promise<void>;
+  registrarErro(mensagem: string): Promise<void>;
   instalarAtualizacao(): Promise<void>;
   aoAtualizar(callback: (dados: import('./janela').Atualizacao) => void): () => void;
 };

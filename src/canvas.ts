@@ -51,3 +51,18 @@ export function alturaAjustada(altura: number, conteudo: number, encolheu: boole
   const alvo = Math.max(ALTURA_MINIMA, conteudo + FOLGA);
   return alvo + FOLGA < altura ? alvo : null;
 }
+
+/** Respiro entre um bloco e a cópia dele, em pixels. */
+export const ESPACO = 16;
+
+/**
+ * Uma cópia do bloco, logo abaixo dele. Id novo, porque dois blocos com o
+ * mesmo id são o mesmo bloco para o React — e editar um mexeria no outro.
+ */
+export function duplicarBloco(bloco: Bloco): Bloco {
+  return {
+    ...bloco,
+    id: crypto.randomUUID(),
+    y: bloco.y + bloco.altura + ESPACO,
+  };
+}

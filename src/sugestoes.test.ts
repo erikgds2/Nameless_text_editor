@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ligacaoSendoEscrita, completarLigacao, ordenarCandidatos } from './sugestoes';
+import { ligacaoSendoEscrita, completarLigacao, ordenarCandidatos, trechoDaNota } from './sugestoes';
 
 /**
  * Lê um modelo com `|` marcando o cursor e devolve texto + posição, no
@@ -153,5 +153,32 @@ describe('ordenarCandidatos', () => {
     const titulos = Object.freeze(['Alfa', 'Beta']);
     expect(() => ordenarCandidatos(titulos as string[], 'a')).not.toThrow();
     expect(titulos).toEqual(['Alfa', 'Beta']);
+  });
+});
+
+describe('trechoDaNota', () => {
+  it('é o começo do corpo, sem repetir o título', () => {
+    expect(trechoDaNota('Aula de Anatomia\no colo cirúrgico do fêmur')).toBe(
+      'o colo cirúrgico do fêmur',
+    );
+  });
+
+  it('nota só com título não tem trecho', () => {
+    expect(trechoDaNota('Aula de Anatomia')).toBe('');
+    expect(trechoDaNota('')).toBe('');
+  });
+
+  it('quebras de linha viram espaço: a lista tem uma linha só', () => {
+    expect(trechoDaNota('Título\nprimeira\n\nsegunda')).toBe('primeira segunda');
+  });
+
+  it('linha em branco antes do título não conta como título', () => {
+    expect(trechoDaNota('\n\nTítulo\ncorpo')).toBe('corpo');
+  });
+
+  it('corpo comprido é cortado com reticência', () => {
+    const trecho = trechoDaNota(`Título\n${'palavra '.repeat(40)}`, 20);
+    expect(trecho).toHaveLength(21);
+    expect(trecho.endsWith('…')).toBe(true);
   });
 });

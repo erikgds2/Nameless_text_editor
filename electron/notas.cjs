@@ -53,6 +53,20 @@ async function gravarModoDeFundo(modo) {
   await gravarConfig({ ...(await lerConfig()), fundo: modo === 'vidro' ? 'vidro' : 'acrilico' });
 }
 
+/** A geometria da janela entre sessoes. Preferencia, e nao conteudo: vai na config. */
+async function lerJanela() {
+  return (await lerConfig()).janela ?? null;
+}
+
+async function gravarJanela(bounds) {
+  await gravarConfig({ ...(await lerConfig()), janela: bounds });
+}
+
+/** Abre o Explorer com o arquivo da nota selecionado. */
+async function mostrarNaPasta(id) {
+  shell.showItemInFolder(caminhoDe(await pasta(), id));
+}
+
 async function escolherPasta(janela) {
   const escolha = await dialog.showOpenDialog(janela, {
     title: 'Onde guardar suas notas',
@@ -258,6 +272,9 @@ async function vigiar(janela) {
 
 module.exports = {
   pasta,
+  lerJanela,
+  gravarJanela,
+  mostrarNaPasta,
   modoDeFundo,
   gravarModoDeFundo,
   salvarAnexo,

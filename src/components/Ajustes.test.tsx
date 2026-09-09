@@ -144,3 +144,25 @@ describe('usar a pasta do aplicativo pelo navegador', () => {
     expect(props.onUsarPasta).toHaveBeenCalled();
   });
 });
+
+describe('tema automático', () => {
+  it('o botão Automático liga o acompanhamento do sistema', async () => {
+    const onMudar = vi.fn();
+    montar({ onMudar });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Automático' }));
+
+    expect(onMudar).toHaveBeenCalledWith(expect.objectContaining({ temaAutomatico: true }));
+  });
+
+  it('escolher um tema à mão desliga o automático: a escolha explícita manda', async () => {
+    const onMudar = vi.fn();
+    montar({ onMudar, ajustes: { ...PADRAO, temaAutomatico: true } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Papel' }));
+
+    expect(onMudar).toHaveBeenCalledWith(
+      expect.objectContaining({ tema: 'papel', temaAutomatico: false }),
+    );
+  });
+});

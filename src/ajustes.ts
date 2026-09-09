@@ -26,6 +26,8 @@ export type Ajustes = {
   ordem: Criterio;
   /** A barra lateral pode ser recolhida para sobrar página. */
   lateral: boolean;
+  /** Seguir o claro/escuro do Windows em vez de fixar um tema. */
+  temaAutomatico: boolean;
 };
 
 export const TEMAS: { id: TemaId; rotulo: string }[] = [
@@ -62,6 +64,7 @@ export const PADRAO: Ajustes = {
   divisoria: 50,
   ordem: 'edicao',
   lateral: true,
+  temaAutomatico: false,
 };
 
 const CHAVE = 'ardosia:ajustes:v2';
@@ -134,6 +137,8 @@ function completar(parcial: Partial<Ajustes>): Ajustes {
     ordem:
       parcial.ordem === 'titulo' || parcial.ordem === 'criacao' ? parcial.ordem : PADRAO.ordem,
     lateral: typeof parcial.lateral === 'boolean' ? parcial.lateral : PADRAO.lateral,
+    temaAutomatico:
+      typeof parcial.temaAutomatico === 'boolean' ? parcial.temaAutomatico : PADRAO.temaAutomatico,
   };
 }
 
@@ -143,4 +148,13 @@ export function salvarAjustes(ajustes: Ajustes): void {
   } catch (err) {
     console.error('Não foi possível salvar os ajustes:', err);
   }
+}
+
+/**
+ * O tema quando se decide seguir o sistema. Escuro vira Carvão, e não Acrílico:
+ * o material do Windows depende de como a janela foi criada, e trocar de tema
+ * sozinho não pode obrigar a recriar a janela por baixo de quem escreve.
+ */
+export function temaDoSistema(escuro: boolean): TemaId {
+  return escuro ? 'carvao' : 'papel';
 }

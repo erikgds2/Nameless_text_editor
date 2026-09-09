@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('ardosia', {
   salvarAnexo: (bytes, tipo) => ipcRenderer.invoke('ardosia:salvar-anexo', bytes, tipo),
   modoDeFundo: () => ipcRenderer.invoke('ardosia:modo-de-fundo'),
   versao: () => ipcRenderer.invoke('ardosia:versao'),
+  mostrarNaPasta: (id) => ipcRenderer.invoke('ardosia:mostrar-na-pasta', id),
+  registrarErro: (mensagem) => ipcRenderer.invoke('ardosia:registrar-erro', mensagem),
   instalarAtualizacao: () => ipcRenderer.invoke('ardosia:instalar-atualizacao'),
   aoAtualizar: (callback) => {
     const ouvinte = (_evento, dados) => callback(dados);

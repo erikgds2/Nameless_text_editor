@@ -5,8 +5,10 @@ import {
   ALTURA_MINIMA,
   LARGURA_MINIMA,
   LARGURA_PADRAO,
+  ESPACO,
   alturaAjustada,
   criarBloco,
+  duplicarBloco,
   type Bloco,
 } from '../canvas';
 import { realcar } from '../markdown';
@@ -23,6 +25,8 @@ type Props = {
   onColarImagem: (bytes: Uint8Array, tipo: string) => Promise<string | null>;
   /** Títulos das outras notas, para sugerir enquanto se escreve uma ligação. */
   titulos: string[];
+  /** O começo de cada nota, por título: títulos parecidos não dizem qual é qual. */
+  trechos: Record<string, string>;
   /** Ocorrências da busca na nota, em ordem de leitura. Vazio quando não há busca. */
   achados: Ocorrencia[];
   /** Aquela em que a navegação parou, para destacá-la entre as outras. */
@@ -30,9 +34,6 @@ type Props = {
   /** Esc no bloco devolve o teclado para a lista de notas. */
   onSair: () => void;
 };
-
-/** Respiro entre o bloco onde a imagem foi colada e a figura que nasce abaixo. */
-const ESPACO = 16;
 
 /**
  * As dimensões da imagem, para o bloco nascer do tamanho dela. Se não der para
@@ -59,6 +60,7 @@ export default function Canvas({
   onChange,
   onColarImagem,
   titulos,
+  trechos,
   achados,
   achadoAtual,
   onSair,
@@ -134,6 +136,14 @@ export default function Canvas({
         bloco.id === id ? { ...bloco, altura: Math.max(ALTURA_MINIMA, altura) } : bloco,
       ),
     );
+  }
+
+  /** Ctrl+D copia o bloco em que se está escrevendo, e o foco vai para a cópia. */
+  function handleDuplicarBloco(bloco: Bloco) {
+    const copia = duplicarBloco(bloco);
+    onChange([...blocos, copia]);
+    setAtivoId(copia.id);
+    setCriadoRecentemente(copia.id);
   }
 
   function handleBlurTexto(bloco: Bloco) {
@@ -267,7 +277,9 @@ export default function Canvas({
               onAltura={(altura) => handleAltura(bloco.id, altura)}
               onImagemColada={(arquivo, origem) => handleImagemColada(bloco, arquivo, origem)}
               titulos={titulos}
+              trechos={trechos}
               onSair={onSair}
+              onDuplicar={() => handleDuplicarBloco(bloco)}
               onBlur={() => handleBlurTexto(bloco)}
             />
           )}
@@ -295,7 +307,9 @@ type EscritaProps = {
   onAltura: (altura: number) => void;
   onImagemColada: (arquivo: File, origem: string | null) => void;
   titulos: string[];
+  trechos: Record<string, string>;
   onSair: () => void;
+  onDuplicar: () => void;
   onBlur: () => void;
 };
 
@@ -315,7 +329,9 @@ function Escrita({
   onAltura,
   onImagemColada,
   titulos,
+  trechos,
   onSair,
+  onDuplicar,
   onBlur,
 }: EscritaProps) {
   const [escrevendo, setEscrevendo] = useState<Escrevendo | null>(null);
@@ -400,6 +416,13 @@ function Escrita({
         setEscrevendo(null);
         return;
       }
+    }
+
+    // Duplicar o bloco inteiro, com o mesmo tamanho e a mesma posição relativa.
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+      event.preventDefault();
+      onDuplicar();
+      return;
     }
 
     // Fora de uma lista aberta, Esc é a saída do bloco: o teclado volta para a
@@ -533,7 +556,8 @@ function Escrita({
                   if (area) escolher(area, titulo);
                 }}
               >
-                {titulo}
+                <span className="sugestao__titulo">{titulo}</span>
+                {trechos[titulo] && <span className="sugestao__trecho">{trechos[titulo]}</span>}
               </button>
             </li>
           ))}

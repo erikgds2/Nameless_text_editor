@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { construirIndice, extrairLigacoes, renomearLigacoes } from './links';
+import { construirIndice, extrairLigacoes, renomearLigacoes, renomearNasOutras } from './links';
 import { createNote, type Note } from './notes';
 import { criarBloco } from './canvas';
 
@@ -172,5 +172,46 @@ describe('renomearLigacoes', () => {
 
   it('preserva acentuação e emoji ao redor', () => {
     expect(renomearLigacoes('ação 🎯 [[Kant]] ímã', 'Kant', 'Hume')).toBe('ação 🎯 [[Hume]] ímã');
+  });
+});
+
+describe('renomearNasOutras', () => {
+  function comId(id: string, texto: string): Note {
+    const base = createNote();
+    return { ...base, id, blocos: [{ ...base.blocos[0], texto }] };
+  }
+
+  it('reescreve a ligação em quem citava o título antigo', () => {
+    const notas = [comId('a', 'Anatomia'), comId('b', 'ver [[Anatomia]] depois')];
+    const tocadas = renomearNasOutras(notas, 'a', 'Anatomia', 'Fêmur');
+
+    expect(tocadas).toHaveLength(1);
+    expect(tocadas[0].id).toBe('b');
+    expect(tocadas[0].blocos[0].texto).toBe('ver [[Fêmur]] depois');
+  });
+
+  it('quem não citava não é tocado: nota intocada não precisa ser gravada', () => {
+    const notas = [comId('a', 'Anatomia'), comId('b', 'sobre outra coisa')];
+    expect(renomearNasOutras(notas, 'a', 'Anatomia', 'Fêmur')).toEqual([]);
+  });
+
+  it('a própria nota renomeada fica de fora', () => {
+    const notas = [comId('a', 'Anatomia\nver [[Anatomia]]')];
+    expect(renomearNasOutras(notas, 'a', 'Anatomia', 'Fêmur')).toEqual([]);
+  });
+
+  it('acento e caixa não impedem o casamento', () => {
+    const notas = [comId('a', 'Ação'), comId('b', '[[acao]] e [[AÇÃO]]')];
+    expect(renomearNasOutras(notas, 'a', 'Ação', 'Ato')[0].blocos[0].texto).toBe('[[Ato]] e [[Ato]]');
+  });
+
+  it('renomear para o mesmo nome não mexe em nada', () => {
+    const notas = [comId('a', 'Anatomia'), comId('b', '[[Anatomia]]')];
+    expect(renomearNasOutras(notas, 'a', 'Anatomia', 'Anatomia')).toEqual([]);
+  });
+
+  it('ligação parecida, mas de outra nota, fica como está', () => {
+    const notas = [comId('a', 'Anatomia'), comId('b', '[[Anatomia do fêmur]]')];
+    expect(renomearNasOutras(notas, 'a', 'Anatomia', 'Osso')).toEqual([]);
   });
 });

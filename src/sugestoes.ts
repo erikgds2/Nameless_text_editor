@@ -90,3 +90,20 @@ export function ordenarCandidatos(titulos: string[], termo: string): string[] {
 
   return [...comeca, ...contem];
 }
+
+/**
+ * O começo da nota, para acompanhar o título na lista de sugestões. Títulos
+ * parecidos — "Aula 1", "Aula 2" — não dizem qual é qual; a primeira linha do
+ * corpo diz.
+ *
+ * O título sai fora de propósito: repeti-lo ao lado dele mesmo não informa
+ * nada. Quebras de linha viram espaço, porque a lista tem uma linha só.
+ */
+export function trechoDaNota(texto: string, limite = 80): string {
+  const linhas = texto.split('\n');
+  const inicioDoCorpo = linhas.findIndex((linha) => linha.trim().length > 0) + 1;
+  const corpo = linhas.slice(inicioDoCorpo).join(' ').replace(/\s+/g, ' ').trim();
+
+  if (corpo.length <= limite) return corpo;
+  return `${corpo.slice(0, limite).trimEnd()}…`;
+}
