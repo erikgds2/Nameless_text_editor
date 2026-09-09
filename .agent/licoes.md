@@ -40,3 +40,7 @@ próximas tarefas. Gerado pelo run.mjs — pode editar e reescrever à mão.
 - (1x) `agora.map(b => b.id === alvo.id ? mudar(b) : b)` que nao casa nenhum id nao falha: devolve a lista inalterada e o trabalho some em silencio. Depois de um await, sempre trate o caso de o alvo ter deixado de existir
 - (1x) medir DESENHO nao e medir CARREGAMENTO: passei tres rodadas conferindo tamanho de imagem enquanto o defeito era a foto nunca chegar ao bloco. Quando o usuario diz 'quebrada', teste o onerror, nao o layout
 - (1x) teste que mede tempo com entrada pequena e instavel: o caso quadratico com 120 itens cabia no ruido do relogio e acusava por sorte. Base grande o bastante para a diferenca sair do ruido
+- (1x) protocolo proprio do Electron precisa de `Cache-Control: no-store` no ERRO tambem: um 404 servido uma vez fica no cache do Chromium e a imagem nunca mais e pedida ao disco, mesmo com o arquivo la e mesmo reiniciando o app
+- (1x) fumaca que monta o cenario com replace de string pode montar o cenario ERRADO e eu concluir que reproduzi: imprima o insumo (o arquivo, o clipboard) antes de medir o resultado
+- (1x) SendKeys/clique por coordenada acha a janela errada quando ha duas instancias do app: confira o PID da janela antes de mandar tecla, ou escreva na nota de outra pessoa sem querer
+- (1x) capturar a janela com CopyFromScreen pega o que esta ATRAS quando a janela e transparente: use PrintWindow com PW_RENDERFULLCONTENT

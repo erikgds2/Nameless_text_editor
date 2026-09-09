@@ -191,3 +191,21 @@ describe('tituloDoDia', () => {
     expect(deriveTitle(titulo)).toBe(titulo);
   });
 });
+
+describe('título de nota que começa com figura', () => {
+  it('a marcação da imagem não vira o nome da nota', () => {
+    expect(deriveTitle('![](anexos/abc.png)\nAnatomia do fêmur')).toBe('Anatomia do fêmur');
+  });
+
+  it('com origem também', () => {
+    expect(deriveTitle('[![](anexos/abc.png)](https://exemplo.org)\nAnatomia')).toBe('Anatomia');
+  });
+
+  it('nota que é só uma figura não fica sem nome nenhum', () => {
+    expect(deriveTitle('![](anexos/abc.png)')).toBe('Nota sem título');
+  });
+
+  it('texto que menciona uma imagem no meio continua sendo título', () => {
+    expect(deriveTitle('veja ![](anexos/abc.png) aqui')).toBe('veja ![](anexos/abc.png) aqui');
+  });
+});

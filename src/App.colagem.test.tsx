@@ -226,3 +226,47 @@ describe('colagem enquanto a pasta é relida', () => {
     expect(desserializar(arquivos.get('aula')!, 'aula').blocos[0].texto).toBe('Anatomia');
   });
 });
+
+/**
+ * O buraco que sobreviveu a tudo: eu testava COLAR numa nota, nunca ABRIR uma
+ * nota que já tem figura. É o que o usuário faz toda vez que reabre o app.
+ */
+describe('abrir uma nota que já tem figura', () => {
+  function comFigura(): Note {
+    const base = createNote('texto');
+    return {
+      ...base,
+      id: 'fase-2',
+      blocos: [
+        {
+          ...criarBloco(15, 15),
+          largura: 524,
+          altura: 392,
+          texto: '# Fase 2 no disco',
+          imagem: { src: 'anexos/foto.png' },
+        },
+      ],
+    };
+  }
+
+  it('a figura aparece na tela ao abrir', async () => {
+    const { ponte } = pastaFalsa({ 'fase-2': comFigura() });
+    vi.stubGlobal('ardosia', ponte);
+    render(<App />);
+
+    const figura = await screen.findByRole('img', { name: 'Imagem colada na nota' });
+    expect(figura).toHaveAttribute('src', 'ardosia://anexos/foto.png');
+  });
+
+  it('o arquivo lido do disco chega ao app com a figura', async () => {
+    const { ponte, arquivos } = pastaFalsa({ 'fase-2': comFigura() });
+    // é o que o disco realmente guarda
+    expect(arquivos.get('fase-2')).toContain('img=anexos/foto.png');
+
+    vi.stubGlobal('ardosia', ponte);
+    render(<App />);
+    await screen.findByDisplayValue('# Fase 2 no disco');
+
+    expect(screen.getByRole('img', { name: 'Imagem colada na nota' })).toBeInTheDocument();
+  });
+});

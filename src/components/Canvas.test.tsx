@@ -843,8 +843,23 @@ describe('imagem que não abre', () => {
     );
   }
 
-  it('em vez do ícone de quebrada, a seção diz o que houve e qual arquivo', () => {
+  it('a primeira falha vira uma segunda tentativa, com endereço novo', () => {
     comFigura();
+    const img = screen.getByRole('img', { name: 'Imagem colada na nota' });
+    expect(img).toHaveAttribute('src', 'ardosia://anexos/sumiu.png');
+
+    // é o que fura um 404 que ficou preso no cache do Chromium
+    fireEvent.error(img);
+    expect(screen.getByRole('img', { name: 'Imagem colada na nota' })).toHaveAttribute(
+      'src',
+      'ardosia://anexos/sumiu.png?tentativa=1',
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('falhando de novo, a seção diz o que houve e qual arquivo', () => {
+    comFigura();
+    fireEvent.error(screen.getByRole('img', { name: 'Imagem colada na nota' }));
     fireEvent.error(screen.getByRole('img', { name: 'Imagem colada na nota' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível abrir esta imagem');
@@ -854,5 +869,62 @@ describe('imagem que não abre', () => {
   it('imagem que abre não mostra aviso nenhum', () => {
     comFigura();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('foto que veio do cache', () => {
+  /**
+   * O caso que sobreviveu a três correções: na segunda vez que a nota abre, a
+   * imagem vem do cache e chega `complete` antes de o React pendurar o onLoad.
+   * O evento nunca dispara, a seção nunca aprende o tamanho da foto, e a faixa
+   * fica no piso — o print vira uma tira ilegível.
+   */
+  it('a seção aprende o tamanho mesmo sem o onLoad disparar', () => {
+    const onChange = vi.fn();
+    // o jsdom entrega toda <img> como completa; é exatamente o cenário do cache
+    Object.defineProperty(HTMLImageElement.prototype, 'complete', {
+      configurable: true,
+      get() {
+        return true;
+      },
+    });
+    Object.defineProperty(HTMLImageElement.prototype, 'naturalWidth', {
+      configurable: true,
+      get() {
+        return 260;
+      },
+    });
+    Object.defineProperty(HTMLImageElement.prototype, 'naturalHeight', {
+      configurable: true,
+      get() {
+        return 402;
+      },
+    });
+
+    render(
+      <Canvas
+        blocos={[
+          { ...bloco('Anatomia'), largura: 320, altura: 185, imagem: { src: 'anexos/a.png' } },
+        ]}
+        tipo="texto"
+        onChange={onChange}
+        onColarImagem={vi.fn(async () => 'x.png')}
+        titulos={[]}
+        trechos={{}}
+        achados={[]}
+        achadoAtual={null}
+        onSair={vi.fn()}
+        onRecado={vi.fn()}
+      />,
+    );
+
+    const [depois] = onChange.mock.calls.at(-1) as [Bloco[]];
+    expect(depois[0].imagem).toEqual({ src: 'anexos/a.png', altura: 402 });
+    expect(depois[0].altura).toBe(402 + 44);
+
+    // devolve o jsdom ao que era, para não contaminar os outros testes
+    for (const prop of ['complete', 'naturalWidth', 'naturalHeight']) {
+      delete (HTMLImageElement.prototype as unknown as Record<string, unknown>)[prop];
+    }
   });
 });

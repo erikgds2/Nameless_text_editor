@@ -243,11 +243,21 @@ app.whenReady().then(async () => {
   // ardosia://anexos/<arquivo> serve as imagens coladas. E o unico caminho pelo
   // qual a janela le arquivo do disco, e ele so alcanca a subpasta de anexos.
   protocol.handle('ardosia', async (requisicao) => {
+    // `no-store` nas duas saidas, e a razao e um defeito que ja aconteceu: se o
+    // app pede a imagem antes de o arquivo existir — porque uma versao anterior
+    // gravava o anexo e escrevia na nota fora de ordem —, o Chromium guarda o
+    // 404 e nunca mais pergunta ao disco. A imagem fica quebrada para sempre,
+    // mesmo com o arquivo la, e nenhum reinicio resolve.
+    const semCache = { 'Cache-Control': 'no-store' };
     try {
-      return await net.fetch(pathToFileURL(await notas.anexoDaUrl(requisicao.url)).toString());
+      const caminho = await notas.anexoDaUrl(requisicao.url);
+      const resposta = await net.fetch(pathToFileURL(caminho).toString());
+      const cabecalhos = new Headers(resposta.headers);
+      cabecalhos.set('Cache-Control', 'no-store');
+      return new Response(resposta.body, { status: resposta.status, headers: cabecalhos });
     } catch (err) {
-      console.error('Anexo não encontrado:', err.message);
-      return new Response('anexo não encontrado', { status: 404 });
+      registrarErro('anexo', `${requisicao.url}: ${err.message}`);
+      return new Response('anexo nao encontrado', { status: 404, headers: semCache });
     }
   });
 

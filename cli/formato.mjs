@@ -112,9 +112,14 @@ function marcacaoDaImagem(bloco) {
   return bloco.imagem.fonte ? `[${marca}](${bloco.imagem.fonte})` : marca;
 }
 
-/** O título é sempre a primeira linha com conteúdo — não há campo separado. */
+/** Uma linha que e so a marcacao de uma figura, com ou sem a origem. */
+const SO_FIGURA = /^\[?!\[[^\]]*\]\([^()\s]+\)\]?(\([^()\s]+\))?$/;
+
+/** O título é a primeira linha com conteúdo que não seja só uma figura. */
 export function tituloDaNota(texto) {
-  const primeira = texto.split('\n').find((linha) => linha.trim().length > 0);
+  const primeira = texto
+    .split('\n')
+    .find((linha) => linha.trim().length > 0 && !SO_FIGURA.test(linha.trim()));
   if (!primeira) return 'Nota sem título';
   return semMarcacao(primeira).slice(0, 80) || 'Nota sem título';
 }

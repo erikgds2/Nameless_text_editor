@@ -31,8 +31,15 @@ export function createNote(tipo: TipoDoc = 'markdown'): Note {
 }
 
 /** O título é sempre a primeira linha com conteúdo — não existe campo separado. */
+/** Uma linha que é só a marcação de uma figura, com ou sem a origem. */
+const SO_FIGURA = /^\[?!\[[^\]]*\]\([^()\s]+\)\]?(\([^()\s]+\))?$/;
+
 export function deriveTitle(texto: string): string {
-  const first = texto.split('\n').find((line) => line.trim().length > 0);
+  // linha que é só uma figura não serve de título: a nota apareceria na lista
+  // com o nome de um arquivo de anexo, que não diz nada sobre o conteúdo
+  const first = texto
+    .split('\n')
+    .find((line) => line.trim().length > 0 && !SO_FIGURA.test(line.trim()));
   if (!first) return 'Nota sem título';
   return semMarcacao(first).slice(0, 80) || 'Nota sem título';
 }

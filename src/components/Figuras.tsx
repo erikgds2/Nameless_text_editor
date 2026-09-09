@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { Imagem } from '../canvas';
 import { ALTURA_MINIMA_DA_FIGURA } from '../imagem';
@@ -19,6 +19,32 @@ export default function Figuras({
   onMedida?: (natural: { largura: number; altura: number }) => void;
 }) {
   const [falhou, setFalhou] = useState(false);
+  /**
+   * Quantas vezes já se tentou de novo. Uma versão anterior do app pedia a
+   * imagem antes de o arquivo existir, e o Chromium guardou o 404: a foto
+   * ficava quebrada para sempre, mesmo com o arquivo no lugar. Uma segunda
+   * tentativa com endereço novo fura esse cache e conserta sozinha o que já
+   * está envenenado — sem pedir nada a quem está escrevendo.
+   */
+  const [tentativa, setTentativa] = useState(0);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+
+  /**
+   * `onLoad` não dispara para imagem que veio do cache: ela já chega
+   * `complete` antes de o React pendurar o ouvinte. Era por isso que a seção
+   * nunca aprendia o tamanho da foto na SEGUNDA vez que a nota abria — e a
+   * faixa ficava no piso, com o print reduzido a uma tira ilegível.
+   *
+   * Sem lista de dependências de propósito: a imagem pode completar em
+   * qualquer render, e perguntar é barato.
+   */
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img || figura.altura || !onMedida) return;
+    if (img.complete && img.naturalWidth > 0) {
+      onMedida({ largura: img.naturalWidth, altura: img.naturalHeight });
+    }
+  });
   return (
     <div
       className={inteira ? 'bloco__figuras bloco__figuras--inteira' : 'bloco__figuras'}
@@ -32,12 +58,19 @@ export default function Figuras({
           </p>
         )}
         <img
+          ref={imgRef}
           className="bloco__imagem"
-          src={figura.endereco}
+          src={tentativa === 0 ? figura.endereco : `${figura.endereco}?tentativa=${tentativa}`}
           alt="Imagem colada na nota"
           draggable={false}
           hidden={falhou}
-          onError={() => setFalhou(true)}
+          onError={() => {
+            if (tentativa === 0) {
+              setTentativa(1);
+              return;
+            }
+            setFalhou(true);
+          }}
           onLoad={(evento) => {
             setFalhou(false);
             // Nota colada por uma versão que ainda não guardava o tamanho da
