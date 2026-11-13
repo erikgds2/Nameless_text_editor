@@ -4,6 +4,8 @@ import {
   textoDaNota,
   alturaAjustada,
   duplicarBloco,
+  moverFigura,
+  arrumarEmColuna,
   LARGURA_PADRAO,
   ALTURA_PADRAO,
   ALTURA_MINIMA,
@@ -124,5 +126,91 @@ describe('alturaAjustada com figura no rodapé', () => {
 
   it('sem figura, a conta é só do texto', () => {
     expect(alturaAjustada(400, 100, true)).toBe(104);
+  });
+});
+
+describe('mover a figura de uma seção para outra', () => {
+  const comFoto = (id: string, altura = 200) => ({
+    ...criarBloco(0, 0),
+    id,
+    altura: 300,
+    texto: 'origem',
+    imagem: { src: 'anexos/a.png', altura },
+  });
+
+  const semFoto = (id: string) => ({ ...criarBloco(0, 400), id, altura: 120, texto: 'destino' });
+
+  it('a foto muda de dono e o espaço vai junto', () => {
+    const depois = moverFigura([comFoto('a'), semFoto('b')], 'a', 'b');
+
+    expect(depois[0].imagem).toBeUndefined();
+    expect(depois[0].altura).toBe(100);
+    expect(depois[1].imagem).toEqual({ src: 'anexos/a.png', altura: 200 });
+    expect(depois[1].altura).toBe(320);
+  });
+
+  it('a seção nunca encolhe abaixo do mínimo ao perder a foto', () => {
+    const apertada = { ...comFoto('a'), altura: 80 };
+    expect(moverFigura([apertada, semFoto('b')], 'a', 'b')[0].altura).toBe(ALTURA_MINIMA);
+  });
+
+  it('duas seções com foto trocam as fotos, em vez de uma engolir a outra', () => {
+    const primeira = comFoto('a', 200);
+    const segunda = { ...comFoto('b', 100), imagem: { src: 'anexos/b.png', altura: 100 } };
+
+    const depois = moverFigura([primeira, segunda], 'a', 'b');
+
+    expect(depois[0].imagem?.src).toBe('anexos/b.png');
+    expect(depois[1].imagem?.src).toBe('anexos/a.png');
+  });
+
+  it('soltar na própria seção não mexe em nada', () => {
+    const blocos = [comFoto('a'), semFoto('b')];
+    expect(moverFigura(blocos, 'a', 'a')).toBe(blocos);
+  });
+
+  it('seção sem foto não tem o que arrastar', () => {
+    const blocos = [semFoto('a'), semFoto('b')];
+    expect(moverFigura(blocos, 'a', 'b')).toBe(blocos);
+  });
+
+  it('soltar numa seção que já não existe não perde a foto', () => {
+    const blocos = [comFoto('a')];
+    expect(moverFigura(blocos, 'a', 'sumiu')).toBe(blocos);
+  });
+});
+
+describe('arrumarEmColuna', () => {
+  it('alinha os blocos em coluna ordenada com espacamento uniforme', () => {
+    const blocos = [
+      { id: 'b2', x: 200, y: 150, largura: 300, altura: 100, texto: 'segundo' },
+      { id: 'b1', x: 50, y: 30, largura: 320, altura: 80, texto: 'primeiro' },
+      { id: 'b3', x: 10, y: 300, largura: 250, altura: 60, texto: 'terceiro' },
+    ];
+    const resultado = arrumarEmColuna(blocos, 48, 48, 16);
+    expect(resultado.map((b) => b.id)).toEqual(['b1', 'b2', 'b3']);
+    expect(resultado[0].x).toBe(48);
+    expect(resultado[0].y).toBe(48);
+    expect(resultado[1].x).toBe(48);
+    expect(resultado[1].y).toBe(48 + 80 + 16); // 144
+    expect(resultado[2].x).toBe(48);
+    expect(resultado[2].y).toBe(144 + 100 + 16); // 260
+  });
+
+  it('preserva atributos de caneta, letra, fundo e imagem', () => {
+    const bloco = {
+      ...criarBloco(10, 10),
+      caneta: 'azul' as const,
+      letra: 'leitura' as const,
+      fundo: 'ocre' as const,
+      imagem: { src: 'anexos/foto.png' },
+    };
+    const [arrumado] = arrumarEmColuna([bloco], 32, 32);
+    expect(arrumado.caneta).toBe('azul');
+    expect(arrumado.letra).toBe('leitura');
+    expect(arrumado.fundo).toBe('ocre');
+    expect(arrumado.imagem?.src).toBe('anexos/foto.png');
+    expect(arrumado.x).toBe(32);
+    expect(arrumado.y).toBe(32);
   });
 });

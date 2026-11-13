@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent, PointerEvent } from 'react';
+import { calcularAlinhamento, type Guia } from '../alinhamento';
 import {
   ALTURA_MINIMA,
   ESPACO,
@@ -7,16 +8,23 @@ import {
   LARGURA_PADRAO,
   criarBloco,
   duplicarBloco,
+  moverFigura,
   type Bloco,
+  type Caneta,
+  type Fundo,
   type Imagem,
+  type Letra,
 } from '../canvas';
 import Escrita from './Escrita';
+import Estojo from './Estojo';
 import Figuras from './Figuras';
+import Grampo from './Grampo';
 import { achadosDoBloco, type Ocorrencia } from '../busca';
 import {
   ALTURA_MINIMA_DA_FIGURA,
   alturaDaFigura,
   enderecoDaImagem,
+  nomeDeAnexoLimpo,
   tamanhoDoBloco,
 } from '../imagem';
 import type { TipoDoc } from '../notes';
@@ -25,7 +33,9 @@ type Props = {
   blocos: Bloco[];
   tipo: TipoDoc;
   onChange: (blocos: Bloco[]) => void;
-  onColarImagem: (bytes: Uint8Array, tipo: string) => Promise<string | null>;
+  onColarImagem: (bytes: Uint8Array, tipo: string, nome?: string) => Promise<string | null>;
+  /** Abre a pasta com o anexo selecionado; ausente fora do app instalado. */
+  onMostrarAnexo?: (src: string) => void;
   /** Títulos das outras notas, para sugerir enquanto se escreve uma ligação. */
   titulos: string[];
   /** O começo de cada nota, por título: títulos parecidos não dizem qual é qual. */
@@ -79,6 +89,7 @@ export default function Canvas({
   tipo,
   onChange,
   onColarImagem,
+  onMostrarAnexo,
   titulos,
   trechos,
   achados,
@@ -90,6 +101,31 @@ export default function Canvas({
   const [ativoId, setAtivoId] = useState<string | null>(null);
   const [criadoRecentemente, setCriadoRecentemente] = useState<string | null>(null);
   const [arraste, setArraste] = useState<Arraste | null>(null);
+  const [guiasAtivas, setGuiasAtivas] = useState<Guia[]>([]);
+  const [figuraSendoArrastada, setFiguraSendoArrastada] = useState<string | null>(null);
+  const [alvoSolturaFigura, setAlvoSolturaFigura] = useState<string | null>(null);
+  const [modoFoco, setModoFoco] = useState(false);
+
+  /**
+   * De qual seção a foto foi pega. Fica numa ref, e não no estado, porque
+   * ninguém precisa redesenhar enquanto a mão atravessa a página: só importa
+   * onde ela soltou.
+   */
+  const figuraNaMao = useRef<string | null>(null);
+
+  // Modo foco: oculta distrações da folha para focar na seção atual.
+  useEffect(() => {
+    function aoTeclar(evento: globalThis.KeyboardEvent) {
+      if ((evento.ctrlKey || evento.metaKey) && evento.shiftKey && evento.key === 'Enter') {
+        evento.preventDefault();
+        setModoFoco((antigo) => !antigo);
+      } else if (evento.key === 'Escape' && modoFoco) {
+        setModoFoco(false);
+      }
+    }
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [modoFoco]);
 
   // Abrir uma nota em branco já deixa o cursor pronto: capturar uma ideia não
   // pode custar um clique a mais. (O Canvas remonta a cada nota, via key.)
@@ -217,6 +253,36 @@ export default function Canvas({
   }
 
   /**
+   * Arquivo que não é imagem: fica grampeado NA SEÇÃO onde foi colado, com o
+   * nome à mostra. Seção que já tem um anexo não recebe outro por cima — o
+   * novo abre a sua própria, logo abaixo, como acontece com a segunda foto.
+   */
+  async function handleArquivoColado(alvo: Bloco, arquivo: File) {
+    const nome = await onColarImagem(
+      new Uint8Array(await arquivo.arrayBuffer()),
+      arquivo.type,
+      nomeDeAnexoLimpo(arquivo.name),
+    );
+    if (!nome) return;
+
+    const anexo = { src: `anexos/${nome}` };
+    const agora = blocosRef.current;
+    const dono =
+      agora.find((bloco) => bloco.id === alvo.id) ??
+      agora.find((bloco) => bloco.x === alvo.x && bloco.y === alvo.y);
+
+    if (!dono || dono.anexo) {
+      const nova = { ...criarBloco(alvo.x, alvo.y + (dono?.altura ?? 0) + ESPACO), anexo };
+      onChange([...agora, nova]);
+      setAtivoId(nova.id);
+      return;
+    }
+
+    onChange(agora.map((bloco) => (bloco.id === dono.id ? { ...bloco, anexo } : bloco)));
+    setAtivoId(dono.id);
+  }
+
+  /**
    * Clicar na foto põe o cursor no texto da seção, no fim do que já está
    * escrito. Numa folha de papel a mão vai para onde se olha; aqui a foto
    * ocupa metade do quadrado, e clicar nela não podia não fazer nada.
@@ -229,6 +295,22 @@ export default function Canvas({
     if (!campo) return;
     campo.focus();
     campo.setSelectionRange(campo.value.length, campo.value.length);
+  }
+
+  /**
+   * Soltou a foto nesta seção. Vinda de outra, ela muda de dono — e o foco vai
+   * junto, porque a próxima coisa que se faz depois de mover uma foto é
+   * escrever ao lado dela.
+   */
+  function soltarFigura(id: string) {
+    const de = figuraNaMao.current;
+    figuraNaMao.current = null;
+    setFiguraSendoArrastada(null);
+    setAlvoSolturaFigura(null);
+    if (!de || de === id) return;
+
+    onChange(moverFigura(blocosRef.current, de, id));
+    setAtivoId(id);
   }
 
   /**
@@ -262,6 +344,31 @@ export default function Canvas({
       blocos.map((bloco) =>
         bloco.id === id ? { ...bloco, altura: Math.max(ALTURA_MINIMA, altura) } : bloco,
       ),
+    );
+  }
+
+  /**
+   * Com que caneta e com que letra esta seção passa a ser escrita.
+   *
+   * Escolher o padrão APAGA a propriedade em vez de gravá-la: seção sem escolha
+   * é seção sem atributo no marcador, e a nota não engorda por guardar aquilo
+   * que já é o normal.
+   */
+  function handleEscolha(id: string, escolha: { caneta?: Caneta; letra?: Letra; fundo?: Fundo }) {
+    onChange(
+      blocos.map((bloco) => {
+        if (bloco.id !== id) return bloco;
+        const { caneta, letra, fundo, ...resto } = bloco;
+        const proxima = escolha.caneta ?? caneta;
+        const proximaLetra = escolha.letra ?? letra;
+        const proximoPapel = escolha.fundo ?? fundo;
+        return {
+          ...resto,
+          ...(proxima && proxima !== 'grafite' ? { caneta: proxima } : {}),
+          ...(proximaLetra && proximaLetra !== 'mono' ? { letra: proximaLetra } : {}),
+          ...(proximoPapel && proximoPapel !== 'nenhum' ? { fundo: proximoPapel } : {}),
+        };
+      }),
     );
   }
 
@@ -299,8 +406,16 @@ export default function Canvas({
   function handlePointerMoveAlca(event: PointerEvent<HTMLDivElement>) {
     if (!arraste || arraste.tipo !== 'mover' || !canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = Math.max(0, event.clientX - rect.left - arraste.offsetX);
-    const y = Math.max(0, event.clientY - rect.top - arraste.offsetY);
+    const candX = Math.max(0, event.clientX - rect.left - arraste.offsetX);
+    const candY = Math.max(0, event.clientY - rect.top - arraste.offsetY);
+    const blocoAtual = blocos.find((b) => b.id === arraste.id);
+    if (!blocoAtual) return;
+
+    const { x, y, guias } = calcularAlinhamento(
+      { id: blocoAtual.id, x: candX, y: candY, largura: blocoAtual.largura, altura: blocoAtual.altura },
+      blocos,
+    );
+    setGuiasAtivas(guias);
     onChange(blocos.map((bloco) => (bloco.id === arraste.id ? { ...bloco, x, y } : bloco)));
   }
 
@@ -327,10 +442,22 @@ export default function Canvas({
   function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
     event.currentTarget.releasePointerCapture(event.pointerId);
     setArraste(null);
+    setGuiasAtivas([]);
   }
 
   return (
-    <div className="canvas" ref={canvasRef} onDoubleClick={handleDuploClique}>
+    <div
+      className={['canvas', modoFoco ? 'canvas--modo-foco' : ''].filter(Boolean).join(' ')}
+      ref={canvasRef}
+      onDoubleClick={handleDuploClique}
+      // soltar a foto no vazio não a leva a lugar nenhum, mas a mão se abre
+      onPointerUp={() => {
+        figuraNaMao.current = null;
+        setFiguraSendoArrastada(null);
+        setAlvoSolturaFigura(null);
+        setGuiasAtivas([]);
+      }}
+    >
       {blocos.map((bloco) => {
         // A figura é da seção, e não do texto: uma página de caderno pode ter
         // uma foto colada mesmo quando não é Markdown nenhum.
@@ -343,17 +470,43 @@ export default function Canvas({
             'bloco',
             bloco.id === ativoId ? 'bloco--ativo' : '',
             tipo === 'texto' ? 'bloco--puro' : '',
+            // a caneta pinta o texto da seção; a letra troca a família das três
+            // camadas de uma vez, para que continuem casando pixel a pixel
+            bloco.caneta ? `bloco--tinta bloco--caneta-${bloco.caneta}` : '',
+            bloco.letra ? `bloco--letra-${bloco.letra}` : '',
+            bloco.fundo && bloco.fundo !== 'nenhum' ? `bloco--papel-${bloco.fundo}` : '',
+            bloco.id === alvoSolturaFigura ? 'bloco--alvo-figura' : '',
+            bloco.id === figuraSendoArrastada ? 'bloco--arrastando-figura' : '',
           ]
             .filter(Boolean)
             .join(' ')}
           style={{ left: bloco.x, top: bloco.y, width: bloco.largura, height: bloco.altura }}
           data-bloco={bloco.id}
+          onPointerEnter={() => {
+            if (figuraNaMao.current && figuraNaMao.current !== bloco.id) {
+              setAlvoSolturaFigura(bloco.id);
+            }
+          }}
+          onPointerLeave={() => {
+            if (alvoSolturaFigura === bloco.id) {
+              setAlvoSolturaFigura(null);
+            }
+          }}
+          onPointerUp={() => soltarFigura(bloco.id)}
         >
           <div
             className="bloco__alca"
             onPointerDown={(event) => handlePointerDownAlca(event, bloco)}
             onPointerMove={handlePointerMoveAlca}
             onPointerUp={handlePointerUp}
+          />
+          <Estojo
+            caneta={bloco.caneta ?? 'grafite'}
+            letra={bloco.letra ?? 'mono'}
+            fundo={bloco.fundo ?? 'nenhum'}
+            onCaneta={(caneta) => handleEscolha(bloco.id, { caneta })}
+            onLetra={(letra) => handleEscolha(bloco.id, { letra })}
+            onFundo={(fundo) => handleEscolha(bloco.id, { fundo })}
           />
           {blocos.length > 1 && (
             <button
@@ -377,6 +530,7 @@ export default function Canvas({
               onChange={(texto) => handleChangeTexto(bloco.id, texto)}
               onAltura={(altura) => handleAltura(bloco.id, altura)}
               onImagemColada={(arquivo, origem) => handleImagemColada(bloco, arquivo, origem)}
+              onArquivoColado={(arquivo) => handleArquivoColado(bloco, arquivo)}
               titulos={titulos}
               trechos={trechos}
               onSair={onSair}
@@ -384,11 +538,21 @@ export default function Canvas({
               onBlur={() => handleBlurTexto(bloco)}
             alturaDaFigura={figura?.altura ?? (figura ? ALTURA_MINIMA_DA_FIGURA : 0)}
           />
+          {bloco.anexo && (
+            <Grampo
+              anexo={bloco.anexo}
+              onMostrar={onMostrarAnexo ? () => onMostrarAnexo(bloco.anexo!.src) : undefined}
+            />
+          )}
           {figura && (
             <Figuras
               figura={figura}
               onMedida={(natural) => handleMedidaDaFigura(bloco, natural)}
               onEscrever={() => escreverNaSecao(bloco.id)}
+              onPegar={() => {
+                figuraNaMao.current = bloco.id;
+                setFiguraSendoArrastada(bloco.id);
+              }}
             />
           )}
           <div
@@ -400,6 +564,18 @@ export default function Canvas({
         </div>
         );
       })}
+      {guiasAtivas.map((guia, i) => (
+        <div
+          key={i}
+          className={`guia-alinhamento guia-alinhamento--${guia.orientacao}`}
+          style={
+            guia.orientacao === 'vertical'
+              ? { left: `${guia.posicao}px` }
+              : { top: `${guia.posicao}px` }
+          }
+          aria-hidden="true"
+        />
+      ))}
     </div>
   );
 }

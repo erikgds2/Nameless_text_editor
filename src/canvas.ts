@@ -15,7 +15,64 @@ export type Bloco = {
   texto: string;
   /** A figura colada nesta seção, quando há uma. */
   imagem?: Imagem;
+  /** Com que caneta esta seção foi escrita. Ausente é o grafite. */
+  caneta?: Caneta;
+  /** Com que letra esta seção foi escrita. Ausente é a monoespaçada. */
+  letra?: Letra;
+  /** O papel desta seção, quando ela é um post-it colado na folha. */
+  fundo?: Fundo;
+  /** O arquivo grampeado nesta seção, quando não é imagem. */
+  anexo?: Anexo;
 };
+
+/**
+ * Um arquivo que não é imagem, preso à seção como um grampo prende um papel na
+ * folha. Não há nome à parte: o caminho já o traz, e é o mesmo nome que está na
+ * pasta — quem abre o Explorer encontra exatamente o que a nota mostra.
+ */
+export type Anexo = {
+  /** Caminho relativo na pasta da nota, como `anexos/prova-final.pdf`. */
+  src: string;
+};
+
+/** O nome do arquivo, que é o que se lê na seção. */
+export function nomeDoAnexo(anexo: Anexo): string {
+  return anexo.src.slice(anexo.src.lastIndexOf('/') + 1);
+}
+
+/**
+ * As canetas do estojo, e são estas. Não é cor livre: cada uma é um token do
+ * tema, medida nos dois fundos por `.agent/check-design.mjs`. Escolher a cor
+ * do texto num seletor de milhões de tons seria a maneira mais rápida de
+ * deixar uma nota ilegível no tema em que ela não foi escrita.
+ */
+export const CANETAS = ['grafite', 'ocre', 'terracota', 'azul', 'verde'] as const;
+export type Caneta = (typeof CANETAS)[number];
+
+/** A letra de cada seção: a de sempre, a de ler, e a de escrever à mão. */
+export const LETRAS = ['mono', 'leitura', 'mao'] as const;
+export type Letra = (typeof LETRAS)[number];
+
+/**
+ * O papel da seção: as mesmas cores do estojo, lavadas até virarem fundo. Não
+ * há grafite aqui — papel cinza é a folha inteira, e não um post-it colado
+ * nela. `nenhum` é a folha de sempre, e é o que não se escreve no arquivo.
+ */
+export const FUNDOS = ['nenhum', 'ocre', 'terracota', 'azul', 'verde'] as const;
+export type Fundo = (typeof FUNDOS)[number];
+
+/** O que o marcador do bloco traz é texto de arquivo: pode vir qualquer coisa. */
+export function ehCaneta(valor: string): valor is Caneta {
+  return (CANETAS as readonly string[]).includes(valor);
+}
+
+export function ehFundo(valor: string): valor is Fundo {
+  return (FUNDOS as readonly string[]).includes(valor);
+}
+
+export function ehLetra(valor: string): valor is Letra {
+  return (LETRAS as readonly string[]).includes(valor);
+}
 
 export type Imagem = {
   /** Caminho relativo na pasta da nota, como `anexos/abc123.png`. */
@@ -92,6 +149,49 @@ export function alturaAjustada(altura: number, conteudo: number, encolheu: boole
   return alvo + FOLGA < altura ? alvo : null;
 }
 
+/**
+ * Leva a figura de uma seção para outra, como se descolasse a foto da página e
+ * a colasse noutro canto. Quando a seção de destino já tem uma, as duas trocam
+ * de lugar: nenhuma foto some porque outra chegou.
+ *
+ * Cada seção cresce e encolhe pelo que a foto pedia, para o texto que já estava
+ * lá não ficar espremido nem sobrar um vão onde a foto estava.
+ */
+export function moverFigura(blocos: Bloco[], de: string, para: string): Bloco[] {
+  if (de === para) return blocos;
+
+  const origem = blocos.find((bloco) => bloco.id === de);
+  const destino = blocos.find((bloco) => bloco.id === para);
+  if (!origem?.imagem || !destino) return blocos;
+
+  const faixaQueSai = origem.imagem.altura ?? 0;
+  const faixaQueVolta = destino.imagem?.altura ?? 0;
+
+  return blocos.map((bloco) => {
+    if (bloco.id === de) {
+      if (!destino.imagem) {
+        const { imagem: _saiu, ...semFigura } = bloco;
+        return { ...semFigura, altura: Math.max(ALTURA_MINIMA, bloco.altura - faixaQueSai) };
+      }
+      return {
+        ...bloco,
+        imagem: destino.imagem,
+        altura: Math.max(ALTURA_MINIMA, bloco.altura - faixaQueSai + faixaQueVolta),
+      };
+    }
+
+    if (bloco.id === para) {
+      return {
+        ...bloco,
+        imagem: origem.imagem,
+        altura: Math.max(ALTURA_MINIMA, bloco.altura - faixaQueVolta + faixaQueSai),
+      };
+    }
+
+    return bloco;
+  });
+}
+
 /** Respiro entre um bloco e a cópia dele, em pixels. */
 export const ESPACO = 16;
 
@@ -106,3 +206,30 @@ export function duplicarBloco(bloco: Bloco): Bloco {
     y: bloco.y + bloco.altura + ESPACO,
   };
 }
+
+/**
+ * Organiza todos os blocos do caderno em uma coluna vertical limpa e contínua,
+ * na ordem natural de leitura (de cima para baixo, da esquerda para a direita).
+ * Útil para quando pensamentos foram espalhados livremente pela folha e agora
+ * precisam de uma arrumação de leitura.
+ */
+export function arrumarEmColuna(
+  blocos: Bloco[],
+  margemX = 48,
+  margemY = 48,
+  espaco = ESPACO,
+): Bloco[] {
+  const ordenados = [...blocos].sort((a, b) => a.y - b.y || a.x - b.x);
+  let atualY = margemY;
+
+  return ordenados.map((bloco) => {
+    const ajustado: Bloco = {
+      ...bloco,
+      x: margemX,
+      y: atualY,
+    };
+    atualY += bloco.altura + espaco;
+    return ajustado;
+  });
+}
+

@@ -15,7 +15,8 @@ import {
 } from './notes';
 import { abrirDeposito, depositoEmArquivos, type Deposito } from './deposito';
 import { arquivosDaPasta, escolherPastaDoNavegador, navegadorTemPasta, pastaLembrada } from './pasta';
-import type { Bloco } from './canvas';
+import { arrumarEmColuna, type Bloco } from './canvas';
+import { gerarHtmlAutonomo } from './exportacao';
 import { matchesQuery } from './search';
 import {
   CRITERIOS,
@@ -34,6 +35,7 @@ import {
   aoAtualizar,
   instalarAtualizacao,
   modoDeFundoDaJanela,
+  mostrarAnexo,
   mostrarNaPasta,
   registrarErrosEmArquivo,
   trocarModoDeFundo,
@@ -109,14 +111,14 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [recado]);
 
-  async function handleColarImagem(bytes: Uint8Array, tipo: string) {
+  async function handleColarImagem(bytes: Uint8Array, tipo: string, nome?: string) {
     try {
-      const nome = await deposito.salvarAnexo(bytes, tipo);
-      if (!nome) setRecado('Colar imagem só funciona no aplicativo instalado.');
-      return nome;
+      const gravado = await deposito.salvarAnexo(bytes, tipo, nome);
+      if (!gravado) setRecado('Colar arquivo só funciona no aplicativo instalado.');
+      return gravado;
     } catch (err) {
-      console.error('Não foi possível guardar a imagem:', err);
-      setRecado('Não foi possível guardar a imagem.');
+      console.error('Não foi possível guardar o arquivo colado:', err);
+      setRecado('Não foi possível guardar o arquivo colado.');
       return null;
     }
   }
@@ -632,6 +634,44 @@ export default function App() {
         secao: 'Notas',
         executar: () => activeId && handleDuplicar(activeId),
       },
+      {
+        id: 'exportar-html',
+        titulo: 'Exportar esta nota como HTML',
+        secao: 'Notas',
+        executar: () => {
+          if (!activeNote) return;
+          const titulo = deriveTitle(textoDaNota(activeNote.blocos));
+          const html = gerarHtmlAutonomo(titulo, activeNote.blocos, activeNote.tipo);
+          const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${titulo.replace(/[\/\\?%*:|"<>]/g, '-') || 'nota'}.html`;
+          link.click();
+          URL.revokeObjectURL(url);
+          setRecado('Nota exportada como HTML!');
+        },
+      },
+      {
+        id: 'copiar-markdown',
+        titulo: 'Copiar conteúdo como Markdown limpo',
+        secao: 'Notas',
+        executar: () => {
+          if (!activeNote) return;
+          void navigator.clipboard.writeText(textoDaNota(activeNote.blocos));
+          setRecado('Conteúdo copiado como Markdown limpo!');
+        },
+      },
+      {
+        id: 'arrumar-coluna',
+        titulo: 'Arrumar blocos em coluna',
+        secao: 'Editor',
+        executar: () => {
+          if (!activeNote) return;
+          handleChangeBlocos(arrumarEmColuna(activeNote.blocos));
+          setRecado('Blocos organizados em coluna!');
+        },
+      },
       ...(Object.entries(CRITERIOS) as [Criterio, string][]).map(([criterio, rotulo]) => ({
         id: `ordem-${criterio}`,
         titulo: `Ordenar a lista por ${rotulo.toLowerCase()}`,
@@ -830,6 +870,7 @@ export default function App() {
           onDelete={handleDelete}
           onMudarTipo={handleMudarTipo}
           onColarImagem={handleColarImagem}
+          onMostrarAnexo={mostrarAnexo}
           recado={recado}
           cadernoVazio={!carregando && notes.length === 0}
           conflito={activeId !== null && conflitos.has(activeId)}

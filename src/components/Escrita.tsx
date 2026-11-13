@@ -4,7 +4,7 @@ import type { ClipboardEvent, KeyboardEvent, UIEvent } from 'react';
 import { alturaAjustada, type Bloco } from '../canvas';
 import { realcar } from '../markdown';
 import { realcarAchados, type Ocorrencia } from '../busca';
-import { melhorImagem, origemDoHtml } from '../imagem';
+import { melhorImagem, origemDoHtml, primeiroAnexo } from '../imagem';
 import { alternarMarca, aoTeclarEnter, aoTeclarTab, inserirLink, urlColada } from '../edicao';
 import { completarLigacao, ligacaoSendoEscrita, ordenarCandidatos, type Escrevendo } from '../sugestoes';
 
@@ -18,6 +18,8 @@ export type EscritaProps = {
   onChange: (texto: string) => void;
   onAltura: (altura: number) => void;
   onImagemColada: (arquivo: File, origem: string | null) => void;
+  /** Arquivo colado que não é imagem: vira anexo grampeado na seção. */
+  onArquivoColado: (arquivo: File) => void;
   titulos: string[];
   trechos: Record<string, string>;
   onSair: () => void;
@@ -42,6 +44,7 @@ export default function Escrita({
   onChange,
   onAltura,
   onImagemColada,
+  onArquivoColado,
   titulos,
   trechos,
   onSair,
@@ -160,6 +163,7 @@ export default function Escrita({
       if (event.ctrlKey || event.metaKey) {
         if (event.key === 'b') return alternarMarca(estado, '**');
         if (event.key === 'i') return alternarMarca(estado, '*');
+        if (event.key === 'h') return alternarMarca(estado, '==');
         if (event.key === 'k') return inserirLink(estado, 'https://');
       }
       return null;
@@ -189,6 +193,14 @@ export default function Escrita({
     if (imagem) {
       event.preventDefault();
       onImagemColada(imagem, origemDoHtml(event.clipboardData.getData('text/html')));
+      return;
+    }
+
+    // Não é imagem, mas é arquivo: vai grampeado na seção, com o nome à mostra.
+    const anexo = primeiroAnexo(arquivos);
+    if (anexo) {
+      event.preventDefault();
+      onArquivoColado(anexo);
       return;
     }
 

@@ -18,6 +18,9 @@
   --alert-wash: rgba(224, 134, 114, 0.13);
   --marker: color-mix(in srgb, var(--accent) 20%, transparent);
   --sombra: 0 8px 24px rgba(0, 0, 0, 0.32);
+  /* canetas do estojo: tinta do conteúdo, não da interface */
+  --caneta-azul: #86a7c4;
+  --caneta-verde: #97b487;
 }
 
 [data-theme='papel'] {
@@ -35,11 +38,17 @@
   --alert-wash: rgba(140, 47, 29, 0.1);
   --marker: color-mix(in srgb, var(--accent) 16%, transparent);
   --sombra: 0 8px 24px rgba(26, 23, 20, 0.14);
+  --caneta-azul: #2a5470;
+  --caneta-verde: #385f3b;
 }
 
 :root {
   --mono: 'Cascadia Mono', 'Cascadia Code', Consolas, 'IBM Plex Mono', monospace;
   --ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  /* as outras duas letras da seção: a de ler e a de escrever à mão. Ambas já
+     vêm no Windows — nada baixado, nada que falte na máquina de alguém. */
+  --letra-leitura: var(--ui);
+  --letra-mao: 'Ink Free', 'Segoe Script', cursive;
   --curva: cubic-bezier(0.16, 1, 0.3, 1);
   --rapido: 150ms var(--curva);
   --entrada: 250ms var(--curva);
@@ -393,6 +402,14 @@ button {
   color: var(--ink-faint);
 }
 
+/* O nome do arquivo na pasta. Fica ao lado da data, e não no lugar do título:
+   quem escreve pensa no título, e só precisa do nome quando vai procurá-lo
+   no Explorer — ou quando acabou de trocar a extensão. */
+.editor__arquivo {
+  margin-left: 8px;
+  font-family: var(--mono);
+}
+
 .editor__corpo {
   position: relative;
   flex: 1;
@@ -534,6 +551,70 @@ button {
   background: var(--surface);
 }
 
+.bloco--alvo-figura {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+}
+
+.bloco--arrastando-figura .bloco__figura {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.canvas--modo-foco .bloco:not(.bloco--ativo) {
+  opacity: 0.15;
+  transition: opacity var(--rapido);
+}
+
+.guia-alinhamento {
+  position: absolute;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.guia-alinhamento--vertical {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  border-left: 1px dashed var(--accent);
+}
+
+.guia-alinhamento--horizontal {
+  left: 0;
+  right: 0;
+  height: 1px;
+  border-top: 1px dashed var(--accent);
+}
+
+/* A seção como post-it: papel próprio, colado na folha. É a mesma família de
+   cores do estojo, lavada até virar fundo — 12% é o ponto em que a cor se lê
+   como papel e o texto por cima não perde contraste.
+
+   Ganha da regra do bloco ativo de propósito: quem pintou a seção de amarelo
+   quer vê-la amarela também enquanto escreve nela. */
+.bloco--papel-ocre,
+.bloco--papel-terracota,
+.bloco--papel-azul,
+.bloco--papel-verde {
+  background: color-mix(in srgb, var(--papel-secao) 12%, transparent);
+}
+
+.bloco--papel-ocre {
+  --papel-secao: var(--accent);
+}
+
+.bloco--papel-terracota {
+  --papel-secao: var(--alert);
+}
+
+.bloco--papel-azul {
+  --papel-secao: var(--caneta-azul);
+}
+
+.bloco--papel-verde {
+  --papel-secao: var(--caneta-verde);
+}
+
 /* O espelho e o textarea precisam ocupar a mesma caixa, com a mesma métrica:
    o texto do espelho fica exatamente atrás do texto transparente digitado.
    A camada dos achados entra na mesma conta: ela existe para pintar o fundo
@@ -545,7 +626,7 @@ button {
   inset: 0;
   padding: 20px 12px 12px;
   border: 0;
-  font-family: var(--mono);
+  font-family: var(--letra-secao, var(--mono));
   font-size: var(--corpo);
   line-height: 1.65;
   letter-spacing: normal;
@@ -556,7 +637,49 @@ button {
 
 .bloco__espelho {
   pointer-events: none;
-  color: var(--ink);
+  color: var(--tinta-secao, var(--ink));
+}
+
+/* ------------------------------------------------- caneta e letra da seção
+
+   Numa folha de caderno a cor e a letra são de cada trecho, não da página. Aqui
+   elas entram como duas variáveis no próprio bloco, e as três camadas — texto,
+   espelho e achados — leem as mesmas: se a métrica divergisse entre elas, o
+   texto digitado deixaria de casar com o realce que está atrás.
+
+   Só o grafite e a monoespaçada não têm classe: são a ausência de escolha. */
+
+.bloco--caneta-ocre {
+  --tinta-secao: var(--accent);
+}
+
+.bloco--caneta-terracota {
+  --tinta-secao: var(--alert);
+}
+
+.bloco--caneta-azul {
+  --tinta-secao: var(--caneta-azul);
+}
+
+.bloco--caneta-verde {
+  --tinta-secao: var(--caneta-verde);
+}
+
+.bloco--letra-leitura {
+  --letra-secao: var(--letra-leitura);
+}
+
+.bloco--letra-mao {
+  --letra-secao: var(--letra-mao);
+}
+
+/* Escolhida a caneta, ela pinta o que está escrito — inclusive o que o realce
+   do Markdown pintaria de outra cor. Quem escreveu de azul quer o trecho azul,
+   e o negrito continua se distinguindo pelo peso, que é o que o DESIGN.md pede.
+   Os marcadores (`**`, `#`) ficam de fora: eles continuam apagados, porque são
+   a sintaxe e não o texto. */
+.bloco--tinta .bloco__espelho *:not(.md-marcador) {
+  color: inherit;
 }
 
 /* Só o fundo das marcas aparece: o texto desta camada tem de ficar invisível,
@@ -591,7 +714,7 @@ button {
 
 /* Sem realce (documento de texto puro) o textarea volta a mostrar o texto. */
 .bloco--puro .bloco__texto {
-  color: var(--ink);
+  color: var(--tinta-secao, var(--ink));
 }
 
 /* O z-index não é enfeite: o textarea ocupa o bloco inteiro e vem depois no
@@ -666,6 +789,18 @@ button {
 .md-riscado {
   text-decoration: line-through;
   color: var(--ink-soft);
+}
+
+.md-grifo {
+  background: var(--marker);
+  border-radius: 2px;
+}
+
+mark.md-grifo {
+  background: var(--marker);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 2px;
 }
 
 .md-codigo {
@@ -927,6 +1062,18 @@ button {
   color: var(--accent);
   border-color: var(--accent);
   background: var(--accent-wash);
+}
+
+/* A extensão é o que muda no disco quando se troca o tipo — está no botão para
+   que a escolha seja a do VS Code: escolhe-se um arquivo, não um modo. */
+.opcao__extensao {
+  margin-left: 4px;
+  font-family: var(--mono);
+  color: var(--ink-faint);
+}
+
+.opcao--on .opcao__extensao {
+  color: var(--accent);
 }
 
 /* ------------------------------------------------------------------ barras */
@@ -1252,6 +1399,229 @@ button {
   background: var(--alert-wash);
 }
 
+/* --------------------------------------------------- o estojo da seção */
+
+.estojo {
+  position: absolute;
+  z-index: 2;
+  top: 2px;
+  right: 24px;
+}
+
+/* Some junto com o botão de excluir, e pelo mesmo motivo: numa página cheia de
+   seções, um controle visível em cada uma seria ruído puro. `focus-within`
+   entra para que quem chega pelo teclado veja onde o foco está. */
+.estojo__abrir {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: var(--tinta-secao, var(--ink-faint));
+  font-family: var(--letra-secao, var(--mono));
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--rapido), background-color var(--rapido);
+}
+
+.bloco:hover .estojo__abrir,
+.estojo:focus-within .estojo__abrir,
+.estojo__abrir[aria-expanded='true'] {
+  opacity: 1;
+}
+
+.estojo__abrir:hover {
+  background: var(--surface-alt);
+}
+
+/* Flutua sobre o conteúdo — é destes que o DESIGN.md fala quando permite sombra. */
+.estojo__painel {
+  position: absolute;
+  z-index: 3;
+  top: 22px;
+  right: 0;
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--base);
+  box-shadow: var(--sombra);
+}
+
+.estojo__grupo {
+  display: flex;
+  gap: 4px;
+}
+
+.estojo__caneta {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color var(--rapido), background-color var(--rapido);
+}
+
+/* A cor da caneta é a do próprio botão, e a pastilha a herda: uma classe só
+   diz de que cor é aquela caneta, aqui e no texto que ela escreve. */
+.estojo__caneta::after {
+  content: '';
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.estojo__caneta:hover {
+  background: var(--surface-alt);
+}
+
+/* A escolhida não se distingue só pela cor — tem moldura e `aria-pressed`. */
+.estojo__caneta--atual {
+  border-color: var(--ink-soft);
+  background: var(--surface-alt);
+}
+
+.estojo--grafite {
+  color: var(--ink);
+}
+
+.estojo--ocre {
+  color: var(--accent);
+}
+
+.estojo--terracota {
+  color: var(--alert);
+}
+
+.estojo--azul {
+  color: var(--caneta-azul);
+}
+
+.estojo--verde {
+  color: var(--caneta-verde);
+}
+
+/* O papel da seção usa as mesmas cores, e por isso precisa de forma própria
+   para não se confundir com as canetas: aqui o quadrado é lavado e contornado,
+   como um post-it visto de longe. O primeiro, vazio, é a folha de sempre. */
+.estojo__papel {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color var(--rapido), background-color var(--rapido);
+}
+
+.estojo__papel::after {
+  content: '';
+  display: block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  background: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+.estojo__papel--nenhum {
+  color: var(--ink-faint);
+}
+
+.estojo__papel--nenhum::after {
+  background: none;
+}
+
+.estojo__papel:hover {
+  background: var(--surface-alt);
+}
+
+.estojo__papel--atual {
+  border-color: var(--ink-soft);
+  background: var(--surface-alt);
+}
+
+/* Cada opção de letra é escrita na própria letra: o nome não explica nada que
+   a amostra não mostre melhor. */
+.estojo__letra {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--rapido), border-color var(--rapido), background-color var(--rapido);
+}
+
+.estojo__letra:hover {
+  color: var(--ink);
+  background: var(--surface-alt);
+}
+
+.estojo__letra--atual {
+  border-color: var(--ink-soft);
+  color: var(--ink);
+  background: var(--surface-alt);
+}
+
+.estojo--letra-mono {
+  font-family: var(--mono);
+}
+
+.estojo--letra-leitura {
+  font-family: var(--letra-leitura);
+}
+
+.estojo--letra-mao {
+  font-family: var(--letra-mao);
+}
+
+/* ------------------------------------------- arquivo grampeado na seção */
+
+/* Fica no rodapé da seção, sobre o texto, como um clipe preso na borda da
+   folha. Não é uma figura: o que se vê é o nome, que é o que se procura. */
+.bloco__grampo {
+  position: absolute;
+  z-index: 1;
+  left: 8px;
+  right: 8px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--surface-alt);
+  color: var(--ink-soft);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--rapido), border-color var(--rapido), background-color var(--rapido);
+}
+
+.bloco__grampo:hover {
+  color: var(--ink-strong);
+  border-color: var(--ink-faint);
+}
+
+.bloco__grampo-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+}
+
 /* ----------------------------------------------- figura colada na página */
 
 /* A figura fica solta na página, sem moldura própria: quem dá contorno é o
@@ -1284,10 +1654,16 @@ button {
   padding: 20px 4px 4px;
 }
 
+/* `grab` porque a foto sai daqui: arrastar até outra seção a leva para lá. */
 .bloco__figura {
   position: relative;
   flex: 1;
   min-width: 0;
+  cursor: grab;
+}
+
+.bloco__figura:active {
+  cursor: grabbing;
 }
 
 .bloco__imagem {

@@ -1,7 +1,7 @@
 const { app, BrowserWindow, globalShortcut, ipcMain, protocol, screen, shell } = require('electron');
 const path = require('node:path');
 const notas = require('./notas.cjs');
-const { autoUpdater } = require('electron-updater');
+let autoUpdater = null;
 const { boundsVisiveis, cortarLog, linhaDeErro, sanearUserAgent } = require('./geometria.cjs');
 const fs = require('node:fs');
 
@@ -200,6 +200,10 @@ function vigiarAtualizacoes() {
   // em desenvolvimento nao ha versao publicada com que comparar
   if (isDev) return;
 
+  if (!autoUpdater) {
+    autoUpdater = require('electron-updater').autoUpdater;
+  }
+
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
@@ -226,10 +230,15 @@ function registrarCanais() {
   });
   ipcMain.handle('ardosia:abrir-pasta', () => notas.abrirPasta());
   ipcMain.handle('ardosia:listar', () => notas.listar());
-  ipcMain.handle('ardosia:escrever', (_evento, id, texto) => notas.escrever(id, texto));
+  ipcMain.handle('ardosia:escrever', (_evento, id, texto, extensao) =>
+    notas.escrever(id, texto, extensao),
+  );
   ipcMain.handle('ardosia:renomear', (_evento, de, para) => notas.renomear(de, para));
   ipcMain.handle('ardosia:apagar', (_evento, id) => notas.apagar(id));
-  ipcMain.handle('ardosia:salvar-anexo', (_evento, bytes, tipo) => notas.salvarAnexo(bytes, tipo));
+  ipcMain.handle('ardosia:salvar-anexo', (_evento, bytes, tipo, nome) =>
+    notas.salvarAnexo(bytes, tipo, nome),
+  );
+  ipcMain.handle('ardosia:mostrar-anexo', (_evento, src) => notas.mostrarAnexo(src));
   ipcMain.handle('ardosia:modo-de-fundo', () => notas.modoDeFundo());
   ipcMain.handle('ardosia:versao', () => app.getVersion());
   ipcMain.handle('ardosia:mostrar-na-pasta', (_evento, id) => notas.mostrarNaPasta(id));

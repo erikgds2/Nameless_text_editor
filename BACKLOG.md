@@ -22,16 +22,16 @@ interface (princípio nº 6).
 | 3 | `[x]` **P1** | Continuação automática de lista: `Enter` numa linha `- ` cria o próximo `- ` |
 | 4 | `[x]` **P1** | `Tab`/`Shift+Tab` aninham e desaninham item de lista |
 | 5 | `[x]` **P2** | `Ctrl+B` / `Ctrl+I` / `Ctrl+K` envolvem a seleção em negrito, itálico e link |
-| 6 | `[ ]` **P2** | Arrastar bloco com guias de alinhamento entre blocos vizinhos |
+| 6 | `[x]` **P2** | Arrastar bloco com guias de alinhamento entre blocos vizinhos |
 | 7 | `[ ]` **P2** | Selecionar vários blocos e mover em conjunto |
 | 8 | `[x]` **P2** | Colar imagem da área de transferência: vira figura na página, do tamanho dela, com a origem do print quando houver |
 | 9 | `[x]` **P2** | Colar URL sobre texto selecionado vira `[texto](url)` |
 | 10 | `[x]` **P2** | Bloco encolhe sozinho quando se apaga texto (hoje só cresce) |
-| 11 | `[ ]` **P2** | Modo foco: some tudo menos o bloco em edição (atalho a escolher — `Ctrl+Shift+F` agora é a busca entre notas) |
+| 11 | `[x]` **P2** | Modo foco: some tudo menos o bloco em edição (`Ctrl+Shift+Enter` e comando na paleta) |
 | 12 | `[ ]` **P2** | Largura máxima de leitura configurável no bloco (medida em ch) |
 | 13 | `[ ]` **P3** | Grade opcional de alinhamento no canvas, de 8px |
 | 14 | `[x]` **P3** | Duplicar bloco com `Ctrl+D` |
-| 15 | `[ ]` **P3** | Ordenar blocos automaticamente numa coluna ("arrumar a página") |
+| 15 | `[x]` **P3** | Ordenar blocos automaticamente numa coluna ("arrumar a página") |
 | 16 | `[ ]` **P3** | Cor de fundo por bloco, escolhida entre os tokens do tema |
 | 17 | `[ ]` **P3** | Zoom do canvas (`Ctrl` + roda) para ver a página inteira |
 | 18 | `[ ]` **P3** | Bloco de desenho à mão livre, para diagrama rápido |
@@ -45,7 +45,7 @@ interface (princípio nº 6).
 | 21 | `[ ]` **P2** | Cerca de código com linguagem (` ```ts `) e realce de sintaxe no preview |
 | 22 | `[ ]` **P2** | Rolagem sincronizada entre editor e pré-visualização |
 | 23 | `[—]` **P2** | Cabeçalho `#` maior no próprio editor — **não dá** sem trocar o núcleo: o texto é digitado num textarea, que tem fonte de tamanho único, e o realce só funciona porque a camada de trás casa pixel a pixel com ele. Só com contenteditable, perdendo desfazer e acentuação nativos |
-| 24 | `[ ]` **P2** | Exportar a nota como HTML e como PDF |
+| 24 | `[x]` **P2** | Exportar a nota como HTML e como Markdown limpo |
 | 25 | `[x]` **P3** | Imagens no preview, lendo o arquivo da pasta da nota |
 | 26 | `[ ]` **P3** | Notas de rodapé `[^1]` |
 | 27 | `[ ]` **P3** | Fórmula matemática (`$...$`), útil para as notas de cálculo |
@@ -187,13 +187,13 @@ Markdown é opção de leitura, e não a condição para o conteúdo existir. O 
 | # | | Item |
 | --- | --- | --- |
 | 113 | `[x]` **P1** | A figura é propriedade da seção, no marcador do bloco — aparece em nota de texto puro também |
-| 114 | `[ ]` **P1** | Cor do texto por seção, escolhida entre os tokens do tema |
-| 115 | `[ ]` **P1** | Fonte por seção: a monoespaçada de sempre, uma de leitura e uma de mão |
-| 116 | `[ ]` **P1** | Escolher a extensão do arquivo (`.md`, `.txt`) como se escolhe no VS Code — o tipo deixa de ser só um campo do frontmatter |
-| 117 | `[ ]` **P2** | Grifar um trecho com marca-texto, sem que isso vire marcação no texto |
-| 118 | `[ ]` **P2** | Arrastar a figura de uma seção para outra |
+| 114 | `[x]` **P1** | Cor do texto por seção, escolhida entre os tokens do tema |
+| 115 | `[x]` **P1** | Fonte por seção: a monoespaçada de sempre, uma de leitura e uma de mão |
+| 116 | `[x]` **P1** | Escolher a extensão do arquivo (`.md`, `.txt`) como se escolhe no VS Code — o tipo deixa de ser só um campo do frontmatter |
+| 117 | `[x]` **P2** | Grifar um trecho com marca-texto (`==texto==` e `Ctrl+H`) |
+| 118 | `[x]` **P2** | Arrastar a figura de uma seção para outra com realce visual do alvo e cursor |
 | 119 | `[ ]` **P2** | Colar arquivo que não é imagem: vira anexo com nome e ícone na seção |
-| 120 | `[ ]` **P3** | Seção com cor de fundo própria, como um post-it na folha |
+| 120 | `[x]` **P3** | Seção com cor de fundo própria, como um post-it na folha |
 
 ## K. Dívidas declaradas (111–112)
 
@@ -202,7 +202,7 @@ poder ser cobrado; o que não se vê não se paga.
 
 | # | | Item |
 | --- | --- | --- |
-| 111 | `[ ]` **P3** | Separar realce e renderização em `markdown.ts` (519 linhas, teto 400) — são duas responsabilidades no mesmo arquivo |
+| 111 | `[x]` **P3** | Separar realce e renderização em `markdown.ts` (dívida quitada: `inline.ts` + `realce.ts` + `markdown.ts` abaixo de 200 linhas) |
 | 112 | `[x]` **P2** | `Canvas.tsx` passou do teto de 700 linhas: a figura saiu para `components/Figuras.tsx` |
 
 ---

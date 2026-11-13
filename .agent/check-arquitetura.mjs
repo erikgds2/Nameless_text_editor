@@ -82,7 +82,7 @@ const TETO = { '.ts': 400, '.tsx': 700 };
 // item do BACKLOG que a paga. Aparece como aviso a cada rodada — o que nao se
 // ve nao se paga —, mas nao derruba o portao por algo que ninguem acabou de
 // escrever. Nada entra aqui sem numero de item.
-const DIVIDAS = { 'src/markdown.ts': 111 };
+const DIVIDAS = {};
 
 for (const arquivo of [...naRaizDeSrc, ...componentes]) {
   const linhas = readFileSync(arquivo, 'utf8').split('\n').length;

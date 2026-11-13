@@ -32,6 +32,7 @@ describe('renderizar', () => {
     expect(renderizar('_a_')).toBe('<p><em>a</em></p>');
     expect(renderizar('`a`')).toBe('<p><code>a</code></p>');
     expect(renderizar('~~a~~')).toBe('<p><del>a</del></p>');
+    expect(renderizar('==a==')).toBe('<p><mark class="md-grifo">a</mark></p>');
   });
 
   it('aninha ênfase dentro de negrito', () => {
